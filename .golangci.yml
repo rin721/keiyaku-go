@@ -1,0 +1,48 @@
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - errcheck
+    - gosec
+    - gocritic
+    - wrapcheck
+    - depguard
+
+linters-settings:
+  depguard:
+    rules:
+      pkg-must-not-import-internal:
+        files:
+          - "pkg/**/*.go"
+        deny:
+          - pkg: "github.com/rin721/rinblog/internal"
+            desc: "pkg is a business-agnostic shared library and must not import internal business code"
+          - pkg: "internal"
+            desc: "pkg is a business-agnostic shared library and must not import internal business code"
+      lower-layers-must-not-import-transport:
+        files:
+          - "internal/domain/**/*.go"
+          - "internal/repository/**/*.go"
+          - "internal/infrastructure/**/*.go"
+        deny:
+          - pkg: "github.com/rin721/rinblog/internal/api"
+            desc: "domain/repository/infrastructure must not depend on transport DTOs"
+          - pkg: "github.com/rin721/rinblog/internal/handler"
+            desc: "domain/repository/infrastructure must not depend on transport DTOs"
+          - pkg: "internal/api"
+            desc: "domain/repository/infrastructure must not depend on transport DTOs"
+          - pkg: "internal/handler"
+            desc: "domain/repository/infrastructure must not depend on transport DTOs"
+  gosec:
+    excludes:
+      - G104
+  wrapcheck:
+    ignoreSigs:
+      - .Errorf(
+      - errors.New(
+      - errors.Join(
+
+issues:
+  exclude-use-default: false

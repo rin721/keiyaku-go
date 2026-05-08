@@ -1,0 +1,72 @@
+name: Governance
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  governance:
+    name: Governance checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run governance check
+        shell: pwsh
+        run: ./scripts/check-governance.ps1
+
+  go:
+    name: Go lint and tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect Go module
+        id: go-module
+        shell: bash
+        run: |
+          if [ -f go.mod ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No go.mod found; skipping Go lint and tests for governance-only baseline."
+          fi
+
+      - name: Setup Go
+        if: steps.go-module.outputs.present == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run unit tests
+        if: steps.go-module.outputs.present == 'true'
+        run: go test ./...
+
+      - name: Run golangci-lint
+        if: steps.go-module.outputs.present == 'true'
+        uses: golangci/golangci-lint-action@v6
+        with:
+          args: --config=.golangci.yml
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_CONFIG: .gitleaks.toml

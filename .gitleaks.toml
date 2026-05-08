@@ -1,0 +1,16 @@
+title = "rinblog gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Allow documentation placeholders"
+regexes = [
+  '''(?i)your[-_ ]?(secret|token|password|key)''',
+  '''(?i)<(secret|token|password|key)>''',
+  '''(?i)example[-_ ]?(secret|token|password|key)'''
+]
+paths = [
+  '''docs/.*''',
+  '''\.pre-commit-config\.yaml'''
+]
