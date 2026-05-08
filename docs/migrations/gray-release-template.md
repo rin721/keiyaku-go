@@ -1,64 +1,66 @@
-# Migration Gray-Release Template
+# Migration 灰度变更模板
 
-Use this template for high-risk P1 DDL changes, such as modifying the type, meaning, nullability, or uniqueness of a core column.
+此模板适用于高风险 P1 DDL 变更，例如修改核心列的数据类型、业务语义、可空性或唯一性。
 
-## Principles
+## 原则
 
-- DDL must be repeatable, rollbackable, or compensatable.
-- Migrations must use a migration version table or equivalent duplicate-execution protection.
-- Every migration must include preflight checks before changing schema or data.
-- Do not assume MySQL-style DDL can be fully rolled back by a transaction.
-- Rollback plans should prefer forward-compatible compensation over destructive reversal.
+- DDL 必须可重复部署、可回滚或可补偿。
+- Migration 必须使用版本表或等效机制防止重复执行。
+- 每个 Migration 在修改 schema 或数据前都必须具备前置检查。
+- 不得假设 MySQL 风格 DDL 可以通过事务完整回滚。
+- 回滚方案优先采用前向兼容的补偿方案，而不是破坏性反转。
 
-## Required Metadata
+## 必填元数据
 
-- Change owner:
-- ADR link:
-- Target table:
-- Target columns:
-- Risk level:
-- Compatibility window:
-- Backfill strategy:
-- Read switch strategy:
-- Rollback or compensation strategy:
-- Observability signals:
+- 变更负责人：
+- ADR 链接：
+- 目标表：
+- 目标列：
+- 风险等级：
+- 兼容窗口：
+- 回填策略：
+- 读切换策略：
+- 回滚或补偿策略：
+- 可观测信号：
 
-## Step 1: V1 Add Compatible Schema
+## Step 1：V1 新增兼容 Schema
 
-- Add the target column, table, index, or constraint in a backward-compatible way.
-- Keep new columns nullable or provide safe defaults when needed.
-- Keep old read and write paths unchanged.
-- Add preflight checks that skip already-applied schema changes.
-- Verify old application versions can still run against the new schema.
+- 以向前兼容方式新增目标列、表、索引或约束。
+- 必要时保持新列可空，或提供安全默认值。
+- 保持旧读写路径不变。
+- 增加前置检查，确保已经执行过的 schema 变更会被跳过。
+- 验证旧版本应用仍可运行在新 schema 上。
 
-## Step 2: V2 Dual Write and Backfill
+## Step 2：V2 双写与回填
+<!-- MIG-P1-001 -->
+<!-- MIG-P1-002 -->
 
-- Update code to write both the old and new fields.
-- Start a resumable background backfill for historical data.
-- Use idempotent backfill batches with progress checkpoints.
-- Add metrics for backfill progress, lag, failure count, and data mismatch count.
-- Keep reads on the old field until backfill is complete and verified.
+- 更新代码，同时写入旧字段与新字段。
+- 启动可恢复的后台任务回填历史数据。
+- 回填批次必须幂等，并记录进度 checkpoint。
+- 增加回填进度、滞后、失败次数、数据不一致次数等指标。
+- 回填完成并验证前，读取路径仍保持在旧字段。
 
-## Step 3: V3 Switch Read Path
+## Step 3：V3 切换读取路径
 
-- Switch reads to the new field behind a feature flag or controlled rollout.
-- Continue dual writes during the observation period.
-- Compare old and new values through sampling or consistency checks.
-- Roll back by switching reads back to the old field if mismatches exceed the agreed threshold.
+- 通过特性开关或灰度控制把读取路径切到新字段。
+- 观察期内继续保持双写。
+- 通过抽样或一致性检查对比新旧字段。
+- 如果不一致超过约定阈值，可通过开关把读取路径回滚到旧字段。
 
-## Step 4: V4 Remove Old Path
+## Step 4：V4 移除旧路径
 
-- After the observation period, stop dual writes.
-- Remove old code paths and stale compatibility logic.
-- Drop the old field only after data retention, backup, and rollback windows are satisfied.
-- Keep the migration version and audit trail.
+- 观察期结束后停止双写。
+- 移除旧代码路径与兼容逻辑。
+- 仅在满足数据保留、备份与回滚窗口后，才 Drop 旧字段。
+- 保留 Migration 版本与审计记录。
 
-## Acceptance Checklist
+## 验收清单
 
-- [ ] ADR is linked for high-risk or non-default behavior.
-- [ ] Preflight checks protect every non-idempotent operation.
-- [ ] Backfill can resume after interruption.
-- [ ] Duplicate execution is harmless.
-- [ ] Rollback or compensation is documented.
-- [ ] Metrics and logs include TraceID or CorrelationID for background work.
-- [ ] Old and new application versions can coexist during rollout.
+- [ ] 高风险或非默认行为已经链接 ADR。
+- [ ] 前置检查保护每个非幂等操作。
+- [ ] 回填中断后可以恢复。
+- [ ] 重复执行不会造成破坏。
+- [ ] 已记录回滚或补偿方案。
+- [ ] 后台任务的指标与日志包含 TraceID 或 CorrelationID。
+- [ ] 灰度期间新旧应用版本可以共存。

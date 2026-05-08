@@ -1,10 +1,10 @@
-title = "rinblog gitleaks configuration"
+title = "rinblog gitleaks 配置"
 
 [extend]
 useDefault = true
 
 [[allowlists]]
-description = "Allow documentation placeholders"
+description = "允许文档中的占位示例"
 regexes = [
   '''(?i)your[-_ ]?(secret|token|password|key)''',
   '''(?i)<(secret|token|password|key)>''',

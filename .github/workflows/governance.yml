@@ -1,4 +1,4 @@
-name: Governance
+name: 工程治理
 
 on:
   push:
@@ -12,24 +12,24 @@ permissions:
 
 jobs:
   governance:
-    name: Governance checks
+    name: 治理检查
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: Run governance check
+      - name: 运行治理检查
         shell: pwsh
         run: ./scripts/check-governance.ps1
 
   go:
-    name: Go lint and tests
+    name: Go Lint 与测试
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: Detect Go module
+      - name: 检测 Go Module
         id: go-module
         shell: bash
         run: |
@@ -37,36 +37,36 @@ jobs:
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "No go.mod found; skipping Go lint and tests for governance-only baseline."
+            echo "未发现 go.mod；当前为治理基线阶段，跳过 Go lint 与测试。"
           fi
 
-      - name: Setup Go
+      - name: 安装 Go
         if: steps.go-module.outputs.present == 'true'
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
 
-      - name: Run unit tests
+      - name: 运行单元测试
         if: steps.go-module.outputs.present == 'true'
         run: go test ./...
 
-      - name: Run golangci-lint
+      - name: 运行 golangci-lint
         if: steps.go-module.outputs.present == 'true'
         uses: golangci/golangci-lint-action@v6
         with:
           args: --config=.golangci.yml
 
   secrets:
-    name: Secret scan
+    name: Secret 扫描
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: 检出代码
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Run gitleaks
+      - name: 运行 gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
           GITLEAKS_CONFIG: .gitleaks.toml

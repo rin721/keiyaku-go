@@ -17,7 +17,7 @@ repos:
   - repo: local
     hooks:
       - id: governance-check
-        name: governance-check
+        name: 治理检查
         entry: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-governance.ps1
         language: system
         pass_filenames: false

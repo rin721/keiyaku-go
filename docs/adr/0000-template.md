@@ -1,37 +1,40 @@
-# ADR 0000: Decision Title
+# ADR 0000：决策标题
 
-- Status: Proposed
-- Date: YYYY-MM-DD
-- Owners:
-- Related issue or PR:
+- 状态：提案
+- 日期：YYYY-MM-DD
+- 负责人：
+- 关联 Issue 或 PR：
 
-## Background and Context
+## 背景与上下文
+<!-- ADR-001 -->
 
-Describe the technical bottleneck, business requirement, operational constraint, or governance pressure that requires a decision.
+描述需要作出决策的技术瓶颈、业务要求、运维约束或工程治理压力。
 
-## Decision
+## 决策内容
+<!-- ADR-002 -->
 
-Describe the concrete decision. Include selected technology, architecture boundary, capability abstraction, or approved P1 deviation.
+描述具体决策，包括技术选型、架构边界、能力抽象或获批的 P1 偏离。
 
-If this ADR permits a P1 deviation, explicitly list:
+如果此 ADR 允许偏离 P1，必须明确列出：
 
-- The P1 rule being deviated from.
-- Why the default requirement is not suitable.
-- The expiration or review date for the deviation.
-- Additional CI, monitoring, or review controls that reduce risk.
+- 被偏离的 P1 规则。
+- 默认要求不适用的原因。
+- 偏离的过期时间或复审时间。
+- 降低风险的额外 CI、监控或 Review 控制。
 
-P0 deviations are not allowed.
+P0 不允许偏离。
 
-## Consequences
+## 后果评估
+<!-- ADR-003 -->
 
-Describe positive outcomes, tradeoffs, operational impact, migration cost, and technical debt introduced by this decision.
+描述该决策带来的正面收益、取舍、运维影响、迁移成本与新增技术债。
 
-## Alternatives Considered
+## 备选方案
 
-List the main alternatives and why they were not chosen.
+列出主要备选方案，以及没有选择它们的原因。
 
-## Follow-Up
+## 后续事项
 
-- [ ] Documentation updated.
-- [ ] CI or static checks updated if the decision changes enforceable rules.
-- [ ] Rollback or compensation plan documented where applicable.
+- [ ] 文档已更新。
+- [ ] 如果决策改变了可执行规则，CI 或静态检查已更新。
+- [ ] 如涉及迁移或高风险变更，已记录回滚或补偿方案。

@@ -18,9 +18,9 @@ linters-settings:
           - "pkg/**/*.go"
         deny:
           - pkg: "github.com/rin721/rinblog/internal"
-            desc: "pkg is a business-agnostic shared library and must not import internal business code"
+            desc: "pkg 是业务无关共享库，不得 import internal 业务代码"
           - pkg: "internal"
-            desc: "pkg is a business-agnostic shared library and must not import internal business code"
+            desc: "pkg 是业务无关共享库，不得 import internal 业务代码"
       lower-layers-must-not-import-transport:
         files:
           - "internal/domain/**/*.go"
@@ -28,13 +28,13 @@ linters-settings:
           - "internal/infrastructure/**/*.go"
         deny:
           - pkg: "github.com/rin721/rinblog/internal/api"
-            desc: "domain/repository/infrastructure must not depend on transport DTOs"
+            desc: "domain/repository/infrastructure 不得依赖传输层 DTO"
           - pkg: "github.com/rin721/rinblog/internal/handler"
-            desc: "domain/repository/infrastructure must not depend on transport DTOs"
+            desc: "domain/repository/infrastructure 不得依赖传输层 DTO"
           - pkg: "internal/api"
-            desc: "domain/repository/infrastructure must not depend on transport DTOs"
+            desc: "domain/repository/infrastructure 不得依赖传输层 DTO"
           - pkg: "internal/handler"
-            desc: "domain/repository/infrastructure must not depend on transport DTOs"
+            desc: "domain/repository/infrastructure 不得依赖传输层 DTO"
   gosec:
     excludes:
       - G104

@@ -1,37 +1,37 @@
-# Architecture Decision Records
+# 架构决策记录
 
-ADRs are the source of design intent for rinblog. Any deviation from P1 governance must be recorded as an ADR and approved before merge.
+ADR 是 rinblog 的设计意图来源。任何偏离 P1 治理规范的变更，都必须先记录 ADR，并在合入前完成审批。
 
-## Naming
+## 命名规范
 
-Use:
+使用：
 
 ```text
 docs/adr/YYYYMMDD-short-kebab-name.md
 ```
 
-Examples:
+示例：
 
 ```text
 docs/adr/20260509-adopt-echo-sqlc.md
 docs/adr/20260509-allow-wire-for-admin-module.md
 ```
 
-## Status
+## 状态
 
-Use one of:
+使用以下状态之一：
 
-- Proposed
-- Accepted
-- Deprecated
-- Superseded
+- Proposed：提案
+- Accepted：通过
+- Deprecated：已弃用
+- Superseded：已被替代
 
-## Required Review
+## 审批要求
 
-An ADR that changes or deviates from P1 must be reviewed by the technical owner before the related code or configuration merges.
+改变或偏离 P1 的 ADR，必须由技术负责人 Review 后，相关代码或配置才可合入。
 
-P0 deviations are not allowed. If a proposal appears to require a P0 deviation, the design must change.
+P0 不允许偏离。如果某个方案看起来必须突破 P0，说明设计需要调整。
 
-## Template
+## 模板
 
-Copy `0000-template.md` and replace the date, title, status, context, decision, and consequences.
+复制 `0000-template.md`，替换日期、标题、状态、背景、决策与后果评估。
