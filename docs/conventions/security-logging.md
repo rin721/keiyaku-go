@@ -7,8 +7,8 @@ status: active
 effective_date: 2026-05-15
 version: 1.0
 related_rules: [GOV-P0-003, GOV-P0-004, GOV-P1-001]
-read_when: [security_change, logging_change, governance_change]
-update_when: [security_policy_changed, logging_policy_changed, automation_changed]
+read_when: [security_sensitive, governance_change, test_or_ci]
+update_when: [security_policy_changed, automation_changed, default_rule_changed]
 ---
 
 # 安全与日志约定

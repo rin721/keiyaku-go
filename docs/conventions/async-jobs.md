@@ -7,7 +7,7 @@ status: active
 effective_date: 2026-05-15
 version: 1.0
 related_rules: [GOV-P1-001, GOV-P1-004]
-read_when: [async_change, operational_sensitive, governance_change]
+read_when: [async_sensitive, governance_change]
 update_when: [async_policy_changed, adr_accepted, automation_changed]
 ---
 

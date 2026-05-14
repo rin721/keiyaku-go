@@ -1,5 +1,5 @@
 ---
-doc_role: governance
+doc_role: governance_process
 scope: repo
 authority_level: binding
 owners: [tech-lead]
@@ -7,21 +7,28 @@ status: active
 effective_date: 2026-05-15
 version: 1.0
 related_rules: []
-read_when: [governance_change, default_style_change, exception_review, boundary_sensitive]
-update_when: [default_rule_changed, adr_accepted, exception_policy_changed, migration_policy_changed]
+read_when: [governance_change, boundary_sensitive, migration_sensitive, async_sensitive, exception_review]
+update_when: [default_behavior_changed, default_rule_changed, adr_policy_changed, exception_policy_changed, governance_structure_changed]
 ---
 
 # 治理变更管理
 
-本文档定义设计风格冲突、治理演进、历史同步、治理债务和 break-glass 的处理方式。
+本文档定义默认行为冲突、治理演进、历史同步、治理债务和 break-glass 的处理方式。默认行为变更未完成闭环同步时，不得视为任务完成。
 
 ## 冲突级别
 
-- L0 局部实现差异：只影响单个目录或能力，不改变默认规则。直接更新对应专题约定或实现。
-- L1 默认风格变化：会成为后续默认写法。必须补 ADR，并同步治理规则、专题约定、评审清单和自动化矩阵。
+- L0 局部实现差异：只影响单个目录或能力，不改变默认规则、默认边界或默认工作流。可直接更新局部约定或实现。
+- L1 默认行为变化：会成为后续默认写法或默认流程。必须先补 ADR，再同步治理规则、AI 执行协议、专题约定、评审清单、自动化矩阵和脚本/CI。
 - L2 P1 偏离：偏离默认治理要求。必须补 ADR，并由 owner 审批。
-- L3 P0、安全、数据兼容或不可逆风险：停止实施，要求人工决策；P0 不允许通过 break-glass 豁免。
+- L3 P0、安全、权限模型、不可逆数据风险：停止实施，要求人工决策；P0 不允许通过 break-glass 豁免。
 - L4 历史实现大量不一致：先登记治理债务，再制定迁移范围、验证方式、收益、风险和停止条件。
+
+## 决策路径
+
+1. 先判断是否触及 P0、安全、权限或不可逆数据风险；若是，立即停止并升级。
+2. 若不是，再判断是否改变默认行为、默认边界、默认风格、默认依赖方式、默认工作流或默认执行路径。
+3. 若不改变默认项，按局部实现处理。
+4. 若改变默认项，按 L1/L2/L4 分级，并完成文档、ADR、评审、自动化和历史同步决策。
 
 ## 默认风格演进触发条件
 
@@ -31,7 +38,7 @@ update_when: [default_rule_changed, adr_accepted, exception_policy_changed, migr
 - 新约定会改变目录边界、依赖方向、测试策略、迁移策略或 CI 门禁。
 - 用户明确要求把某种风格作为长期默认。
 
-触发后必须评估是否同步更新：`rules.md`、`ai-execution.md`、相关 convention、ADR、review checklist、automation matrix、脚本、lint、测试和 CI。
+触发后必须评估是否同步更新：`rules.md`、`README.md`、`ai-execution.md`、`metadata-schema.md`、相关 convention、ADR、review checklist、automation matrix、脚本、lint、测试和 CI。
 
 ## 治理债务
 

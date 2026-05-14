@@ -1,0 +1,39 @@
+---
+doc_role: template
+scope: repo
+authority_level: template
+owners: [tech-lead]
+status: active
+effective_date: 2026-05-15
+version: 1.0
+related_rules: [GOV-P1-002, GOV-P1-003]
+read_when: [governance_change, exception_review]
+update_when: [exception_policy_changed, template_changed]
+---
+
+exceptions:
+  - id: EXC-YYYYMMDD-001
+    kind: debt
+    rule_id: GOV-P1-002
+    scope: internal/example
+    reason: Historical implementation temporarily violates the target layering rule and needs staged cleanup.
+    owner: tech-lead
+    created_at: YYYY-MM-DD
+    review_at: YYYY-MM-DD
+    expiry: null
+    required_followup: Define touched-code first cleanup scope, validation method, and stop condition.
+    adr_ref: null
+    status: draft
+
+  - id: EXC-YYYYMMDD-002
+    kind: break_glass
+    rule_id: GOV-P1-003
+    scope: migrations/example
+    reason: Urgent recovery requires a temporary deviation from the default migration path.
+    owner: tech-lead
+    created_at: YYYY-MM-DD
+    review_at: YYYY-MM-DD
+    expiry: YYYY-MM-DD
+    required_followup: Restore the default path, add the missing guardrail, and close or convert this entry before expiry.
+    adr_ref: temporary ADR required if this changes default behavior or lasts beyond one release cycle
+    status: draft

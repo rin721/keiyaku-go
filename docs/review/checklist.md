@@ -1,13 +1,13 @@
 ---
-doc_role: review
-scope: repo
+doc_role: review_checklist
+scope: review
 authority_level: derived
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
 version: 1.0
 related_rules: [GOV-P0-001, GOV-P0-002, GOV-P0-003, GOV-P0-004, GOV-P1-001, GOV-P1-002, GOV-P1-003, GOV-P1-004, GOV-P1-005, GOV-P1-006]
-read_when: [code_review, governance_change, review_change]
+read_when: [review_change, governance_change]
 update_when: [review_policy_changed, default_rule_changed, automation_changed]
 ---
 
@@ -34,4 +34,4 @@ update_when: [review_policy_changed, default_rule_changed, automation_changed]
 ## P2 建议项
 
 - [ ] 观测、指标、文件处理、邮件能力、并发控制等推荐实践已按当前变更风险合理取舍。
-- [ ] 如果某个局部实践正在成为默认风格，已按 `change-management.md` 判断是否需要 ADR。
+- [ ] 如果某个局部实践正在成为默认风格，已按 `change-management.md` 判断是否需要 ADR 与闭环同步。

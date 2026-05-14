@@ -7,13 +7,13 @@ status: active
 effective_date: 2026-05-15
 version: 1.0
 related_rules: []
-read_when: [governance_change, default_style_change, boundary_sensitive, operational_sensitive]
-update_when: [adr_template_changed, governance_process_changed]
+read_when: [governance_change, boundary_sensitive, migration_sensitive, async_sensitive]
+update_when: [template_changed, adr_policy_changed, governance_structure_changed]
 ---
 
 # ADR 0000：决策标题
 
-- 状态：提案
+- 状态：draft / accepted / deprecated / historical
 - 日期：YYYY-MM-DD
 - 负责人：
 - 关联 Issue 或 PR：
@@ -49,5 +49,6 @@ P0 不允许偏离。
 ## 后续事项
 
 - [ ] 文档已更新。
+- [ ] `metadata-schema.md`、`automation-matrix.md` 与评审清单已按需同步。
 - [ ] 如果决策改变了可执行规则，CI 或静态检查已更新。
 - [ ] 如涉及迁移或高风险变更，已记录回滚或补偿方案。

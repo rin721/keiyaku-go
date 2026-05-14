@@ -1,14 +1,14 @@
 ---
-doc_role: governance
+doc_role: governance_rules
 scope: repo
-authority_level: ssot
+authority_level: ssot_rules
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
 version: 1.0
-related_rules: [GOV-P0-001, GOV-P0-002, GOV-P0-003, GOV-P0-004, GOV-P1-001, GOV-P1-002]
-read_when: [all_tasks, governance_change, boundary_sensitive, operational_sensitive, ci_change]
-update_when: [default_rule_changed, adr_accepted, automation_changed, review_checklist_changed]
+related_rules: [GOV-P0-001, GOV-P0-002, GOV-P0-003, GOV-P0-004, GOV-P1-001, GOV-P1-002, GOV-P1-003, GOV-P1-004, GOV-P1-005, GOV-P1-006]
+read_when: [all_tasks, governance_change, pkg_change, boundary_sensitive, migration_sensitive, async_sensitive, test_or_ci, security_sensitive]
+update_when: [default_rule_changed, default_behavior_changed, adr_accepted, automation_changed, review_policy_changed]
 ---
 
 # 工程治理规则
@@ -24,7 +24,7 @@ update_when: [default_rule_changed, adr_accepted, automation_changed, review_che
 
 ## 当前技术阶段
 
-当前仓库已建立 Go module 基线，但暂不引入 HTTP API、数据库 schema 或业务代码。未来后端默认方向为 Echo + sqlc；任何改变默认技术方向的决策必须通过 ADR。
+当前仓库已建立 Go module 基线，但暂不引入 HTTP API、数据库 schema 或业务代码。未来后端默认方向为 Echo + sqlc，默认依赖注入方式为手动装配；这两项默认方向由 [20260515-default-backend-direction.md](../adr/20260515-default-backend-direction.md) 裁决。任何改变默认技术方向的决策必须通过 ADR。
 
 ## P0 绝对红线
 

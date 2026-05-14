@@ -1,13 +1,13 @@
 ---
 doc_role: convention
-scope: repo
+scope: testing
 authority_level: binding
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
 version: 1.0
 related_rules: [GOV-P1-005]
-read_when: [test_change, ci_change, governance_change, operational_sensitive]
+read_when: [test_or_ci, governance_change, async_sensitive]
 update_when: [test_policy_changed, automation_changed, ci_changed, adr_accepted]
 ---
 

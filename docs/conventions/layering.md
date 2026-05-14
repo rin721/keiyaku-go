@@ -7,8 +7,8 @@ status: active
 effective_date: 2026-05-15
 version: 1.0
 related_rules: [GOV-P0-001, GOV-P0-002, GOV-P1-001, GOV-P1-002, GOV-P1-003]
-read_when: [boundary_sensitive, pkg_change, architecture_change]
-update_when: [layering_rule_changed, adr_accepted, automation_changed]
+read_when: [boundary_sensitive, pkg_change, governance_change]
+update_when: [default_rule_changed, default_behavior_changed, adr_accepted, automation_changed]
 ---
 
 # 分层约定

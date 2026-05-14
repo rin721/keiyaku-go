@@ -7,7 +7,7 @@ status: active
 effective_date: 2026-05-15
 version: 1.0
 related_rules: []
-read_when: [ci_change, governance_change]
+read_when: [test_or_ci, governance_change]
 update_when: [ci_changed, automation_changed, default_rule_changed]
 ---
 

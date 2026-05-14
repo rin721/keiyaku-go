@@ -8,7 +8,7 @@ effective_date: 2026-05-15
 version: 1.0
 related_rules: [GOV-P0-002]
 read_when: [pkg_change, governance_change]
-update_when: [pkg_rule_changed, default_rule_changed, adr_accepted, automation_changed]
+update_when: [default_rule_changed, default_behavior_changed, adr_accepted, automation_changed]
 ---
 
 # pkg 设计约定
@@ -33,4 +33,4 @@ update_when: [pkg_rule_changed, default_rule_changed, adr_accepted, automation_c
 
 - 包名表达能力，不表达具体业务场景。
 - 新增通用能力前，优先确认是否只是当前业务的局部抽象。
-- 如果某个 `pkg` 设计风格将成为默认模式，必须更新本文档，并评估是否需要 ADR。
+- 如果某个 `pkg` 设计风格将成为默认模式，必须更新本文档，并评估是否需要 ADR 与自动化联动。

@@ -7,8 +7,8 @@ status: active
 effective_date: 2026-05-15
 version: 1.0
 related_rules: [GOV-P0-001, GOV-P0-002, GOV-P0-003, GOV-P0-004, GOV-P1-001, GOV-P1-002, GOV-P1-003, GOV-P1-004, GOV-P1-005, GOV-P1-006]
-read_when: [governance_change, ci_change, review_change, boundary_sensitive, operational_sensitive]
-update_when: [rule_placement_changed, automation_changed, review_checklist_changed, convention_changed]
+read_when: [governance_change, pkg_change, boundary_sensitive, migration_sensitive, async_sensitive, test_or_ci, security_sensitive, review_change]
+update_when: [default_rule_changed, automation_changed, review_policy_changed, convention_changed, ci_changed]
 ---
 
 # 自动化归位矩阵
@@ -24,6 +24,8 @@ update_when: [rule_placement_changed, automation_changed, review_checklist_chang
 | Application/Repository/Infrastructure 不得 import transport | GOV-P0-002 / `conventions/layering.md` | `scripts/check-layering.ps1`、`.golangci.yml` |
 | DTO/PO/ORM 模型语义泄露 | GOV-P0-001 / `conventions/layering.md` | 评审清单，后续可扩展静态检查 |
 | Repository Port 归属 | GOV-P1-002 / `conventions/layering.md` | 评审清单 |
+| 运行时反射型 DI 容器 | GOV-P1-006 / `conventions/dependency-injection.md` | 评审清单 + ADR |
+| Wire 等编译期 DI 代码生成是否提交 | GOV-P1-006 / `conventions/dependency-injection.md` | 评审清单 |
 
 ## 测试
 
@@ -58,9 +60,11 @@ update_when: [rule_placement_changed, automation_changed, review_checklist_chang
 | --- | --- | --- |
 | 治理文档存在 | `governance/README.md` | `scripts/check-governance.ps1` |
 | 元数据完整性 | `governance/README.md` | `scripts/check-governance-metadata.ps1` |
+| 元数据枚举合法性 | `governance/metadata-schema.md` | `scripts/check-governance-taxonomy.ps1` |
 | rule_id 链接完整性 | `governance/rules.md` | `scripts/check-rule-links.ps1` |
 | debt / break-glass 到期 | `change-management.md` | `scripts/check-exception-expiry.ps1` |
-| 治理变更同步面 | `change-management.md` | `review/governance-change-checklist.md` |
+| 治理变更同步面 | `change-management.md` | `scripts/check-governance-sync.ps1` + `review/governance-change-checklist.md` |
+| 历史治理文档不再承载 SSOT | `adr/20260515-governance-ssot-structure.md` | `scripts/check-governance-sync.ps1` |
 
 ## Prompt 边界
 

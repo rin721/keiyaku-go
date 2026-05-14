@@ -1,14 +1,14 @@
 ---
 doc_role: ai_entry
 scope: repo
-authority_level: binding_entry
+authority_level: entry
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
 version: 1.0
 related_rules: []
 read_when: [all_tasks]
-update_when: [routing_changed, metadata_standard_changed, execution_protocol_changed]
+update_when: [routing_changed, execution_protocol_changed, metadata_standard_changed, governance_structure_changed]
 ---
 
 # AI 代理入口
@@ -29,27 +29,29 @@ update_when: [routing_changed, metadata_standard_changed, execution_protocol_cha
 - 导航真相：[docs/governance/README.md](docs/governance/README.md)
 - AI 执行真相：[docs/governance/ai-execution.md](docs/governance/ai-execution.md)
 - 仓库级治理规则真相：[docs/governance/rules.md](docs/governance/rules.md)
+- 元数据标准真相：[docs/governance/metadata-schema.md](docs/governance/metadata-schema.md)
+- 治理演进与冲突处理真相：[docs/governance/change-management.md](docs/governance/change-management.md)
 - 偏离与设计决策真相：[docs/adr](docs/adr) 下状态为 Accepted 的 ADR
 - 治理破例与债务登记真相：[docs/governance/exceptions.yaml](docs/governance/exceptions.yaml)
 
 ## 快速路由
 
 - `pkg/` 工具包或共享包变更：
-  读取导航、执行协议、仓库级治理规则、pkg 专题约定，再读取分层约定。如果变更会改变默认包风格或边界预期，还需要读取 ADR 指引。
+  读取导航、执行协议、仓库级治理规则、`pkg` 专题约定、分层约定和自动化矩阵。
 - 分层、依赖方向、DTO、领域模型、Repository 边界变更：
-  读取导航、执行协议、仓库级治理规则、分层约定，再读取 ADR 指引。
+  读取导航、执行协议、仓库级治理规则、分层约定、治理演进规则和 ADR 指引。
 - 迁移、灰度发布、回填、发布、回滚变更：
-  读取导航、执行协议、仓库级治理规则、迁移约定、迁移模板；如果变更高风险或偏离默认方案，还需要读取 ADR 指引。
+  读取导航、执行协议、仓库级治理规则、迁移约定、迁移模板、治理演进规则和相关 ADR。
 - 异步任务、重试、幂等、定时任务变更：
-  读取导航、执行协议、仓库级治理规则、异步任务约定、测试约定；如果变更改变默认模型，还需要读取 ADR 指引。
+  读取导航、执行协议、仓库级治理规则、异步任务约定、测试约定、治理演进规则和相关 ADR。
 - 测试、CI、lint、安全扫描、治理脚本变更：
-  读取导航、执行协议、仓库级治理规则、测试/CI/安全约定、相关约定脚本和 workflow 文件。
+  读取导航、执行协议、仓库级治理规则、测试约定、CI 约定、安全约定、自动化矩阵和相关脚本/workflow。
 - 治理或 Prompt 体系变更：
-  读取导航、执行协议、仓库级治理规则、ADR 指引、评审清单和治理自动化脚本。
+  读取导航、执行协议、仓库级治理规则、元数据标准、治理演进规则、ADR 指引、评审清单和治理自动化脚本。
 
 ## 元数据标准
 
-所有面向治理的文档都应携带 YAML front matter。字段定义以导航真相文档为准，但代理至少必须识别以下字段：
+所有面向治理的文档都应携带 YAML front matter。字段与受控枚举以 [docs/governance/metadata-schema.md](docs/governance/metadata-schema.md) 为准，但代理至少必须识别以下字段：
 
 - `doc_role`
 - `scope`
@@ -67,5 +69,5 @@ update_when: [routing_changed, metadata_standard_changed, execution_protocol_cha
 
 - 不要把全部规则折叠进单个 Prompt 文件。
 - 不要把 Prompt 当作稳定工程政策的真相来源。
-- 当变更会改变默认行为、架构边界或治理政策时，不要绕过 ADR。
+- 当变更会改变默认行为、默认边界、默认风格、默认工作流或治理政策时，不要绕过 ADR 与闭环同步。
 - 不要在仓库文档中写入本机绝对路径；链接应使用相对路径。

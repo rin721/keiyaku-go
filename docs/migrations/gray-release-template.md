@@ -7,7 +7,7 @@ status: active
 effective_date: 2026-05-15
 version: 1.0
 related_rules: [GOV-P1-003, GOV-P1-004]
-read_when: [migration_change, operational_sensitive]
+read_when: [migration_sensitive, governance_change]
 update_when: [migration_policy_changed, adr_accepted, template_changed]
 ---
 

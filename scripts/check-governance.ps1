@@ -5,11 +5,6 @@ param(
 $ErrorActionPreference = "Stop"
 $failures = New-Object System.Collections.Generic.List[string]
 
-function T {
-    param([string]$Base64)
-    return [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($Base64))
-}
-
 function Add-Failure {
     param([string]$Message)
     $failures.Add($Message) | Out-Null
@@ -17,14 +12,16 @@ function Add-Failure {
 
 function Require-File {
     param([string]$RelativePath)
+
     $path = Join-Path $Root $RelativePath
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-        Add-Failure "$((T '57y65bCR5b+F6ZyA5paH5Lu277ya'))$RelativePath"
+        Add-Failure "Missing required file: $RelativePath"
     }
 }
 
 function Read-Text {
     param([string]$RelativePath)
+
     $path = Join-Path $Root $RelativePath
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         return ""
@@ -34,6 +31,7 @@ function Read-Text {
 
 function Get-GoFiles {
     param([string[]]$RelativeRoots)
+
     $files = @()
     foreach ($relativeRoot in $RelativeRoots) {
         $path = Join-Path $Root $relativeRoot
@@ -49,13 +47,13 @@ function Invoke-Subcheck {
 
     $path = Join-Path $Root $RelativePath
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-        Add-Failure "Missing subcheck script: $RelativePath"
+        Add-Failure "Missing governance subcheck: $RelativePath"
         return
     }
 
     & $path -Root $Root
     if ($LASTEXITCODE -ne 0) {
-        Add-Failure "Subcheck failed: $RelativePath"
+        Add-Failure "Governance subcheck failed: $RelativePath"
     }
 }
 
@@ -65,9 +63,11 @@ $requiredFiles = @(
     "docs/governance/README.md",
     "docs/governance/rules.md",
     "docs/governance/ai-execution.md",
-    "docs/governance/automation-matrix.md",
     "docs/governance/change-management.md",
+    "docs/governance/automation-matrix.md",
+    "docs/governance/metadata-schema.md",
     "docs/governance/exceptions.yaml",
+    "docs/governance/exceptions.template.yaml",
     "docs/conventions/layering.md",
     "docs/conventions/pkg.md",
     "docs/conventions/testing.md",
@@ -75,16 +75,21 @@ $requiredFiles = @(
     "docs/conventions/migrations.md",
     "docs/conventions/async-jobs.md",
     "docs/conventions/security-logging.md",
+    "docs/conventions/dependency-injection.md",
     "docs/architecture/governance.md",
     "docs/review/checklist.md",
     "docs/review/governance-change-checklist.md",
     "docs/migrations/gray-release-template.md",
     "docs/adr/README.md",
     "docs/adr/0000-template.md",
+    "docs/adr/20260515-governance-ssot-structure.md",
+    "docs/adr/20260515-default-backend-direction.md",
     "scripts/check-layering.ps1",
     "scripts/check-test-conventions.ps1",
     "scripts/check-go-package-state.ps1",
     "scripts/check-governance-metadata.ps1",
+    "scripts/check-governance-taxonomy.ps1",
+    "scripts/check-governance-sync.ps1",
     "scripts/check-rule-links.ps1",
     "scripts/check-exception-expiry.ps1",
     "scripts/check-local-paths.ps1",
@@ -102,61 +107,61 @@ foreach ($file in $requiredFiles) {
 $adrTemplate = Read-Text "docs/adr/0000-template.md"
 foreach ($section in @("ADR-001", "ADR-002", "ADR-003")) {
     if ($adrTemplate -notmatch [regex]::Escape($section)) {
-        Add-Failure "$((T 'QURSIOaooeadv+W/hemhu+WMheWQq+ajgOafpeeCue+8mg=='))$section"
+        Add-Failure "ADR template is missing marker: $section"
     }
 }
 if ($adrTemplate -notmatch "ADR 0000") {
-    Add-Failure (T 'QURSIOaooeadv+W/hemhu+WMheWQqyBBRFIg5qCH6aKY')
+    Add-Failure "ADR template is missing its title placeholder."
 }
 
 $checklist = Read-Text "docs/review/checklist.md"
 foreach ($term in @("GOV-P0-001", "GOV-P0-002", "GOV-P0-003", "GOV-P0-004", "GOV-P1-001", "GOV-P1-002", "GOV-P1-003", "GOV-P1-004", "GOV-P1-005", "GOV-P1-006")) {
     if ($checklist -notmatch [regex]::Escape($term)) {
-        Add-Failure "$((T '5Luj56CB6K+E5a6h5riF5Y2V5b+F6aG75YyF5ZCr5qOA5p+l54K577ya'))$term"
+        Add-Failure "Review checklist is missing rule: $term"
     }
 }
 
 $migrationTemplate = Read-Text "docs/migrations/gray-release-template.md"
 foreach ($step in @("Step 1", "Step 2", "Step 3", "Step 4", "MIG-P1-001", "MIG-P1-002")) {
     if ($migrationTemplate -notmatch [regex]::Escape($step)) {
-        Add-Failure "$((T 'TWlncmF0aW9uIOaooeadv+W/hemhu+WMheWQq+ajgOafpeeCueaIluatpemqpO+8mg=='))$step"
+        Add-Failure "Migration template is missing a required marker: $step"
     }
 }
 
-$governance = Read-Text "docs/governance/rules.md"
-foreach ($rule in @("GOV-P0-001", "GOV-P0-002", "GOV-P0-003", "GOV-P0-004", "GOV-P1-001", "GOV-P1-002", "GOV-P1-003", "GOV-P1-004", "GOV-P1-005", "GOV-P1-006")) {
-    if ($governance -notmatch [regex]::Escape($rule)) {
-        Add-Failure "$((T '5rK755CG5paH5qGj5b+F6aG75YyF5ZCr5qOA5p+l54K577ya'))$rule"
-    }
+foreach ($subcheck in @(
+    "scripts/check-layering.ps1",
+    "scripts/check-test-conventions.ps1",
+    "scripts/check-governance-metadata.ps1",
+    "scripts/check-governance-taxonomy.ps1",
+    "scripts/check-governance-sync.ps1",
+    "scripts/check-rule-links.ps1",
+    "scripts/check-exception-expiry.ps1",
+    "scripts/check-local-paths.ps1"
+)) {
+    Invoke-Subcheck $subcheck
 }
-
-Invoke-Subcheck "scripts/check-layering.ps1"
-Invoke-Subcheck "scripts/check-test-conventions.ps1"
-Invoke-Subcheck "scripts/check-governance-metadata.ps1"
-Invoke-Subcheck "scripts/check-rule-links.ps1"
-Invoke-Subcheck "scripts/check-exception-expiry.ps1"
-Invoke-Subcheck "scripts/check-local-paths.ps1"
 
 $allGoFiles = Get-GoFiles @("cmd", "internal", "pkg")
 foreach ($file in $allGoFiles) {
-    $content = Get-Content -LiteralPath $file.FullName -Raw
+    $content = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
     if ($content -match "crypto/md5" -or $content -match "crypto/sha1") {
-        Add-Failure "$((T 'UDAg6auY5Y2x5ZOI5biMIGltcG9ydO+8mg=='))$($file.FullName)"
+        Add-Failure "P0 risky hash import detected: $($file.FullName)"
     }
     if ($content -match "zap\.Any\s*\(") {
-        Add-Failure "$((T 'UDAg5pWP5oSf5pel5b+X6aOO6Zmp77ya5Y+R546wIHphcC5BbnnvvJo='))$($file.FullName)"
+        Add-Failure "P0 sensitive logging risk: found zap.Any in $($file.FullName)"
     }
     if ($content -match '%\+v') {
-        Add-Failure "$((T 'UDAg5pWP5oSf5pel5b+X6aOO6Zmp77ya5Y+R546wICUrdiDmoLzlvI/ljJbvvJo='))$($file.FullName)"
+        Add-Failure "P0 sensitive logging risk: found %+v formatting in $($file.FullName)"
     }
 }
 
 if ($failures.Count -gt 0) {
-    Write-Host (T '5rK755CG5qOA5p+l5aSx6LSl77ya') -ForegroundColor Red
+    Write-Host "Governance check failed:" -ForegroundColor Red
     foreach ($failure in $failures) {
         Write-Host " - $failure" -ForegroundColor Red
     }
     exit 1
 }
 
-Write-Host (T '5rK755CG5qOA5p+l6YCa6L+H44CC') -ForegroundColor Green
+Write-Host "Governance check passed." -ForegroundColor Green
+exit 0

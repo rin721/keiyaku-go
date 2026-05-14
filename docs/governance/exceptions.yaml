@@ -7,8 +7,8 @@ status: active
 effective_date: 2026-05-15
 version: 1.0
 related_rules: []
-read_when: [governance_change, ci_change, review_change, exception_review]
-update_when: [debt_created, debt_reviewed, break_glass_created, break_glass_expired, debt_closed]
+read_when: [governance_change, exception_review, review_change]
+update_when: [exception_registry_changed, exception_policy_changed]
 ---
 
 exceptions:
@@ -50,16 +50,3 @@ exceptions:
     required_followup: Completed by adding scripts/check-go-package-state.ps1 and updating CI/Make package detection.
     adr_ref: null
     status: closed
-
-  - id: EXC-YYYYMMDD-000
-    kind: break_glass
-    rule_id: GOV-P1-002
-    scope: example/scope
-    reason: Example only. Break-glass is allowed only for urgent recovery and must not bypass P0.
-    owner: tech-lead
-    created_at: YYYY-MM-DD
-    review_at: YYYY-MM-DD
-    expiry: YYYY-MM-DD
-    required_followup: Replace this example with a real remediation plan when used.
-    adr_ref: "temporary ADR required if this changes default behavior or lasts beyond one release cycle"
-    status: example
