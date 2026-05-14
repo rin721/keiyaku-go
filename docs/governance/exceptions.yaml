@@ -1,0 +1,52 @@
+---
+doc_role: exception_registry
+scope: repo
+authority_level: record
+owners: [tech-lead]
+status: active
+effective_date: 2026-05-15
+version: 1.0
+related_rules: []
+read_when: [governance_change, ci_change, review_change, exception_review]
+update_when: [debt_created, debt_reviewed, break_glass_created, break_glass_expired, debt_closed]
+---
+
+exceptions:
+  - id: EXC-20260515-001
+    kind: debt
+    rule_id: GOV-NAV-001
+    scope: docs/architecture/governance.md
+    reason: Repository-wide governance rules still live in the legacy architecture document until docs/governance/rules.md is introduced.
+    owner: tech-lead
+    created_at: 2026-05-15
+    review_at: 2026-06-15
+    expiry: null
+    required_followup: Extract repository-wide rules into docs/governance/rules.md and update navigation SSOT references.
+    adr_ref: null
+    status: active
+
+  - id: EXC-20260515-002
+    kind: debt
+    rule_id: GOV-META-001
+    scope: docs
+    reason: Existing legacy governance documents do not yet carry the standardized YAML metadata header.
+    owner: tech-lead
+    created_at: 2026-05-15
+    review_at: 2026-06-15
+    expiry: null
+    required_followup: Add metadata headers to legacy governance, ADR, migration, and review documents or migrate their contents into the new governance tree.
+    adr_ref: null
+    status: active
+
+  - id: EXC-20260515-003
+    kind: debt
+    rule_id: GOV-CI-001
+    scope: .github/workflows/governance.yml
+    reason: Go CI currently keys off go.mod existence; this can fail while the repository has a module baseline but no Go packages.
+    owner: tech-lead
+    created_at: 2026-05-15
+    review_at: 2026-05-31
+    expiry: null
+    required_followup: Update Go CI and local Make targets to detect analyzable Go packages before running go test or golangci-lint.
+    adr_ref: null
+    status: active

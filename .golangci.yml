@@ -17,7 +17,7 @@ linters-settings:
         files:
           - "pkg/**/*.go"
         deny:
-          - pkg: "github.com/rin721/rinblog/internal"
+          - pkg: "github.com/rin721/keiyaku-go/internal"
             desc: "pkg 是业务无关共享库，不得 import internal 业务代码"
           - pkg: "internal"
             desc: "pkg 是业务无关共享库，不得 import internal 业务代码"
@@ -27,9 +27,9 @@ linters-settings:
           - "internal/repository/**/*.go"
           - "internal/infrastructure/**/*.go"
         deny:
-          - pkg: "github.com/rin721/rinblog/internal/api"
+          - pkg: "github.com/rin721/keiyaku-go/internal/api"
             desc: "domain/repository/infrastructure 不得依赖传输层 DTO"
-          - pkg: "github.com/rin721/rinblog/internal/handler"
+          - pkg: "github.com/rin721/keiyaku-go/internal/handler"
             desc: "domain/repository/infrastructure 不得依赖传输层 DTO"
           - pkg: "internal/api"
             desc: "domain/repository/infrastructure 不得依赖传输层 DTO"

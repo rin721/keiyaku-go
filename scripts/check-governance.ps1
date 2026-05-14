@@ -44,12 +44,35 @@ function Get-GoFiles {
     return $files
 }
 
+function Invoke-Subcheck {
+    param([string]$RelativePath)
+
+    $path = Join-Path $Root $RelativePath
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        Add-Failure "Missing subcheck script: $RelativePath"
+        return
+    }
+
+    & $path -Root $Root
+    if ($LASTEXITCODE -ne 0) {
+        Add-Failure "Subcheck failed: $RelativePath"
+    }
+}
+
 $requiredFiles = @(
+    "AGENTS.md",
+    "docs/governance/README.md",
+    "docs/governance/ai-execution.md",
+    "docs/governance/automation-matrix.md",
+    "docs/governance/exceptions.yaml",
+    "docs/conventions/layering.md",
     "docs/architecture/governance.md",
     "docs/review/checklist.md",
     "docs/migrations/gray-release-template.md",
     "docs/adr/README.md",
     "docs/adr/0000-template.md",
+    "scripts/check-layering.ps1",
+    "scripts/check-test-conventions.ps1",
     ".github/workflows/governance.yml",
     ".golangci.yml",
     ".gitleaks.toml",
@@ -92,21 +115,8 @@ foreach ($rule in @("GOV-P0-001", "GOV-P0-002", "GOV-P0-003", "GOV-P0-004", "GOV
     }
 }
 
-$pkgGoFiles = Get-GoFiles @("pkg")
-foreach ($file in $pkgGoFiles) {
-    $content = Get-Content -LiteralPath $file.FullName -Raw
-    if ($content -match '"[^"]*/internal(/[^"]*)?"' -or $content -match '"internal/[^"]+"') {
-        Add-Failure "$((T 'UDAg5L6d6LWW6L+d6KeE77yacGtnIOS7o+eggSBpbXBvcnQg5LqGIGludGVybmFsIOWMhe+8mg=='))$($file.FullName)"
-    }
-}
-
-$lowerLayerGoFiles = Get-GoFiles @("internal/domain", "internal/repository", "internal/infrastructure")
-foreach ($file in $lowerLayerGoFiles) {
-    $content = Get-Content -LiteralPath $file.FullName -Raw
-    if ($content -match '"[^"]*/internal/(api|handler)(/[^"]*)?"' -or $content -match '"internal/(api|handler)/[^"]+"') {
-        Add-Failure "$((T 'UDAg5aWR57qm5L6d6LWW6L+d6KeE77ya5bqV5bGCIGltcG9ydCDkuobkvKDovpPlpZHnuqbvvJo='))$($file.FullName)"
-    }
-}
+Invoke-Subcheck "scripts/check-layering.ps1"
+Invoke-Subcheck "scripts/check-test-conventions.ps1"
 
 $allGoFiles = Get-GoFiles @("cmd", "internal", "pkg")
 foreach ($file in $allGoFiles) {

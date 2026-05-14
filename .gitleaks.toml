@@ -1,4 +1,4 @@
-title = "rinblog gitleaks 配置"
+title = "keiyaku-go gitleaks configuration"
 
 [extend]
 useDefault = true
