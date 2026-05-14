@@ -61,18 +61,32 @@ function Invoke-Subcheck {
 
 $requiredFiles = @(
     "AGENTS.md",
+    "CLAUDE.md",
     "docs/governance/README.md",
+    "docs/governance/rules.md",
     "docs/governance/ai-execution.md",
     "docs/governance/automation-matrix.md",
+    "docs/governance/change-management.md",
     "docs/governance/exceptions.yaml",
     "docs/conventions/layering.md",
+    "docs/conventions/pkg.md",
+    "docs/conventions/testing.md",
+    "docs/conventions/ci.md",
+    "docs/conventions/migrations.md",
+    "docs/conventions/async-jobs.md",
+    "docs/conventions/security-logging.md",
     "docs/architecture/governance.md",
     "docs/review/checklist.md",
+    "docs/review/governance-change-checklist.md",
     "docs/migrations/gray-release-template.md",
     "docs/adr/README.md",
     "docs/adr/0000-template.md",
     "scripts/check-layering.ps1",
     "scripts/check-test-conventions.ps1",
+    "scripts/check-go-package-state.ps1",
+    "scripts/check-governance-metadata.ps1",
+    "scripts/check-rule-links.ps1",
+    "scripts/check-exception-expiry.ps1",
     ".github/workflows/governance.yml",
     ".golangci.yml",
     ".gitleaks.toml",
@@ -95,7 +109,7 @@ if ($adrTemplate -notmatch "ADR 0000") {
 }
 
 $checklist = Read-Text "docs/review/checklist.md"
-foreach ($term in @("REV-P0-001", "REV-P0-002", "REV-P0-003", "REV-P1-001", "REV-P1-002")) {
+foreach ($term in @("GOV-P0-001", "GOV-P0-002", "GOV-P0-003", "GOV-P0-004", "GOV-P1-001", "GOV-P1-002", "GOV-P1-003", "GOV-P1-004", "GOV-P1-005", "GOV-P1-006")) {
     if ($checklist -notmatch [regex]::Escape($term)) {
         Add-Failure "$((T '5Luj56CB6K+E5a6h5riF5Y2V5b+F6aG75YyF5ZCr5qOA5p+l54K577ya'))$term"
     }
@@ -108,8 +122,8 @@ foreach ($step in @("Step 1", "Step 2", "Step 3", "Step 4", "MIG-P1-001", "MIG-P
     }
 }
 
-$governance = Read-Text "docs/architecture/governance.md"
-foreach ($rule in @("GOV-P0-001", "GOV-P0-002", "GOV-P0-003", "GOV-P0-004", "GOV-P1-001", "GOV-P1-002")) {
+$governance = Read-Text "docs/governance/rules.md"
+foreach ($rule in @("GOV-P0-001", "GOV-P0-002", "GOV-P0-003", "GOV-P0-004", "GOV-P1-001", "GOV-P1-002", "GOV-P1-003", "GOV-P1-004", "GOV-P1-005", "GOV-P1-006")) {
     if ($governance -notmatch [regex]::Escape($rule)) {
         Add-Failure "$((T '5rK755CG5paH5qGj5b+F6aG75YyF5ZCr5qOA5p+l54K577ya'))$rule"
     }
@@ -117,6 +131,9 @@ foreach ($rule in @("GOV-P0-001", "GOV-P0-002", "GOV-P0-003", "GOV-P0-004", "GOV
 
 Invoke-Subcheck "scripts/check-layering.ps1"
 Invoke-Subcheck "scripts/check-test-conventions.ps1"
+Invoke-Subcheck "scripts/check-governance-metadata.ps1"
+Invoke-Subcheck "scripts/check-rule-links.ps1"
+Invoke-Subcheck "scripts/check-exception-expiry.ps1"
 
 $allGoFiles = Get-GoFiles @("cmd", "internal", "pkg")
 foreach ($file in $allGoFiles) {

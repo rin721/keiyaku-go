@@ -19,15 +19,22 @@ This document is the navigation truth for repository governance. It defines what
 
 - Navigation truth: this file
 - AI execution truth: [ai-execution.md](/D:/coder/go/keiyaku-go/docs/governance/ai-execution.md)
-- Repository-wide governance rules truth, current interim source: [../architecture/governance.md](/D:/coder/go/keiyaku-go/docs/architecture/governance.md)
+- Repository-wide governance rules truth: [rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)
+- Governance change and break-glass protocol: [change-management.md](/D:/coder/go/keiyaku-go/docs/governance/change-management.md)
 - Deviation and design-decision truth: Accepted ADRs under [../adr](/D:/coder/go/keiyaku-go/docs/adr)
 - Governance exception and debt registry: [exceptions.yaml](/D:/coder/go/keiyaku-go/docs/governance/exceptions.yaml)
 - Automation placement matrix: [automation-matrix.md](/D:/coder/go/keiyaku-go/docs/governance/automation-matrix.md)
 - Layering convention: [../conventions/layering.md](/D:/coder/go/keiyaku-go/docs/conventions/layering.md)
+- Package convention: [../conventions/pkg.md](/D:/coder/go/keiyaku-go/docs/conventions/pkg.md)
+- Testing convention: [../conventions/testing.md](/D:/coder/go/keiyaku-go/docs/conventions/testing.md)
+- CI convention: [../conventions/ci.md](/D:/coder/go/keiyaku-go/docs/conventions/ci.md)
+- Migration convention: [../conventions/migrations.md](/D:/coder/go/keiyaku-go/docs/conventions/migrations.md)
+- Async jobs convention: [../conventions/async-jobs.md](/D:/coder/go/keiyaku-go/docs/conventions/async-jobs.md)
+- Security and logging convention: [../conventions/security-logging.md](/D:/coder/go/keiyaku-go/docs/conventions/security-logging.md)
 - Human review truth: [../review/checklist.md](/D:/coder/go/keiyaku-go/docs/review/checklist.md)
 - Migration rollout template: [../migrations/gray-release-template.md](/D:/coder/go/keiyaku-go/docs/migrations/gray-release-template.md)
 
-Note: `docs/governance/rules.md` does not exist yet. Until it is introduced, `docs/architecture/governance.md` remains the active repository-wide governance rules source.
+`docs/architecture/governance.md` now serves as historical architecture context. It is not the rule SSOT.
 
 ## Conflict Priority
 
@@ -65,9 +72,10 @@ Read in order:
 
 1. [ai-execution.md](/D:/coder/go/keiyaku-go/docs/governance/ai-execution.md)
 2. [automation-matrix.md](/D:/coder/go/keiyaku-go/docs/governance/automation-matrix.md)
-3. [../architecture/governance.md](/D:/coder/go/keiyaku-go/docs/architecture/governance.md)
-4. [../conventions/layering.md](/D:/coder/go/keiyaku-go/docs/conventions/layering.md)
-5. Relevant Accepted ADRs if the change alters default package boundaries or reuse rules
+3. [rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)
+4. [../conventions/pkg.md](/D:/coder/go/keiyaku-go/docs/conventions/pkg.md)
+5. [../conventions/layering.md](/D:/coder/go/keiyaku-go/docs/conventions/layering.md)
+6. Relevant Accepted ADRs if the change alters default package boundaries or reuse rules
 
 Focus:
 
@@ -81,7 +89,7 @@ Read in order:
 
 1. [ai-execution.md](/D:/coder/go/keiyaku-go/docs/governance/ai-execution.md)
 2. [automation-matrix.md](/D:/coder/go/keiyaku-go/docs/governance/automation-matrix.md)
-3. [../architecture/governance.md](/D:/coder/go/keiyaku-go/docs/architecture/governance.md)
+3. [rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)
 4. [../conventions/layering.md](/D:/coder/go/keiyaku-go/docs/conventions/layering.md)
 5. [../adr/README.md](/D:/coder/go/keiyaku-go/docs/adr/README.md)
 6. Any Accepted ADRs touching boundaries, framework choices, or default abstraction models
@@ -99,12 +107,14 @@ Read in order:
 
 1. [ai-execution.md](/D:/coder/go/keiyaku-go/docs/governance/ai-execution.md)
 2. [automation-matrix.md](/D:/coder/go/keiyaku-go/docs/governance/automation-matrix.md)
-3. [../architecture/governance.md](/D:/coder/go/keiyaku-go/docs/architecture/governance.md)
-4. [../adr/README.md](/D:/coder/go/keiyaku-go/docs/adr/README.md)
-5. [../review/checklist.md](/D:/coder/go/keiyaku-go/docs/review/checklist.md)
-6. [exceptions.yaml](/D:/coder/go/keiyaku-go/docs/governance/exceptions.yaml)
-7. [../../scripts/check-governance.ps1](/D:/coder/go/keiyaku-go/scripts/check-governance.ps1)
-8. [../../.github/workflows/governance.yml](/D:/coder/go/keiyaku-go/.github/workflows/governance.yml)
+3. [rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)
+4. [change-management.md](/D:/coder/go/keiyaku-go/docs/governance/change-management.md)
+5. [../adr/README.md](/D:/coder/go/keiyaku-go/docs/adr/README.md)
+6. [../review/governance-change-checklist.md](/D:/coder/go/keiyaku-go/docs/review/governance-change-checklist.md)
+7. [../review/checklist.md](/D:/coder/go/keiyaku-go/docs/review/checklist.md)
+8. [exceptions.yaml](/D:/coder/go/keiyaku-go/docs/governance/exceptions.yaml)
+9. [../../scripts/check-governance.ps1](/D:/coder/go/keiyaku-go/scripts/check-governance.ps1)
+10. [../../.github/workflows/governance.yml](/D:/coder/go/keiyaku-go/.github/workflows/governance.yml)
 
 Focus:
 
@@ -117,9 +127,10 @@ Focus:
 Read in order:
 
 1. [ai-execution.md](/D:/coder/go/keiyaku-go/docs/governance/ai-execution.md)
-2. [../architecture/governance.md](/D:/coder/go/keiyaku-go/docs/architecture/governance.md)
-3. [../migrations/gray-release-template.md](/D:/coder/go/keiyaku-go/docs/migrations/gray-release-template.md)
-4. Relevant Accepted ADRs for non-default rollout or schema strategy
+2. [rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)
+3. [../conventions/migrations.md](/D:/coder/go/keiyaku-go/docs/conventions/migrations.md)
+4. [../migrations/gray-release-template.md](/D:/coder/go/keiyaku-go/docs/migrations/gray-release-template.md)
+5. Relevant Accepted ADRs for non-default rollout or schema strategy
 
 Focus:
 
@@ -133,8 +144,10 @@ Focus:
 Read in order:
 
 1. [ai-execution.md](/D:/coder/go/keiyaku-go/docs/governance/ai-execution.md)
-2. [../architecture/governance.md](/D:/coder/go/keiyaku-go/docs/architecture/governance.md)
-3. Relevant Accepted ADRs if the task changes the default async model
+2. [rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)
+3. [../conventions/async-jobs.md](/D:/coder/go/keiyaku-go/docs/conventions/async-jobs.md)
+4. [../conventions/testing.md](/D:/coder/go/keiyaku-go/docs/conventions/testing.md)
+5. Relevant Accepted ADRs if the task changes the default async model
 
 Focus:
 
@@ -149,11 +162,13 @@ Read in order:
 
 1. [ai-execution.md](/D:/coder/go/keiyaku-go/docs/governance/ai-execution.md)
 2. [automation-matrix.md](/D:/coder/go/keiyaku-go/docs/governance/automation-matrix.md)
-3. [../architecture/governance.md](/D:/coder/go/keiyaku-go/docs/architecture/governance.md)
-4. [../review/checklist.md](/D:/coder/go/keiyaku-go/docs/review/checklist.md)
-5. [../../scripts/check-layering.ps1](/D:/coder/go/keiyaku-go/scripts/check-layering.ps1)
-6. [../../scripts/check-test-conventions.ps1](/D:/coder/go/keiyaku-go/scripts/check-test-conventions.ps1)
-7. Relevant workflow, lint, or script file
+3. [rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)
+4. [../conventions/testing.md](/D:/coder/go/keiyaku-go/docs/conventions/testing.md)
+5. [../conventions/ci.md](/D:/coder/go/keiyaku-go/docs/conventions/ci.md)
+6. [../review/checklist.md](/D:/coder/go/keiyaku-go/docs/review/checklist.md)
+7. [../../scripts/check-layering.ps1](/D:/coder/go/keiyaku-go/scripts/check-layering.ps1)
+8. [../../scripts/check-test-conventions.ps1](/D:/coder/go/keiyaku-go/scripts/check-test-conventions.ps1)
+9. Relevant workflow, lint, or script file
 
 Focus:
 
@@ -169,7 +184,7 @@ All governance-facing documents should include YAML front matter with the follow
 Required fields:
 
 - `doc_role`: one of `map`, `governance`, `ai_execution`, `convention`, `adr_index`, `adr_record`, `review`, `template`, `automation_spec`, `exception_registry`, `ai_entry`
-- `scope`: one of `repo`, `pkg`, `internal`, `migrations`, `ci`, `security`, or a narrower path such as `internal/domain`
+- `scope`: one of `repo`, `pkg`, `internal`, `migrations`, `ci`, `security`, `async`, or a narrower path such as `internal/domain`
 - `authority_level`: one of `ssot`, `binding`, `binding_entry`, `record`, `derived`, `template`
 - `owners`: array of owner roles or teams
 - `status`: one of `draft`, `active`, `deprecated`, `superseded`

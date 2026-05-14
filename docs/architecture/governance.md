@@ -1,6 +1,19 @@
+---
+doc_role: governance
+scope: repo
+authority_level: derived
+owners: [tech-lead]
+status: active
+effective_date: 2026-05-15
+version: 1.0
+related_rules: [GOV-P0-001, GOV-P0-002, GOV-P0-003, GOV-P0-004, GOV-P1-001, GOV-P1-002, GOV-P1-003, GOV-P1-004, GOV-P1-005, GOV-P1-006]
+read_when: [governance_change, historical_context]
+update_when: [rules_changed, architecture_context_changed]
+---
+
 # Keiyaku 工程治理规范
 
-本文档是 Keiyaku 工程治理的设计意图来源。代码、契约、配置、迁移脚本与 CI 检查是可验证事实，必须与本文档保持一致。
+本文档保留 Keiyaku 工程治理的历史上下文与架构意图。仓库级治理规则真相已经迁移到 `docs/governance/rules.md`；代码、契约、配置、迁移脚本与 CI 检查必须与规则真相保持一致。
 
 ## 核心原则
 

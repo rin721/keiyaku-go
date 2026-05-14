@@ -1,3 +1,16 @@
+---
+doc_role: adr_index
+scope: repo
+authority_level: ssot
+owners: [tech-lead]
+status: active
+effective_date: 2026-05-15
+version: 1.0
+related_rules: []
+read_when: [governance_change, boundary_sensitive, default_style_change, operational_sensitive]
+update_when: [adr_policy_changed, default_rule_changed, governance_process_changed]
+---
+
 # 架构决策记录
 
 ADR 是 Keiyaku 的设计意图来源。任何偏离 P1 治理规范的变更，都必须先记录 ADR，并在合入前完成审批。

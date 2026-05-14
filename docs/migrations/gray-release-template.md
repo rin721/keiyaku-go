@@ -1,3 +1,16 @@
+---
+doc_role: template
+scope: migrations
+authority_level: template
+owners: [tech-lead]
+status: active
+effective_date: 2026-05-15
+version: 1.0
+related_rules: [GOV-P1-003, GOV-P1-004]
+read_when: [migration_change, operational_sensitive]
+update_when: [migration_policy_changed, adr_accepted, template_changed]
+---
+
 # Migration 灰度变更模板
 
 此模板适用于高风险 P1 DDL 变更，例如修改核心列的数据类型、业务语义、可空性或唯一性。

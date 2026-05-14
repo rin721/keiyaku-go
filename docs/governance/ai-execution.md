@@ -142,4 +142,4 @@ Agent behavior:
 
 ## Current Interim Rule Source
 
-Until a dedicated `docs/governance/rules.md` is introduced, repository-wide rule truth remains [../architecture/governance.md](/D:/coder/go/keiyaku-go/docs/architecture/governance.md). Agents should not invent a replacement truth source during implementation work.
+Repository-wide rule truth is [rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md). Agents should not treat prompt text, review checklists, or historical architecture notes as replacement truth sources.

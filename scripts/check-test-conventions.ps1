@@ -32,10 +32,21 @@ function Has-BuildTag {
     return $Content -match "(?m)^//go:build\s+.*\b$([regex]::Escape($Tag))\b"
 }
 
+function Get-RelativePath {
+    param(
+        [string]$BasePath,
+        [string]$FullPath
+    )
+
+    $base = (Resolve-Path -LiteralPath $BasePath).Path.TrimEnd("\") + "\"
+    $full = (Resolve-Path -LiteralPath $FullPath).Path
+    return $full.Substring($base.Length).Replace("\", "/")
+}
+
 $testFiles = Get-GoFiles @("cmd", "internal", "pkg") | Where-Object { $_.Name -like "*_test.go" }
 
 foreach ($file in $testFiles) {
-    $relativePath = [System.IO.Path]::GetRelativePath($Root, $file.FullName).Replace("\", "/")
+    $relativePath = Get-RelativePath $Root $file.FullName
     $content = Get-Content -LiteralPath $file.FullName -Raw
     $importsTestcontainers = $content -match '"github\.com/testcontainers/testcontainers-go(/[^"]*)?"'
     $hasIntegrationTag = Has-BuildTag $content "integration"

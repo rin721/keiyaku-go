@@ -29,30 +29,33 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 检测 Go Module
-        id: go-module
-        shell: bash
+      - name: 检测可分析 Go Package
+        id: go-packages
+        shell: pwsh
         run: |
-          if [ -f go.mod ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "未发现 go.mod；当前为治理基线阶段，跳过 Go lint 与测试。"
-          fi
+          ./scripts/check-go-package-state.ps1
+          if ($LASTEXITCODE -eq 0) {
+            "present=true" >> $env:GITHUB_OUTPUT
+          } elseif ($LASTEXITCODE -eq 2 -or $LASTEXITCODE -eq 3) {
+            "present=false" >> $env:GITHUB_OUTPUT
+            exit 0
+          } else {
+            exit $LASTEXITCODE
+          }
 
       - name: 安装 Go
-        if: steps.go-module.outputs.present == 'true'
+        if: steps.go-packages.outputs.present == 'true'
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
 
       - name: 运行单元测试
-        if: steps.go-module.outputs.present == 'true'
+        if: steps.go-packages.outputs.present == 'true'
         run: go test ./...
 
       - name: 运行 golangci-lint
-        if: steps.go-module.outputs.present == 'true'
+        if: steps.go-packages.outputs.present == 'true'
         uses: golangci/golangci-lint-action@v6
         with:
           args: --config=.golangci.yml

@@ -7,8 +7,14 @@ governance-check:
 	@$(POWERSHELL) -NoProfile -ExecutionPolicy Bypass -File scripts/check-governance.ps1
 
 lint:
-	@if [ ! -f go.mod ]; then \
-		echo "未发现 go.mod；当前为治理基线阶段，跳过 golangci-lint。"; \
+	@$(POWERSHELL) -NoProfile -ExecutionPolicy Bypass -File scripts/check-go-package-state.ps1; \
+	status=$$?; \
+	if [ $$status -eq 2 ]; then \
+		echo "未发现 go.mod；跳过 golangci-lint。"; \
+	elif [ $$status -eq 3 ]; then \
+		echo "未发现可分析 Go package；跳过 golangci-lint。"; \
+	elif [ $$status -ne 0 ]; then \
+		exit $$status; \
 	elif command -v golangci-lint >/dev/null 2>&1; then \
 		golangci-lint run --config=.golangci.yml; \
 	else \
@@ -17,8 +23,14 @@ lint:
 	fi
 
 test:
-	@if [ ! -f go.mod ]; then \
-		echo "未发现 go.mod；当前为治理基线阶段，跳过 go test。"; \
+	@$(POWERSHELL) -NoProfile -ExecutionPolicy Bypass -File scripts/check-go-package-state.ps1; \
+	status=$$?; \
+	if [ $$status -eq 2 ]; then \
+		echo "未发现 go.mod；跳过 go test。"; \
+	elif [ $$status -eq 3 ]; then \
+		echo "未发现可测试 Go package；跳过 go test。"; \
+	elif [ $$status -ne 0 ]; then \
+		exit $$status; \
 	else \
 		go test ./...; \
 	fi

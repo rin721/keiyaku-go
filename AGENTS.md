@@ -28,22 +28,22 @@ Do not load all governance documents by default. Route first, then load the smal
 
 - Navigation truth: [docs/governance/README.md](/D:/coder/go/keiyaku-go/docs/governance/README.md)
 - AI execution truth: [docs/governance/ai-execution.md](/D:/coder/go/keiyaku-go/docs/governance/ai-execution.md)
-- Repository-wide governance rules truth, current interim source: [docs/architecture/governance.md](/D:/coder/go/keiyaku-go/docs/architecture/governance.md)
+- Repository-wide governance rules truth: [docs/governance/rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)
 - Deviation and design decision truth: Accepted ADRs under [docs/adr](/D:/coder/go/keiyaku-go/docs/adr)
 - Governance exception and debt registry: [docs/governance/exceptions.yaml](/D:/coder/go/keiyaku-go/docs/governance/exceptions.yaml)
 
 ## Fast Routing
 
 - `pkg/` utility or shared package work:
-  Read navigation, execution protocol, repository-wide governance rules, then the layering convention. If the change alters default package style or boundary expectations, also read ADR guidance.
+  Read navigation, execution protocol, repository-wide governance rules, pkg convention, then the layering convention. If the change alters default package style or boundary expectations, also read ADR guidance.
 - Layering, dependency direction, DTO/domain/repository boundary work:
   Read navigation, execution protocol, repository-wide governance rules, the layering convention, then ADR guidance.
 - Migration, gray release, backfill, rollout, rollback work:
-  Read navigation, execution protocol, repository-wide governance rules, migration template, then ADR guidance if the change is high-risk or non-default.
+  Read navigation, execution protocol, repository-wide governance rules, migration convention, migration template, then ADR guidance if the change is high-risk or non-default.
 - Async jobs, retries, idempotency, scheduled task work:
-  Read navigation, execution protocol, repository-wide governance rules, then ADR guidance if the change alters the default model.
+  Read navigation, execution protocol, repository-wide governance rules, async jobs convention, testing convention, then ADR guidance if the change alters the default model.
 - Test, CI, lint, security scan, governance script work:
-  Read navigation, execution protocol, repository-wide governance rules, review checklist, convention scripts, and the relevant workflow files.
+  Read navigation, execution protocol, repository-wide governance rules, testing/CI/security conventions, convention scripts, and the relevant workflow files.
 - Governance or prompt system changes:
   Read navigation, execution protocol, repository-wide governance rules, ADR guidance, review checklist, and the governance automation scripts.
 

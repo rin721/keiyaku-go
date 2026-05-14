@@ -1,3 +1,16 @@
+---
+doc_role: template
+scope: repo
+authority_level: template
+owners: [tech-lead]
+status: active
+effective_date: 2026-05-15
+version: 1.0
+related_rules: []
+read_when: [governance_change, default_style_change, boundary_sensitive, operational_sensitive]
+update_when: [adr_template_changed, governance_process_changed]
+---
+
 # ADR 0000：决策标题
 
 - 状态：提案
