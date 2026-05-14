@@ -1,145 +1,127 @@
 ---
 doc_role: ai_execution
 scope: repo
-authority_level: ssot
+authority_level: binding
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
 version: 1.0
 related_rules: []
-read_when: [all_tasks]
-update_when: [execution_protocol_changed, routing_changed, self_check_changed, escalation_policy_changed]
+read_when: [all_tasks, ai_agent_task, governance_change]
+update_when: [routing_changed, self_check_changed, escalation_policy_changed, metadata_standard_changed]
 ---
 
-# AI Execution Protocol
+# AI 执行协议
 
-This document is the execution truth for AI development agents in this repository. It defines how agents should load context, decide whether a change is local or governance-impacting, and determine when to stop for human review.
+本文档是本仓库 AI 开发代理的执行协议真相。它不复制稳定工程规则，而是规定代理如何加载上下文、判断升级条件、执行自检，以及在规则冲突时如何停止。
 
-## Entry Protocol
+## 入口协议
 
-For every task:
+1. 先读取 `AGENTS.md` 或工具专属薄入口，例如 `CLAUDE.md`。
+2. 再读取 [docs/governance/README.md](/D:/coder/go/keiyaku-go/docs/governance/README.md)，确认 SSOT、冲突优先级和任务路由。
+3. 读取本文档，确认执行约束。
+4. 根据任务类型加载最小充分治理上下文。
+5. 在编辑前明确：本次任务是否触及治理规则、默认设计风格、ADR、治理债务或 break-glass。
 
-1. Read [AGENTS.md](/D:/coder/go/keiyaku-go/AGENTS.md).
-2. Read [README.md](/D:/coder/go/keiyaku-go/docs/governance/README.md).
-3. Classify the task before loading more documents.
-4. Load only the documents routed by the navigation truth.
-5. Identify whether the task touches:
-   - repository-wide defaults
-   - architecture boundaries
-   - migrations or async execution semantics
-   - governance assets themselves
-6. Only then inspect or edit code.
+## 上下文加载规则
 
-## Context Loading Rules
+- 不要默认读取所有治理文档。
+- 优先使用文档元数据的 `read_when` 和 `scope` 做路由。
+- 只有在任务触及对应范围时，才读取专题约定。
+- 只有在变更偏离默认规则、改变默认风格、影响架构边界或涉及高风险迁移时，才读取并更新 ADR。
+- 读取代码前，先确定适用的治理规则来源。
+- 如果路由不清晰，先读取导航真相，而不是猜测。
 
-- Do not read the whole governance tree by default.
-- Prefer the smallest sufficient set of governance documents for the task.
-- Prefer documents with `authority_level: ssot` or `authority_level: binding` before reading `derived` or `template` documents.
-- If a document has a narrow `scope` that clearly matches the task, load it before unrelated repo-wide supporting material.
-- If the task changes governance itself, load both the navigation truth and the execution truth before touching any governance artifact.
+## 任务分类
 
-## Task Classification
+代理应先把任务归为一个或多个类型：
 
-Classify each task into one of these buckets before editing:
+- `implementation_local`：局部代码实现，不改变默认规则或边界。
+- `pkg_change`：`pkg/` 或可复用工具包变更。
+- `boundary_sensitive`：分层、依赖方向、DTO、领域模型、Repository 边界变更。
+- `migration_sensitive`：迁移、回填、灰度、回滚或数据兼容变更。
+- `async_sensitive`：异步任务、重试、幂等、调度或 worker 变更。
+- `test_or_ci`：测试、lint、脚本、workflow 或 CI 变更。
+- `security_sensitive`：密钥、日志、认证、授权、加密、扫描或泄露风险变更。
+- `governance_change`：治理规则、文档结构、元数据、Prompt、ADR 或例外机制变更。
 
-- `implementation_local`: a code change that follows existing defaults
-- `boundary_sensitive`: changes layering, contracts, imports, persistence boundaries, or transport/domain separation
-- `operational_sensitive`: touches migrations, rollout, async jobs, idempotency, retries, observability, or security
-- `governance_change`: changes prompts, governance docs, review checklists, scripts, lint, tests, or CI gates
-- `default_style_change`: introduces a new default pattern that others are expected to follow
+每个任务可以有多个分类。加载上下文时取这些分类对应文档的并集，但仍保持最小充分。
 
-Classification outcomes:
+## ADR 判断规则
 
-- `implementation_local`: proceed after loading the routed docs
-- `boundary_sensitive`: proceed only after checking for applicable ADRs
-- `operational_sensitive`: proceed only after checking rollout, observability, and failure-mode expectations
-- `governance_change`: update docs, review surfaces, and automation together where applicable
-- `default_style_change`: require ADR unless the navigation truth explicitly says otherwise
+出现以下任一情况时，必须检查 ADR 指引；其中 P1 偏离或默认风格变化通常需要新增或更新 ADR：
 
-## ADR Decision Rules
+- 变更默认架构边界、依赖方向或模块职责。
+- 选择与现有治理不同的默认设计风格。
+- 引入影响多个目录或团队习惯的技术约定。
+- 对 P1 规则做受控偏离。
+- 迁移策略、数据兼容、安全模型或发布方式存在重大取舍。
+- break-glass 超过一个发布周期，或临时偏离正在固化为默认行为。
 
-An agent must stop and require ADR creation or update before proceeding when the change:
+P0、安全红线、不可逆数据风险或权限模型冲突不能只靠 ADR 直接放行；必须停止并请求人工决策。
 
-- modifies a repository-wide default
-- changes architecture boundaries or dependency direction
-- changes the default migration or async execution model
-- changes what reviewers or CI should treat as a required gate
-- turns a one-off pattern into a default team pattern
+## 编辑前自检
 
-An agent may proceed without ADR when the change:
+编辑文件前，代理必须确认：
 
-- only applies a current default to a local implementation
-- tightens automation without changing the underlying policy
-- updates wording, examples, or non-authoritative explanation without changing behavior
+- 本次任务的分类和最小上下文集合已经确定。
+- 适用的 SSOT 已读取。
+- 是否需要 ADR、治理债务登记或 break-glass。
+- 可自动化检查项不被写成冗长 Prompt 规则。
+- 变更是否会影响历史实现，以及是否需要 touched-code first 同步。
+- 是否存在用户已有改动；如有，不能无意覆盖。
 
-## Self-Check Before Editing
+## 编辑后自检
 
-Before editing, the agent must be able to answer:
+提交结果前，代理必须确认：
 
-1. What task type is this
-2. Which document is the navigation truth
-3. Which document currently holds the applicable rule truth
-4. Whether an Accepted ADR already governs this scope
-5. Whether this change should update docs, review checklist, or automation in the same change
+- 修改后的文档角色清晰，未形成新的规则重复来源。
+- 新增治理规则带有可追踪 `rule_id` 或明确归属。
+- 文档元数据完整且语义合理。
+- 相关自动化、评审清单、ADR、专题约定已按需要联动更新。
+- 能执行的检查已经执行；不能执行时说明原因。
+- 没有把所有规则重新堆回 Prompt 或 Agent 入口。
 
-If any answer is unclear, pause and resolve that ambiguity first.
+## 停止并升级的条件
 
-## Self-Check After Editing
+遇到以下情况时，代理应暂停实现并请求人工决策：
 
-After editing, the agent should verify:
+- 用户目标与 P0 规则、安全红线或不可逆数据约束冲突。
+- 设计风格会成为新默认，但缺少 ADR 或 owner 决策。
+- 历史同步范围超过当前任务，且收益/风险不清晰。
+- 自动化将导致大量误报或阻塞现有工作流。
+- 需要删除或重写用户未授权的已有改动。
+- 文档之间出现无法按冲突优先级裁决的不一致。
 
-1. The chosen documents still reflect the actual workflow
-2. Routing instructions still point to existing files
-3. Metadata is present and consistent
-4. Any new default or binding behavior has a matching governance home
-5. Any newly automatable rule is not left only in prompt text
+## 更新传播规则
 
-## Stop and Escalate Conditions
+当规则或默认风格改变时，代理必须判断是否需要同步：
 
-Stop and ask for human decision when:
+- [docs/governance/rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)
+- [docs/governance/README.md](/D:/coder/go/keiyaku-go/docs/governance/README.md)
+- 本文档
+- [docs/governance/automation-matrix.md](/D:/coder/go/keiyaku-go/docs/governance/automation-matrix.md)
+- 相关 [docs/conventions](/D:/coder/go/keiyaku-go/docs/conventions) 专题约定
+- 相关 ADR
+- [docs/review](/D:/coder/go/keiyaku-go/docs/review) 评审清单
+- `scripts/`、lint、测试、CI
+- [docs/governance/exceptions.yaml](/D:/coder/go/keiyaku-go/docs/governance/exceptions.yaml)
 
-- the change appears to violate a P0 rule
-- two active authoritative documents conflict without a clear priority winner
-- a change needs a temporary exception but no exception mechanism is yet defined in-repo
-- the repository state no longer matches a claimed governance phase and the next intended phase is unclear
-- a proposed default style would require broad historical backfill with uncertain scope or risk
+如果某条规则可以稳定自动化，Prompt 中只保留“运行或路由到自动化”的执行约束。
 
-## Update Propagation Rules
+## 元数据处理
 
-When governance-impacting changes are made, evaluate whether the same change also requires updates to:
+代理应把 YAML front matter 当作机器可读路由信息：
 
-- repository-wide governance rules
-- ADRs
-- review checklists
-- governance scripts
-- lint/test/CI configuration
-- agent entry or routing documents
+- `doc_role` 决定文档职责。
+- `scope` 决定适用范围。
+- `authority_level` 决定冲突裁决权重。
+- `related_rules` 将文档、ADR、脚本、评审清单连接起来。
+- `read_when` 决定动态上下文加载。
+- `update_when` 决定治理变更后的联动更新。
 
-Do not assume prompt text alone is a sufficient implementation of governance.
+如果文档缺少元数据，治理变更任务应补齐；普通实现任务不应随意重写无关文档。
 
-## Metadata Handling
+## 当前规则来源
 
-Agents must treat metadata as executable routing hints.
-
-Required fields expected on governance-facing documents:
-
-- `doc_role`
-- `scope`
-- `authority_level`
-- `owners`
-- `status`
-- `version` or `effective_date`
-- `related_rules`
-- `read_when`
-- `update_when`
-
-Agent behavior:
-
-- Use `read_when` to decide whether to load the document.
-- Use `scope` to discard irrelevant governance context.
-- Use `authority_level` to resolve which document is truth and which is only guidance or record.
-- Use `update_when` to decide whether a change must fan out into other governance assets.
-
-## Current Interim Rule Source
-
-Repository-wide rule truth is [rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md). Agents should not treat prompt text, review checklists, or historical architecture notes as replacement truth sources.
+仓库级规则真相是 [docs/governance/rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)。旧版 [docs/architecture/governance.md](/D:/coder/go/keiyaku-go/docs/architecture/governance.md) 仅作为历史治理背景与迁移参考，不再作为默认规则 SSOT。
