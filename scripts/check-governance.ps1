@@ -87,6 +87,7 @@ $requiredFiles = @(
     "scripts/check-governance-metadata.ps1",
     "scripts/check-rule-links.ps1",
     "scripts/check-exception-expiry.ps1",
+    "scripts/check-local-paths.ps1",
     ".github/workflows/governance.yml",
     ".golangci.yml",
     ".gitleaks.toml",
@@ -134,6 +135,7 @@ Invoke-Subcheck "scripts/check-test-conventions.ps1"
 Invoke-Subcheck "scripts/check-governance-metadata.ps1"
 Invoke-Subcheck "scripts/check-rule-links.ps1"
 Invoke-Subcheck "scripts/check-exception-expiry.ps1"
+Invoke-Subcheck "scripts/check-local-paths.ps1"
 
 $allGoFiles = Get-GoFiles @("cmd", "internal", "pkg")
 foreach ($file in $allGoFiles) {

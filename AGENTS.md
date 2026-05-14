@@ -17,8 +17,8 @@ update_when: [routing_changed, metadata_standard_changed, execution_protocol_cha
 
 ## 必读顺序
 
-1. 读取 [docs/governance/README.md](/D:/coder/go/keiyaku-go/docs/governance/README.md)。
-2. 读取 [docs/governance/ai-execution.md](/D:/coder/go/keiyaku-go/docs/governance/ai-execution.md)。
+1. 读取 [docs/governance/README.md](docs/governance/README.md)。
+2. 读取 [docs/governance/ai-execution.md](docs/governance/ai-execution.md)。
 3. 只读取导航文档按任务路由出的治理上下文。
 4. 在治理路由清晰之后，再阅读代码。
 
@@ -26,11 +26,11 @@ update_when: [routing_changed, metadata_standard_changed, execution_protocol_cha
 
 ## 当前 SSOT 地图
 
-- 导航真相：[docs/governance/README.md](/D:/coder/go/keiyaku-go/docs/governance/README.md)
-- AI 执行真相：[docs/governance/ai-execution.md](/D:/coder/go/keiyaku-go/docs/governance/ai-execution.md)
-- 仓库级治理规则真相：[docs/governance/rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)
-- 偏离与设计决策真相：[docs/adr](/D:/coder/go/keiyaku-go/docs/adr) 下状态为 Accepted 的 ADR
-- 治理破例与债务登记真相：[docs/governance/exceptions.yaml](/D:/coder/go/keiyaku-go/docs/governance/exceptions.yaml)
+- 导航真相：[docs/governance/README.md](docs/governance/README.md)
+- AI 执行真相：[docs/governance/ai-execution.md](docs/governance/ai-execution.md)
+- 仓库级治理规则真相：[docs/governance/rules.md](docs/governance/rules.md)
+- 偏离与设计决策真相：[docs/adr](docs/adr) 下状态为 Accepted 的 ADR
+- 治理破例与债务登记真相：[docs/governance/exceptions.yaml](docs/governance/exceptions.yaml)
 
 ## 快速路由
 
@@ -68,3 +68,4 @@ update_when: [routing_changed, metadata_standard_changed, execution_protocol_cha
 - 不要把全部规则折叠进单个 Prompt 文件。
 - 不要把 Prompt 当作稳定工程政策的真相来源。
 - 当变更会改变默认行为、架构边界或治理政策时，不要绕过 ADR。
+- 不要在仓库文档中写入本机绝对路径；链接应使用相对路径。

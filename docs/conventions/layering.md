@@ -13,7 +13,7 @@ update_when: [layering_rule_changed, adr_accepted, automation_changed]
 
 # 分层约定
 
-本文档是包边界、依赖方向和 DTO 隔离的局部约定。仓库级规则真相是 [docs/governance/rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)，本文档将其中的分层规则细化为日常执行约定。
+本文档是包边界、依赖方向和 DTO 隔离的局部约定。仓库级规则真相是 [docs/governance/rules.md](../governance/rules.md)，本文档将其中的分层规则细化为日常执行约定。
 
 ## 分层职责
 
@@ -48,4 +48,4 @@ update_when: [layering_rule_changed, adr_accepted, automation_changed]
 
 ## 自动化
 
-分层规则优先由 [scripts/check-layering.ps1](/D:/coder/go/keiyaku-go/scripts/check-layering.ps1) 检查。人工评审只处理脚本难以判断的语义问题，例如 DTO/PO 语义泄露、port 归属是否合理、例外是否需要 ADR。
+分层规则优先由 [scripts/check-layering.ps1](../../scripts/check-layering.ps1) 检查。人工评审只处理脚本难以判断的语义问题，例如 DTO/PO 语义泄露、port 归属是否合理、例外是否需要 ADR。

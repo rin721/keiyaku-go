@@ -17,15 +17,15 @@ update_when: [document_tree_changed, ssot_changed, routing_changed, metadata_sta
 
 ## SSOT 注册表
 
-- 导航真相：[docs/governance/README.md](/D:/coder/go/keiyaku-go/docs/governance/README.md)
-- 仓库级治理规则真相：[docs/governance/rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)
-- AI 执行协议真相：[docs/governance/ai-execution.md](/D:/coder/go/keiyaku-go/docs/governance/ai-execution.md)
-- 治理演进与冲突处理真相：[docs/governance/change-management.md](/D:/coder/go/keiyaku-go/docs/governance/change-management.md)
-- 自动化归位矩阵：[docs/governance/automation-matrix.md](/D:/coder/go/keiyaku-go/docs/governance/automation-matrix.md)
-- 治理债务与受控破例登记：[docs/governance/exceptions.yaml](/D:/coder/go/keiyaku-go/docs/governance/exceptions.yaml)
-- 设计偏离与重大取舍裁决真相：[docs/adr](/D:/coder/go/keiyaku-go/docs/adr) 下状态为 Accepted 的 ADR
-- 人工评审清单：[docs/review/checklist.md](/D:/coder/go/keiyaku-go/docs/review/checklist.md) 与 [docs/review/governance-change-checklist.md](/D:/coder/go/keiyaku-go/docs/review/governance-change-checklist.md)
-- 专题设计约定：[docs/conventions](/D:/coder/go/keiyaku-go/docs/conventions) 下的具体文档
+- 导航真相：[docs/governance/README.md](README.md)
+- 仓库级治理规则真相：[docs/governance/rules.md](rules.md)
+- AI 执行协议真相：[docs/governance/ai-execution.md](ai-execution.md)
+- 治理演进与冲突处理真相：[docs/governance/change-management.md](change-management.md)
+- 自动化归位矩阵：[docs/governance/automation-matrix.md](automation-matrix.md)
+- 治理债务与受控破例登记：[docs/governance/exceptions.yaml](exceptions.yaml)
+- 设计偏离与重大取舍裁决真相：[docs/adr](../adr) 下状态为 Accepted 的 ADR
+- 人工评审清单：[docs/review/checklist.md](../review/checklist.md) 与 [docs/review/governance-change-checklist.md](../review/governance-change-checklist.md)
+- 专题设计约定：[docs/conventions](../conventions) 下的具体文档
 - 自动检查与 CI：`scripts/`、`.golangci.yml`、`.gitleaks.toml`、`Makefile` 和 `.github/workflows/`
 
 ## 冲突优先级
@@ -34,9 +34,9 @@ update_when: [document_tree_changed, ssot_changed, routing_changed, metadata_sta
 
 1. P0 规则和安全/数据不可逆约束。
 2. Accepted ADR。
-3. [docs/governance/rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)。
+3. [docs/governance/rules.md](rules.md)。
 4. 相关专题约定文档。
-5. [docs/governance/ai-execution.md](/D:/coder/go/keiyaku-go/docs/governance/ai-execution.md)。
+5. [docs/governance/ai-execution.md](ai-execution.md)。
 6. 评审清单。
 7. `AGENTS.md`、`CLAUDE.md` 或其他工具入口。
 
@@ -46,9 +46,9 @@ update_when: [document_tree_changed, ssot_changed, routing_changed, metadata_sta
 
 所有 AI 开发代理进入仓库后都应使用同一条 first-hop 路径：
 
-1. 读取 [AGENTS.md](/D:/coder/go/keiyaku-go/AGENTS.md) 或工具专属薄入口。
+1. 读取 [AGENTS.md](../../AGENTS.md) 或工具专属薄入口。
 2. 读取本文档，确定 SSOT、冲突优先级和任务路由。
-3. 读取 [docs/governance/ai-execution.md](/D:/coder/go/keiyaku-go/docs/governance/ai-execution.md)，确认执行协议。
+3. 读取 [docs/governance/ai-execution.md](ai-execution.md)，确认执行协议。
 4. 按任务类型读取最小充分上下文。
 5. 在编辑前确认是否需要 ADR、治理债务登记、break-glass 或人工升级。
 
@@ -57,19 +57,19 @@ update_when: [document_tree_changed, ssot_changed, routing_changed, metadata_sta
 ## 任务路由矩阵
 
 - `pkg/` 工具包或共享包变更：
-  读取 [docs/governance/rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)、[docs/conventions/pkg.md](/D:/coder/go/keiyaku-go/docs/conventions/pkg.md)、[docs/conventions/layering.md](/D:/coder/go/keiyaku-go/docs/conventions/layering.md) 和 [docs/governance/automation-matrix.md](/D:/coder/go/keiyaku-go/docs/governance/automation-matrix.md)。
+  读取 [docs/governance/rules.md](rules.md)、[docs/conventions/pkg.md](../conventions/pkg.md)、[docs/conventions/layering.md](../conventions/layering.md) 和 [docs/governance/automation-matrix.md](automation-matrix.md)。
 - 架构边界、分层、依赖方向、DTO/PO/领域模型变更：
-  读取 [docs/governance/rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)、[docs/conventions/layering.md](/D:/coder/go/keiyaku-go/docs/conventions/layering.md)、[docs/adr/README.md](/D:/coder/go/keiyaku-go/docs/adr/README.md) 和相关 Accepted ADR。
+  读取 [docs/governance/rules.md](rules.md)、[docs/conventions/layering.md](../conventions/layering.md)、[docs/adr/README.md](../adr/README.md) 和相关 Accepted ADR。
 - 治理规则、导航、AI 执行协议、元数据标准变更：
-  读取本文档、[docs/governance/rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)、[docs/governance/ai-execution.md](/D:/coder/go/keiyaku-go/docs/governance/ai-execution.md)、[docs/governance/change-management.md](/D:/coder/go/keiyaku-go/docs/governance/change-management.md)、[docs/governance/automation-matrix.md](/D:/coder/go/keiyaku-go/docs/governance/automation-matrix.md)、[docs/adr/0000-template.md](/D:/coder/go/keiyaku-go/docs/adr/0000-template.md) 和 [docs/review/governance-change-checklist.md](/D:/coder/go/keiyaku-go/docs/review/governance-change-checklist.md)。
+  读取本文档、[docs/governance/rules.md](rules.md)、[docs/governance/ai-execution.md](ai-execution.md)、[docs/governance/change-management.md](change-management.md)、[docs/governance/automation-matrix.md](automation-matrix.md)、[docs/adr/0000-template.md](../adr/0000-template.md) 和 [docs/review/governance-change-checklist.md](../review/governance-change-checklist.md)。
 - 迁移、回填、灰度、回滚、数据兼容变更：
-  读取 [docs/governance/rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)、[docs/conventions/migrations.md](/D:/coder/go/keiyaku-go/docs/conventions/migrations.md)、[docs/templates/migration-plan.md](/D:/coder/go/keiyaku-go/docs/templates/migration-plan.md) 和相关 ADR。
+  读取 [docs/governance/rules.md](rules.md)、[docs/conventions/migrations.md](../conventions/migrations.md)、[docs/migrations/gray-release-template.md](../migrations/gray-release-template.md) 和相关 ADR。
 - 异步任务、重试、幂等、定时任务变更：
-  读取 [docs/governance/rules.md](/D:/coder/go/keiyaku-go/docs/governance/rules.md)、[docs/conventions/async-jobs.md](/D:/coder/go/keiyaku-go/docs/conventions/async-jobs.md)、[docs/conventions/testing.md](/D:/coder/go/keiyaku-go/docs/conventions/testing.md) 和相关 ADR。
+  读取 [docs/governance/rules.md](rules.md)、[docs/conventions/async-jobs.md](../conventions/async-jobs.md)、[docs/conventions/testing.md](../conventions/testing.md) 和相关 ADR。
 - 测试约定变更：
-  读取 [docs/conventions/testing.md](/D:/coder/go/keiyaku-go/docs/conventions/testing.md)、[docs/governance/automation-matrix.md](/D:/coder/go/keiyaku-go/docs/governance/automation-matrix.md) 和 [scripts/check-test-conventions.ps1](/D:/coder/go/keiyaku-go/scripts/check-test-conventions.ps1)。
+  读取 [docs/conventions/testing.md](../conventions/testing.md)、[docs/governance/automation-matrix.md](automation-matrix.md) 和 [scripts/check-test-conventions.ps1](../../scripts/check-test-conventions.ps1)。
 - CI、lint、治理脚本、安全扫描变更：
-  读取 [docs/conventions/ci.md](/D:/coder/go/keiyaku-go/docs/conventions/ci.md)、[docs/conventions/security-logging.md](/D:/coder/go/keiyaku-go/docs/conventions/security-logging.md)、[docs/governance/automation-matrix.md](/D:/coder/go/keiyaku-go/docs/governance/automation-matrix.md)、`Makefile`、`.github/workflows/` 和相关脚本。
+  读取 [docs/conventions/ci.md](../conventions/ci.md)、[docs/conventions/security-logging.md](../conventions/security-logging.md)、[docs/governance/automation-matrix.md](automation-matrix.md)、`Makefile`、`.github/workflows/` 和相关脚本。
 
 ## 元数据标准
 
@@ -94,4 +94,5 @@ update_when: [document_tree_changed, ssot_changed, routing_changed, metadata_sta
 - 可由脚本、lint、测试或 CI 稳定检查的规则，不应长期停留在 Prompt 正文里。
 - Prompt 和工具入口只保留路由逻辑、执行约束和升级条件。
 - 改变默认工程风格、架构边界或治理政策时，必须评估是否需要 ADR。
-- 允许历史代码暂时不完全符合新治理，但必须通过 [docs/governance/exceptions.yaml](/D:/coder/go/keiyaku-go/docs/governance/exceptions.yaml) 可追踪。
+- 允许历史代码暂时不完全符合新治理，但必须通过 [docs/governance/exceptions.yaml](exceptions.yaml) 可追踪。
+- Markdown 文档链接必须使用相对路径；不得写入本机绝对路径，例如 Windows 盘符路径或 `/Users/...`、`/home/...` 这类机器相关路径。
