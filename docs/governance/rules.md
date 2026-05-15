@@ -11,7 +11,7 @@ effective_date: 2026-05-15
 version: 2.0
 related_rules: [GOV-P0-001, GOV-P0-002, GOV-P0-003, GOV-P0-004, GOV-P1-001, GOV-P1-002, GOV-P1-003, GOV-P1-004, GOV-P1-005, GOV-P1-006]
 source_of_truth: [docs/governance/rules.md]
-derived_from: [docs/adr/20260515-default-backend-direction.md]
+derived_from: [docs/adr/20260515-default-backend-direction.md, docs/adr/20260515-adopt-gin-gorm-clean-architecture.md]
 read_when: [all_tasks, governance_change, pkg_change, boundary_sensitive, migration_sensitive, async_sensitive, test_or_ci, security_sensitive]
 update_when: [default_rule_changed, default_behavior_changed, adr_accepted, automation_changed, review_policy_changed]
 conflict_policy: ssot_rules_override_lower_layers
@@ -28,11 +28,11 @@ verification_target: [scripts/check-governance.ps1, scripts/check-rule-links.ps1
 - 意图由治理文档和 ADR 表达，事实由代码、契约、配置、迁移脚本、测试和 CI 验证。
 - 规则分为 P0 绝对红线、P1 默认要求、P2 推荐实践。
 - 可自动化的规则必须进入脚本、lint、测试或 CI；暂不可自动化的规则进入评审清单，并保留迁移到自动化的计划。
-- 能力抽象优先于组件绑定。Echo 是传输适配器选择，sqlc 是 Repository 实现辅助工具，二者不得穿透到领域模型或传输边界之外。
+- 能力抽象优先于组件绑定。Gin 是传输适配器选择，GORM 是 Repository 实现辅助工具，二者不得穿透到领域模型或传输边界之外。
 
 ## 当前技术阶段
 
-当前仓库已建立 Go module 基线，但暂不引入 HTTP API、数据库 schema 或业务代码。未来后端默认方向为 Echo + sqlc，默认依赖注入方式为手动装配；这两项默认方向由 [20260515-default-backend-direction.md](../adr/20260515-default-backend-direction.md) 裁决。任何改变默认技术方向的决策必须通过 ADR。
+当前仓库已建立 Go module 基线，并进入 Gin + GORM 的应用骨架实现阶段。后端默认方向为 Gin + GORM v2，默认依赖注入方式为手动装配；当前应用实现方向由 [20260515-adopt-gin-gorm-clean-architecture.md](../adr/20260515-adopt-gin-gorm-clean-architecture.md) 裁决。任何再次改变默认技术方向的决策必须通过 ADR。
 
 ## P0 绝对红线
 

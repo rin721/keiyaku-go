@@ -1,0 +1,59 @@
+openapi: 3.0.3
+info:
+  title: Keiyaku-Go CMS API
+  version: 1.0.0
+servers:
+  - url: /api/v1
+paths:
+  /auth/register:
+    post:
+      summary: Register user
+      responses:
+        "200":
+          description: OK
+  /auth/login:
+    post:
+      summary: Login user
+      responses:
+        "200":
+          description: OK
+  /users/me:
+    get:
+      summary: Current user profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+  /articles:
+    get:
+      summary: List published articles
+      responses:
+        "200":
+          description: OK
+    post:
+      summary: Create article
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+  /articles/{id}:
+    get:
+      summary: Get published article
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

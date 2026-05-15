@@ -41,7 +41,7 @@
                                                  "scripts/check-governance.ps1",
                                                  "scripts/check-governance-map.ps1"
                                              ],
-                     "generated_at":  "2026-05-15T01:59:54.3168714Z"
+                     "generated_at":  "2026-05-15T02:45:22.9781144Z"
                  },
     "states":  [
                    {
@@ -197,6 +197,68 @@
                                                    "scripts/check-governance-map.ps1"
                                                ],
                        "last_updated":  "2026-05-15T01:50:44.9980769Z"
+                   },
+                   {
+                       "state_id":  "ADR-20260515-BACKEND-002",
+                       "title":  "ADR 20260515：采用 Gin 与 GORM 的 Clean Architecture 后端方向",
+                       "file_path":  "docs/adr/20260515-adopt-gin-gorm-clean-architecture.md",
+                       "doc_role":  "adr",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "repo",
+                       "authority_level":  "ssot_decision",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "accepted",
+                       "related_rules":  [
+                                             "GOV-P0-001",
+                                             "GOV-P0-002",
+                                             "GOV-P1-001",
+                                             "GOV-P1-002",
+                                             "GOV-P1-003",
+                                             "GOV-P1-005",
+                                             "GOV-P1-006"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/adr/20260515-adopt-gin-gorm-clean-architecture.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/rules.md",
+                                            "docs/adr/20260515-default-backend-direction.md",
+                                            "docs/conventions/layering.md",
+                                            "docs/conventions/dependency-injection.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "governance_change",
+                                         "boundary_sensitive",
+                                         "migration_sensitive",
+                                         "security_sensitive"
+                                     ],
+                       "update_when":  [
+                                           "default_rule_changed",
+                                           "default_behavior_changed",
+                                           "convention_changed",
+                                           "adr_accepted"
+                                       ],
+                       "conflict_policy":  "accepted_adr_overrides_default_backend_direction",
+                       "rollback_target":  [
+                                               "docs/adr/20260515-default-backend-direction.md",
+                                               "docs/governance/rules.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-governance-map.ps1",
+                                                   "scripts/check-layering.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T02:33:50.8462001Z",
+                       "change_reason":  "align implementation stack with product architecture request"
                    },
                    {
                        "state_id":  "ADR-20260515-BACKEND-001",
@@ -404,6 +466,103 @@
                        "last_updated":  "2026-05-15T01:48:26.1837120Z"
                    },
                    {
+                       "state_id":  "API-HTTP-001",
+                       "title":  "HTTP API 契约",
+                       "file_path":  "docs/api/http-api.md",
+                       "doc_role":  "convention",
+                       "memory_level":  "L1",
+                       "state_scope":  "module",
+                       "scope":  "repo",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+                                             "GOV-P0-001",
+                                             "GOV-P0-002",
+                                             "GOV-P1-001"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/adr/20260515-adopt-gin-gorm-clean-architecture.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/architecture/system-design.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "boundary_sensitive",
+                                         "security_sensitive"
+                                     ],
+                       "update_when":  [
+                                           "default_behavior_changed",
+                                           "convention_changed",
+                                           "adr_accepted"
+                                       ],
+                       "conflict_policy":  "binding_must_yield_to_ssot",
+                       "rollback_target":  [
+                                               "docs/architecture/system-design.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-layering.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T02:33:50.8482162Z"
+                   },
+                   {
+                       "state_id":  "ARCH-DB-001",
+                       "title":  "核心数据表结构",
+                       "file_path":  "docs/architecture/database-schema.md",
+                       "doc_role":  "convention",
+                       "memory_level":  "L1",
+                       "state_scope":  "module",
+                       "scope":  "migrations",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+                                             "GOV-P0-001",
+                                             "GOV-P1-003"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/adr/20260515-adopt-gin-gorm-clean-architecture.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/conventions/migrations.md",
+                                            "docs/architecture/system-design.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "migration_sensitive",
+                                         "boundary_sensitive"
+                                     ],
+                       "update_when":  [
+                                           "migration_policy_changed",
+                                           "default_behavior_changed",
+                                           "adr_accepted"
+                                       ],
+                       "conflict_policy":  "binding_must_yield_to_ssot",
+                       "rollback_target":  [
+                                               "docs/adr/20260515-adopt-gin-gorm-clean-architecture.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T02:33:50.8482162Z"
+                   },
+                   {
                        "state_id":  "GOV-HIST-001",
                        "title":  "历史治理背景",
                        "file_path":  "docs/architecture/governance.md",
@@ -455,6 +614,59 @@
                                              "docs/governance/rules.md",
                                              "docs/adr/20260515-governance-ssot-structure.md"
                                          ]
+                   },
+                   {
+                       "state_id":  "ARCH-SYSTEM-001",
+                       "title":  "系统结构设计",
+                       "file_path":  "docs/architecture/system-design.md",
+                       "doc_role":  "convention",
+                       "memory_level":  "L1",
+                       "state_scope":  "module",
+                       "scope":  "repo",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+                                             "GOV-P0-001",
+                                             "GOV-P0-002",
+                                             "GOV-P1-001",
+                                             "GOV-P1-002",
+                                             "GOV-P1-006"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/adr/20260515-adopt-gin-gorm-clean-architecture.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/rules.md",
+                                            "docs/conventions/layering.md",
+                                            "docs/conventions/dependency-injection.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "boundary_sensitive",
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "default_behavior_changed",
+                                           "convention_changed",
+                                           "adr_accepted"
+                                       ],
+                       "conflict_policy":  "binding_must_yield_to_ssot",
+                       "rollback_target":  [
+                                               "docs/adr/20260515-adopt-gin-gorm-clean-architecture.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-layering.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T02:33:50.8462001Z"
                    },
                    {
                        "state_id":  "CONV-ASYNC-001",
@@ -1276,7 +1488,8 @@
                                                "docs/governance/rules.md"
                                            ],
                        "derived_from":  [
-                                            "docs/adr/20260515-default-backend-direction.md"
+                                            "docs/adr/20260515-default-backend-direction.md",
+                                            "docs/adr/20260515-adopt-gin-gorm-clean-architecture.md"
                                         ],
                        "depends_on":  [
 
@@ -1310,7 +1523,7 @@
                                                    "scripts/check-rule-links.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:50:44.9950459Z"
+                       "last_updated":  "2026-05-15T02:33:50.8462001Z"
                    },
                    {
                        "state_id":  "MIG-TPL-001",
