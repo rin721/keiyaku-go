@@ -11,6 +11,7 @@ import (
 	"github.com/rin721/keiyaku-go/internal/api/http/response"
 	"github.com/rin721/keiyaku-go/internal/application/port"
 	"github.com/rin721/keiyaku-go/internal/infrastructure/config"
+	"github.com/rin721/keiyaku-go/types"
 	"go.uber.org/zap"
 )
 
@@ -54,7 +55,7 @@ func New(deps Deps) *gin.Engine {
 	}
 
 	engine.NoRoute(func(c *gin.Context) {
-		c.JSON(http.StatusNotFound, response.Body{Code: 10004, Msg: "route not found"})
+		c.JSON(http.StatusNotFound, response.Body{Code: types.CodeNotFound, Msg: types.MessageRouteNotFound})
 	})
 	return engine
 }

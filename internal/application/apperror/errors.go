@@ -2,55 +2,35 @@ package apperror
 
 import (
 	"errors"
-	"fmt"
 
 	derrors "github.com/rin721/keiyaku-go/internal/domain/errors"
+	"github.com/rin721/keiyaku-go/types"
 )
 
 const (
-	CodeOK              = 0
-	CodeInvalidArgument = 10001
-	CodeUnauthorized    = 10002
-	CodeForbidden       = 10003
-	CodeNotFound        = 10004
-	CodeConflict        = 10005
+	CodeOK              = types.CodeOK
+	CodeInvalidArgument = types.CodeInvalidArgument
+	CodeUnauthorized    = types.CodeUnauthorized
+	CodeForbidden       = types.CodeForbidden
+	CodeNotFound        = types.CodeNotFound
+	CodeConflict        = types.CodeConflict
+	CodeTooManyRequests = types.CodeTooManyRequests
 
-	CodeInvalidCredential = 20001
-	CodeUserDisabled      = 20002
+	CodeInvalidCredential = types.CodeInvalidCredential
+	CodeUserDisabled      = types.CodeUserDisabled
 
-	CodeInternal   = 50001
-	CodeDependency = 50002
+	CodeInternal   = types.CodeInternal
+	CodeDependency = types.CodeDependency
 )
 
-type Error struct {
-	Code int
-	Msg  string
-	Err  error
+type Error = types.AppError
+
+func New(code types.Code, msg string) *Error {
+	return types.NewError(code, msg)
 }
 
-func (e *Error) Error() string {
-	if e == nil {
-		return ""
-	}
-	if e.Err == nil {
-		return e.Msg
-	}
-	return fmt.Sprintf("%s: %v", e.Msg, e.Err)
-}
-
-func (e *Error) Unwrap() error {
-	if e == nil {
-		return nil
-	}
-	return e.Err
-}
-
-func New(code int, msg string) *Error {
-	return &Error{Code: code, Msg: msg}
-}
-
-func Wrap(code int, msg string, err error) *Error {
-	return &Error{Code: code, Msg: msg, Err: err}
+func Wrap(code types.Code, msg string, err error) *Error {
+	return types.WrapError(code, msg, err)
 }
 
 func From(err error) *Error {
@@ -63,18 +43,18 @@ func From(err error) *Error {
 	}
 	switch {
 	case errors.Is(err, derrors.ErrInvalidArgument):
-		return Wrap(CodeInvalidArgument, "invalid argument", err)
+		return Wrap(CodeInvalidArgument, types.MessageInvalidArgument, err)
 	case errors.Is(err, derrors.ErrNotFound):
-		return Wrap(CodeNotFound, "resource not found", err)
+		return Wrap(CodeNotFound, types.MessageNotFound, err)
 	case errors.Is(err, derrors.ErrConflict):
-		return Wrap(CodeConflict, "resource conflict", err)
+		return Wrap(CodeConflict, types.MessageConflict, err)
 	case errors.Is(err, derrors.ErrUnauthorized):
-		return Wrap(CodeUnauthorized, "unauthorized", err)
+		return Wrap(CodeUnauthorized, types.MessageUnauthorized, err)
 	case errors.Is(err, derrors.ErrForbidden):
-		return Wrap(CodeForbidden, "forbidden", err)
+		return Wrap(CodeForbidden, types.MessageForbidden, err)
 	case errors.Is(err, derrors.ErrInactiveUser):
-		return Wrap(CodeUserDisabled, "user disabled", err)
+		return Wrap(CodeUserDisabled, types.MessageUserDisabled, err)
 	default:
-		return Wrap(CodeInternal, "internal server error", err)
+		return Wrap(CodeInternal, types.MessageInternal, err)
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/rin721/keiyaku-go/internal/application/port"
 	derrors "github.com/rin721/keiyaku-go/internal/domain/errors"
 	"github.com/rin721/keiyaku-go/internal/domain/user"
+	"github.com/rin721/keiyaku-go/types"
 )
 
 type Service struct {
@@ -43,64 +44,64 @@ type Result struct {
 
 func (s *Service) Register(ctx context.Context, cmd RegisterCommand) (*Result, error) {
 	if s == nil || s.users == nil || s.ids == nil || s.hashes == nil || s.tokens == nil {
-		return nil, apperror.New(apperror.CodeInternal, "auth service is not ready")
+		return nil, apperror.New(apperror.CodeInternal, types.MessageAuthServiceNotReady)
 	}
 	if len(cmd.Password) < 8 || len(cmd.Password) > 128 {
-		return nil, apperror.New(apperror.CodeInvalidArgument, "password length must be between 8 and 128")
+		return nil, apperror.New(apperror.CodeInvalidArgument, types.MessagePasswordLength)
 	}
 	username := strings.TrimSpace(cmd.Username)
 	if _, err := s.users.FindByUsername(ctx, username); err == nil {
-		return nil, apperror.New(apperror.CodeConflict, "username already exists")
+		return nil, apperror.New(apperror.CodeConflict, types.MessageUsernameExists)
 	} else if !errors.Is(err, derrors.ErrNotFound) {
-		return nil, apperror.Wrap(apperror.CodeDependency, "failed to check user", err)
+		return nil, apperror.Wrap(apperror.CodeDependency, types.MessageCheckUserFailed, err)
 	}
 
 	id, err := s.ids.NewID(ctx)
 	if err != nil {
-		return nil, apperror.Wrap(apperror.CodeDependency, "failed to allocate user id", err)
+		return nil, apperror.Wrap(apperror.CodeDependency, types.MessageAllocateUserIDFailed, err)
 	}
 	hash, err := s.hashes.Hash(ctx, cmd.Password)
 	if err != nil {
-		return nil, apperror.Wrap(apperror.CodeInternal, "failed to hash password", err)
+		return nil, apperror.Wrap(apperror.CodeInternal, types.MessageHashPasswordFailed, err)
 	}
 	entity, err := user.New(id, username, cmd.Email, hash, cmd.DisplayName, s.now())
 	if err != nil {
 		return nil, err
 	}
 	if err := s.users.Create(ctx, entity); err != nil {
-		return nil, apperror.Wrap(apperror.CodeDependency, "failed to create user", err)
+		return nil, apperror.Wrap(apperror.CodeDependency, types.MessageCreateUserFailed, err)
 	}
 	token, err := s.tokens.IssueToken(ctx, port.TokenUser{ID: entity.ID, Username: entity.Username, Roles: entity.Roles})
 	if err != nil {
-		return nil, apperror.Wrap(apperror.CodeDependency, "failed to issue token", err)
+		return nil, apperror.Wrap(apperror.CodeDependency, types.MessageIssueTokenFailed, err)
 	}
 	return &Result{User: entity, Token: token}, nil
 }
 
 func (s *Service) Login(ctx context.Context, cmd LoginCommand) (*Result, error) {
 	if s == nil || s.users == nil || s.hashes == nil || s.tokens == nil {
-		return nil, apperror.New(apperror.CodeInternal, "auth service is not ready")
+		return nil, apperror.New(apperror.CodeInternal, types.MessageAuthServiceNotReady)
 	}
 	entity, err := s.users.FindByUsername(ctx, strings.TrimSpace(cmd.Username))
 	if err != nil {
 		if errors.Is(err, derrors.ErrNotFound) {
-			return nil, apperror.New(apperror.CodeInvalidCredential, "invalid username or password")
+			return nil, apperror.New(apperror.CodeInvalidCredential, types.MessageInvalidCredential)
 		}
-		return nil, apperror.Wrap(apperror.CodeDependency, "failed to load user", err)
+		return nil, apperror.Wrap(apperror.CodeDependency, types.MessageLoadUserFailed, err)
 	}
 	if err := entity.EnsureActive(); err != nil {
 		return nil, err
 	}
 	matched, _, err := s.hashes.Verify(ctx, entity.PasswordHash, cmd.Password)
 	if err != nil {
-		return nil, apperror.Wrap(apperror.CodeInternal, "failed to verify password", err)
+		return nil, apperror.Wrap(apperror.CodeInternal, types.MessageVerifyPasswordFailed, err)
 	}
 	if !matched {
-		return nil, apperror.New(apperror.CodeInvalidCredential, "invalid username or password")
+		return nil, apperror.New(apperror.CodeInvalidCredential, types.MessageInvalidCredential)
 	}
 	token, err := s.tokens.IssueToken(ctx, port.TokenUser{ID: entity.ID, Username: entity.Username, Roles: entity.Roles})
 	if err != nil {
-		return nil, apperror.Wrap(apperror.CodeDependency, "failed to issue token", err)
+		return nil, apperror.Wrap(apperror.CodeDependency, types.MessageIssueTokenFailed, err)
 	}
 	return &Result{User: entity, Token: token}, nil
 }

@@ -45,6 +45,7 @@ migrations/     MySQL schema 迁移脚本。
 deployments/    本地与部署资产，例如 Docker Compose。
 docs/           架构、API、数据库、ADR 和治理文档。
 pkg/            与业务无关的可复用包。
+types/          全局响应结构、错误码、错误消息和跨层键名。
 scripts/        治理、分层、测试和 CI 辅助脚本。
 test/           跨模块或集成测试资产。
 ```

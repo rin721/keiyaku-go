@@ -7,6 +7,7 @@ import (
 	"github.com/rin721/keiyaku-go/internal/api/http/response"
 	"github.com/rin721/keiyaku-go/internal/application/apperror"
 	appuser "github.com/rin721/keiyaku-go/internal/application/user"
+	"github.com/rin721/keiyaku-go/types"
 )
 
 type UserHandler struct {
@@ -19,12 +20,12 @@ func NewUserHandler(service *appuser.Service) *UserHandler {
 
 func (h *UserHandler) Me(c *gin.Context) {
 	if h == nil || h.service == nil {
-		response.Error(c, apperror.New(apperror.CodeInternal, "user handler is not ready"))
+		response.Error(c, apperror.New(apperror.CodeInternal, types.MessageUserHandlerNotReady))
 		return
 	}
 	claims, ok := middleware.Claims(c)
 	if !ok {
-		response.Error(c, apperror.New(apperror.CodeUnauthorized, "missing auth claims"))
+		response.Error(c, apperror.New(apperror.CodeUnauthorized, types.MessageMissingAuthClaims))
 		return
 	}
 	entity, err := h.service.GetProfile(c.Request.Context(), claims.UserID)

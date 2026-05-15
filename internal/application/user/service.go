@@ -6,6 +6,7 @@ import (
 	"github.com/rin721/keiyaku-go/internal/application/apperror"
 	"github.com/rin721/keiyaku-go/internal/application/port"
 	domainuser "github.com/rin721/keiyaku-go/internal/domain/user"
+	"github.com/rin721/keiyaku-go/types"
 )
 
 type Service struct {
@@ -18,10 +19,10 @@ func NewService(users port.UserRepository) *Service {
 
 func (s *Service) GetProfile(ctx context.Context, id int64) (*domainuser.User, error) {
 	if s == nil || s.users == nil {
-		return nil, apperror.New(apperror.CodeInternal, "user service is not ready")
+		return nil, apperror.New(apperror.CodeInternal, types.MessageUserServiceNotReady)
 	}
 	if id <= 0 {
-		return nil, apperror.New(apperror.CodeInvalidArgument, "invalid user id")
+		return nil, apperror.New(apperror.CodeInvalidArgument, types.MessageInvalidUserID)
 	}
 	entity, err := s.users.FindByID(ctx, id)
 	if err != nil {

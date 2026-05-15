@@ -4,11 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+
+	"github.com/rin721/keiyaku-go/types"
 )
 
 type contextKey struct{}
 
-const HeaderName = "X-Trace-ID"
+const HeaderName = types.HeaderTraceID
 
 func WithID(ctx context.Context, id string) context.Context {
 	if id == "" {
