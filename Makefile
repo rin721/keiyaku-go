@@ -1,10 +1,13 @@
 SHELL := /bin/sh
 POWERSHELL ?= powershell
 
-.PHONY: governance-check lint test security-scan
+.PHONY: governance-check governance-refresh lint test security-scan
 
 governance-check:
 	@$(POWERSHELL) -NoProfile -ExecutionPolicy Bypass -File scripts/check-governance.ps1
+
+governance-refresh:
+	@$(POWERSHELL) -NoProfile -ExecutionPolicy Bypass -File scripts/export-governance-map.ps1
 
 lint:
 	@$(POWERSHELL) -NoProfile -ExecutionPolicy Bypass -File scripts/check-go-package-state.ps1; \

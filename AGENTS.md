@@ -1,14 +1,23 @@
 ---
+state_id: GOV-ENTRY-001
 doc_role: ai_entry
+memory_level: L0
+state_scope: global
 scope: repo
 authority_level: entry
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
-version: 1.0
+version: 2.0
 related_rules: []
+source_of_truth: [docs/governance/README.md, docs/governance/ai-execution.md]
+derived_from: [docs/governance/README.md, docs/governance/ai-execution.md]
 read_when: [all_tasks]
 update_when: [routing_changed, execution_protocol_changed, metadata_standard_changed, governance_structure_changed]
+conflict_policy: entry_must_yield_to_repo_governance
+task_entrypoint: true
+rollback_target: [docs/governance/README.md, docs/governance/ai-execution.md]
+verification_target: [scripts/check-governance.ps1, scripts/check-governance-sync.ps1, scripts/check-governance-map.ps1]
 ---
 
 # AI 代理入口
@@ -19,8 +28,9 @@ update_when: [routing_changed, execution_protocol_changed, metadata_standard_cha
 
 1. 读取 [docs/governance/README.md](docs/governance/README.md)。
 2. 读取 [docs/governance/ai-execution.md](docs/governance/ai-execution.md)。
-3. 只读取导航文档按任务路由出的治理上下文。
-4. 在治理路由清晰之后，再阅读代码。
+3. 如果任务属于 `governance_change`，或跨多个治理作用域，读取 [docs/governance/governance-map.json](docs/governance/governance-map.json) 获取派生索引。
+4. 只读取导航文档按任务路由出的治理上下文。
+5. 在治理路由清晰之后，再阅读代码。
 
 不要默认加载全部治理文档。先完成路由，再加载满足任务所需的最小上下文集合。
 
@@ -33,6 +43,7 @@ update_when: [routing_changed, execution_protocol_changed, metadata_standard_cha
 - 治理演进与冲突处理真相：[docs/governance/change-management.md](docs/governance/change-management.md)
 - 偏离与设计决策真相：[docs/adr](docs/adr) 下状态为 Accepted 的 ADR
 - 治理破例与债务登记真相：[docs/governance/exceptions.yaml](docs/governance/exceptions.yaml)
+- 机器可读派生索引：[docs/governance/governance-map.json](docs/governance/governance-map.json)
 
 ## 快速路由
 
@@ -53,17 +64,32 @@ update_when: [routing_changed, execution_protocol_changed, metadata_standard_cha
 
 所有面向治理的文档都应携带 YAML front matter。字段与受控枚举以 [docs/governance/metadata-schema.md](docs/governance/metadata-schema.md) 为准，但代理至少必须识别以下字段：
 
+- `state_id`
 - `doc_role`
+- `memory_level`
+- `state_scope`
 - `scope`
 - `authority_level`
 - `owners`
 - `status`
 - `version` 或 `effective_date`
 - `related_rules`
+- `source_of_truth`
+- `derived_from`
 - `read_when`
 - `update_when`
+- `conflict_policy`
+- `rollback_target`
+- `verification_target`
 
 代理应使用元数据做发现和路由，而不是只依赖文件名。
+
+## 状态边界
+
+- `Global State`：仓库级长期状态，只能写入明确的 SSOT、record 或 derived 载体。
+- `Module State`：专题约定和评审规则，只能细化，不能覆盖仓库级真相。
+- `Local State`：当前任务计划、变更范围和验证面，不得直接提升为长期治理。
+- `Ephemeral State`：分析中间推断，不得默认持久化。
 
 ## 禁止事项
 

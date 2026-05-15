@@ -1,14 +1,22 @@
 ---
+state_id: REVIEW-CODE-001
 doc_role: review_checklist
+memory_level: L1
+state_scope: module
 scope: review
 authority_level: derived
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
-version: 1.0
+version: 2.0
 related_rules: [GOV-P0-001, GOV-P0-002, GOV-P0-003, GOV-P0-004, GOV-P1-001, GOV-P1-002, GOV-P1-003, GOV-P1-004, GOV-P1-005, GOV-P1-006]
+source_of_truth: [docs/governance/rules.md, docs/governance/change-management.md, docs/conventions/layering.md, docs/conventions/security-logging.md]
+derived_from: [docs/governance/rules.md, docs/governance/change-management.md, docs/conventions/layering.md, docs/conventions/security-logging.md]
 read_when: [review_change, governance_change]
 update_when: [review_policy_changed, default_rule_changed, automation_changed]
+conflict_policy: derived_must_yield_to_ssot
+rollback_target: [docs/governance/rules.md, docs/governance/change-management.md]
+verification_target: [scripts/check-governance.ps1, scripts/check-governance-map.ps1]
 ---
 
 # 代码评审清单

@@ -1,14 +1,23 @@
 ---
+state_id: GOV-HIST-001
 doc_role: historical_reference
+memory_level: L0
+state_scope: global
 scope: architecture_history
 authority_level: derived
 owners: [tech-lead]
 status: historical
 effective_date: 2026-05-15
-version: 1.0
+version: 2.0
 related_rules: []
+source_of_truth: [docs/governance/README.md, docs/governance/rules.md, docs/adr/20260515-governance-ssot-structure.md]
+derived_from: []
 read_when: [governance_change]
 update_when: [historical_status_changed, governance_structure_changed]
+conflict_policy: historical_must_not_override_current
+rollback_target: [docs/governance/README.md, docs/governance/rules.md]
+verification_target: [scripts/check-governance-sync.ps1, scripts/check-governance-map.ps1]
+superseded_by: [docs/governance/README.md, docs/governance/rules.md, docs/adr/20260515-governance-ssot-structure.md]
 ---
 
 # 历史治理背景

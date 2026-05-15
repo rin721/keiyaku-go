@@ -1,0 +1,1482 @@
+﻿{
+    "metadata":  {
+                     "state_id":  "IDX-GOVMAP-001",
+                     "title":  "Keiyaku-Go Governance Map",
+                     "file_path":  "docs/governance/governance-map.json",
+                     "doc_role":  "governance_map",
+                     "memory_level":  "L0",
+                     "state_scope":  "global",
+                     "scope":  "repo",
+                     "authority_level":  "derived",
+                     "owners":  [
+                                    "tech-lead"
+                                ],
+                     "status":  "active",
+                     "version":  "2.0",
+                     "source_of_truth":  [
+                                             "docs/governance/README.md"
+                                         ],
+                     "derived_from":  [
+                                          "docs/governance/README.md",
+                                          "docs/governance/rules.md",
+                                          "docs/governance/change-management.md",
+                                          "docs/governance/metadata-schema.md"
+                                      ],
+                     "read_when":  [
+                                       "all_tasks",
+                                       "governance_change"
+                                   ],
+                     "update_when":  [
+                                         "routing_changed",
+                                         "governance_structure_changed",
+                                         "metadata_standard_changed",
+                                         "automation_changed"
+                                     ],
+                     "conflict_policy":  "index_must_yield_to_ssot",
+                     "rollback_target":  [
+                                             "docs/governance/README.md",
+                                             "docs/governance/metadata-schema.md"
+                                         ],
+                     "verification_target":  [
+                                                 "scripts/check-governance.ps1",
+                                                 "scripts/check-governance-map.ps1"
+                                             ],
+                     "generated_at":  "2026-05-15T01:59:54.3168714Z"
+                 },
+    "states":  [
+                   {
+                       "state_id":  "GOV-ENTRY-001",
+                       "title":  "AI 代理入口",
+                       "file_path":  "AGENTS.md",
+                       "doc_role":  "ai_entry",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "repo",
+                       "authority_level":  "entry",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/README.md",
+                                               "docs/governance/ai-execution.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/README.md",
+                                            "docs/governance/ai-execution.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "all_tasks"
+                                     ],
+                       "update_when":  [
+                                           "routing_changed",
+                                           "execution_protocol_changed",
+                                           "metadata_standard_changed",
+                                           "governance_structure_changed"
+                                       ],
+                       "conflict_policy":  "entry_must_yield_to_repo_governance",
+                       "rollback_target":  [
+                                               "docs/governance/README.md",
+                                               "docs/governance/ai-execution.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance.ps1",
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:48:26.1802095Z",
+                       "task_entrypoint":  true
+                   },
+                   {
+                       "state_id":  "GOV-ENTRY-002",
+                       "title":  "Claude Code Entry",
+                       "file_path":  "CLAUDE.md",
+                       "doc_role":  "ai_entry",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "repo",
+                       "authority_level":  "entry",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+
+                                         ],
+                       "source_of_truth":  [
+                                               "AGENTS.md",
+                                               "docs/governance/README.md",
+                                               "docs/governance/ai-execution.md"
+                                           ],
+                       "derived_from":  [
+                                            "AGENTS.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "all_tasks"
+                                     ],
+                       "update_when":  [
+                                           "routing_changed",
+                                           "execution_protocol_changed",
+                                           "metadata_standard_changed",
+                                           "governance_structure_changed"
+                                       ],
+                       "conflict_policy":  "entry_must_yield_to_repo_governance",
+                       "rollback_target":  [
+                                               "AGENTS.md",
+                                               "docs/governance/README.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance.ps1",
+                                                   "scripts/check-governance-sync.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:48:26.1807327Z"
+                   },
+                   {
+                       "state_id":  "ADR-TPL-001",
+                       "title":  "ADR 0000：决策标题",
+                       "file_path":  "docs/adr/0000-template.md",
+                       "doc_role":  "template",
+                       "memory_level":  "L1",
+                       "state_scope":  "module",
+                       "scope":  "repo",
+                       "authority_level":  "template",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/adr/README.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/adr/README.md",
+                                            "docs/governance/change-management.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "governance_change",
+                                         "boundary_sensitive",
+                                         "migration_sensitive",
+                                         "async_sensitive"
+                                     ],
+                       "update_when":  [
+                                           "template_changed",
+                                           "adr_policy_changed",
+                                           "governance_structure_changed"
+                                       ],
+                       "conflict_policy":  "template_is_not_executable",
+                       "rollback_target":  [
+                                               "docs/adr/README.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:50:44.9980769Z"
+                   },
+                   {
+                       "state_id":  "ADR-20260515-BACKEND-001",
+                       "title":  "ADR 20260515：默认后端方向与依赖注入方式",
+                       "file_path":  "docs/adr/20260515-default-backend-direction.md",
+                       "doc_role":  "adr",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "repo",
+                       "authority_level":  "ssot_decision",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "accepted",
+                       "related_rules":  [
+                                             "GOV-P1-002",
+                                             "GOV-P1-006"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/adr/20260515-default-backend-direction.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/rules.md",
+                                            "docs/conventions/dependency-injection.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "boundary_sensitive",
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "default_rule_changed",
+                                           "dependency_injection_policy_changed",
+                                           "convention_changed"
+                                       ],
+                       "conflict_policy":  "accepted_adr_overrides_default_backend_direction",
+                       "rollback_target":  [
+                                               "docs/governance/rules.md",
+                                               "docs/conventions/dependency-injection.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:50:44.9960566Z",
+                       "change_reason":  "establish default backend direction before application code exists"
+                   },
+                   {
+                       "state_id":  "ADR-20260515-SSOT-001",
+                       "title":  "ADR 20260515：治理 SSOT 结构整固",
+                       "file_path":  "docs/adr/20260515-governance-ssot-structure.md",
+                       "doc_role":  "adr",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "repo",
+                       "authority_level":  "ssot_decision",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "accepted",
+                       "related_rules":  [
+
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/adr/20260515-governance-ssot-structure.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/architecture/governance.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "governance_structure_changed",
+                                           "metadata_standard_changed",
+                                           "automation_changed"
+                                       ],
+                       "conflict_policy":  "accepted_adr_overrides_legacy_governance_layout",
+                       "rollback_target":  [
+                                               "docs/governance/README.md",
+                                               "docs/governance/rules.md",
+                                               "docs/architecture/governance.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:50:44.9960566Z",
+                       "change_reason":  "remove duplicated SSOTs from the legacy governance document"
+                   },
+                   {
+                       "state_id":  "ADR-20260515-STATE-001",
+                       "title":  "ADR 20260515：治理状态模型升级",
+                       "file_path":  "docs/adr/20260515-governance-state-model.md",
+                       "doc_role":  "adr",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "repo",
+                       "authority_level":  "ssot_decision",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "accepted",
+                       "related_rules":  [
+
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/adr/20260515-governance-state-model.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/README.md",
+                                            "docs/governance/change-management.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "governance_structure_changed",
+                                           "metadata_standard_changed",
+                                           "automation_changed"
+                                       ],
+                       "conflict_policy":  "accepted_adr_overrides_default_governance_shape",
+                       "rollback_target":  [
+                                               "docs/governance/README.md",
+                                               "docs/governance/metadata-schema.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance.ps1",
+                                                   "scripts/check-governance-map.ps1",
+                                                   "scripts/check-governance-sync.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:48:26.1847396Z",
+                       "supersedes":  [
+
+                                      ],
+                       "change_reason":  "promote governance assets from document-oriented routing to state-oriented routing"
+                   },
+                   {
+                       "state_id":  "ADR-INDEX-001",
+                       "title":  "架构决策记录",
+                       "file_path":  "docs/adr/README.md",
+                       "doc_role":  "adr_index",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "repo",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/adr/README.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/change-management.md",
+                                            "docs/adr/20260515-governance-ssot-structure.md",
+                                            "docs/adr/20260515-governance-state-model.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "governance_change",
+                                         "boundary_sensitive",
+                                         "migration_sensitive",
+                                         "async_sensitive"
+                                     ],
+                       "update_when":  [
+                                           "adr_policy_changed",
+                                           "governance_structure_changed",
+                                           "default_rule_changed"
+                                       ],
+                       "conflict_policy":  "adr_index_routes_to_accepted_decisions",
+                       "rollback_target":  [
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:48:26.1837120Z"
+                   },
+                   {
+                       "state_id":  "GOV-HIST-001",
+                       "title":  "历史治理背景",
+                       "file_path":  "docs/architecture/governance.md",
+                       "doc_role":  "historical_reference",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "architecture_history",
+                       "authority_level":  "derived",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "historical",
+                       "related_rules":  [
+
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/README.md",
+                                               "docs/governance/rules.md",
+                                               "docs/adr/20260515-governance-ssot-structure.md"
+                                           ],
+                       "derived_from":  [
+
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "historical_status_changed",
+                                           "governance_structure_changed"
+                                       ],
+                       "conflict_policy":  "historical_must_not_override_current",
+                       "rollback_target":  [
+                                               "docs/governance/README.md",
+                                               "docs/governance/rules.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:50:44.9980769Z",
+                       "superseded_by":  [
+                                             "docs/governance/README.md",
+                                             "docs/governance/rules.md",
+                                             "docs/adr/20260515-governance-ssot-structure.md"
+                                         ]
+                   },
+                   {
+                       "state_id":  "CONV-ASYNC-001",
+                       "title":  "异步任务约定",
+                       "file_path":  "docs/conventions/async-jobs.md",
+                       "doc_role":  "convention",
+                       "memory_level":  "L1",
+                       "state_scope":  "module",
+                       "scope":  "async",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+                                             "GOV-P1-001",
+                                             "GOV-P1-004"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/rules.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/rules.md",
+                                            "docs/governance/change-management.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "async_sensitive",
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "async_policy_changed",
+                                           "adr_accepted",
+                                           "automation_changed"
+                                       ],
+                       "conflict_policy":  "binding_must_yield_to_ssot",
+                       "rollback_target":  [
+                                               "docs/governance/rules.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:50:44.9980769Z"
+                   },
+                   {
+                       "state_id":  "CONV-CI-001",
+                       "title":  "CI 约定",
+                       "file_path":  "docs/conventions/ci.md",
+                       "doc_role":  "convention",
+                       "memory_level":  "L1",
+                       "state_scope":  "module",
+                       "scope":  "ci",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/automation-matrix.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/automation-matrix.md",
+                                            "docs/governance/change-management.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "test_or_ci",
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "ci_changed",
+                                           "automation_changed",
+                                           "default_rule_changed"
+                                       ],
+                       "conflict_policy":  "binding_must_yield_to_ssot",
+                       "rollback_target":  [
+                                               "docs/governance/automation-matrix.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance.ps1",
+                                                   "scripts/check-go-package-state.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:50:45.0000973Z"
+                   },
+                   {
+                       "state_id":  "CONV-DI-001",
+                       "title":  "依赖注入约定",
+                       "file_path":  "docs/conventions/dependency-injection.md",
+                       "doc_role":  "convention",
+                       "memory_level":  "L1",
+                       "state_scope":  "module",
+                       "scope":  "dependency_injection",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+                                             "GOV-P1-006"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/rules.md",
+                                               "docs/adr/20260515-default-backend-direction.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/rules.md",
+                                            "docs/adr/20260515-default-backend-direction.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "boundary_sensitive",
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "dependency_injection_policy_changed",
+                                           "adr_accepted",
+                                           "automation_changed"
+                                       ],
+                       "conflict_policy":  "binding_must_yield_to_ssot",
+                       "rollback_target":  [
+                                               "docs/governance/rules.md",
+                                               "docs/adr/20260515-default-backend-direction.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:50:45.0000973Z"
+                   },
+                   {
+                       "state_id":  "CONV-LAYER-001",
+                       "title":  "分层约定",
+                       "file_path":  "docs/conventions/layering.md",
+                       "doc_role":  "convention",
+                       "memory_level":  "L1",
+                       "state_scope":  "module",
+                       "scope":  "layering",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+                                             "GOV-P0-001",
+                                             "GOV-P0-002",
+                                             "GOV-P1-001",
+                                             "GOV-P1-002",
+                                             "GOV-P1-003"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/rules.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/rules.md",
+                                            "docs/governance/change-management.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "boundary_sensitive",
+                                         "pkg_change",
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "default_rule_changed",
+                                           "default_behavior_changed",
+                                           "adr_accepted",
+                                           "automation_changed"
+                                       ],
+                       "conflict_policy":  "binding_must_yield_to_ssot",
+                       "rollback_target":  [
+                                               "docs/governance/rules.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-layering.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:50:45.0000973Z"
+                   },
+                   {
+                       "state_id":  "CONV-MIG-001",
+                       "title":  "Migration 约定",
+                       "file_path":  "docs/conventions/migrations.md",
+                       "doc_role":  "convention",
+                       "memory_level":  "L1",
+                       "state_scope":  "module",
+                       "scope":  "migrations",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+                                             "GOV-P1-003"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/rules.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/rules.md",
+                                            "docs/governance/change-management.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "migration_sensitive",
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "migration_policy_changed",
+                                           "adr_accepted",
+                                           "automation_changed"
+                                       ],
+                       "conflict_policy":  "binding_must_yield_to_ssot",
+                       "rollback_target":  [
+                                               "docs/governance/rules.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:50:45.0016072Z"
+                   },
+                   {
+                       "state_id":  "CONV-PKG-001",
+                       "title":  "pkg 设计约定",
+                       "file_path":  "docs/conventions/pkg.md",
+                       "doc_role":  "convention",
+                       "memory_level":  "L1",
+                       "state_scope":  "module",
+                       "scope":  "pkg",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+                                             "GOV-P0-002"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/rules.md",
+                                               "docs/conventions/layering.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/rules.md",
+                                            "docs/conventions/layering.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "pkg_change",
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "default_rule_changed",
+                                           "default_behavior_changed",
+                                           "adr_accepted",
+                                           "automation_changed"
+                                       ],
+                       "conflict_policy":  "binding_must_yield_to_ssot",
+                       "rollback_target":  [
+                                               "docs/governance/rules.md",
+                                               "docs/conventions/layering.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-layering.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:50:45.0016072Z"
+                   },
+                   {
+                       "state_id":  "CONV-SECLOG-001",
+                       "title":  "安全与日志约定",
+                       "file_path":  "docs/conventions/security-logging.md",
+                       "doc_role":  "convention",
+                       "memory_level":  "L1",
+                       "state_scope":  "module",
+                       "scope":  "security",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+                                             "GOV-P0-003",
+                                             "GOV-P0-004",
+                                             "GOV-P1-001"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/rules.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/rules.md",
+                                            "docs/governance/change-management.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "security_sensitive",
+                                         "governance_change",
+                                         "test_or_ci"
+                                     ],
+                       "update_when":  [
+                                           "security_policy_changed",
+                                           "automation_changed",
+                                           "default_rule_changed"
+                                       ],
+                       "conflict_policy":  "binding_must_yield_to_ssot",
+                       "rollback_target":  [
+                                               "docs/governance/rules.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:50:45.0016072Z"
+                   },
+                   {
+                       "state_id":  "CONV-TEST-001",
+                       "title":  "测试约定",
+                       "file_path":  "docs/conventions/testing.md",
+                       "doc_role":  "convention",
+                       "memory_level":  "L1",
+                       "state_scope":  "module",
+                       "scope":  "testing",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+                                             "GOV-P1-005"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/rules.md",
+                                               "docs/governance/automation-matrix.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/rules.md",
+                                            "docs/governance/automation-matrix.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "test_or_ci",
+                                         "governance_change",
+                                         "async_sensitive"
+                                     ],
+                       "update_when":  [
+                                           "test_policy_changed",
+                                           "automation_changed",
+                                           "ci_changed",
+                                           "adr_accepted"
+                                       ],
+                       "conflict_policy":  "binding_must_yield_to_ssot",
+                       "rollback_target":  [
+                                               "docs/governance/rules.md",
+                                               "docs/governance/automation-matrix.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-test-conventions.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:50:45.0028501Z"
+                   },
+                   {
+                       "state_id":  "GOV-AIEXEC-001",
+                       "title":  "AI 执行协议",
+                       "file_path":  "docs/governance/ai-execution.md",
+                       "doc_role":  "ai_execution",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "repo",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/ai-execution.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/README.md",
+                                            "docs/governance/change-management.md",
+                                            "docs/adr/20260515-governance-state-model.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "all_tasks",
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "routing_changed",
+                                           "execution_protocol_changed",
+                                           "metadata_standard_changed",
+                                           "default_behavior_changed",
+                                           "adr_accepted"
+                                       ],
+                       "conflict_policy":  "execution_protocol_must_yield_to_ssot",
+                       "rollback_target":  [
+                                               "docs/governance/README.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance.ps1",
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:48:26.1817859Z"
+                   },
+                   {
+                       "state_id":  "GOV-AUTO-001",
+                       "title":  "自动化归位矩阵",
+                       "file_path":  "docs/governance/automation-matrix.md",
+                       "doc_role":  "automation_spec",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "repo",
+                       "authority_level":  "derived",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+                                             "GOV-P0-001",
+                                             "GOV-P0-002",
+                                             "GOV-P0-003",
+                                             "GOV-P0-004",
+                                             "GOV-P1-001",
+                                             "GOV-P1-002",
+                                             "GOV-P1-003",
+                                             "GOV-P1-004",
+                                             "GOV-P1-005",
+                                             "GOV-P1-006"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/rules.md",
+                                               "docs/governance/change-management.md",
+                                               "docs/governance/metadata-schema.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/rules.md",
+                                            "docs/governance/change-management.md",
+                                            "docs/governance/metadata-schema.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "governance_change",
+                                         "pkg_change",
+                                         "boundary_sensitive",
+                                         "migration_sensitive",
+                                         "async_sensitive",
+                                         "test_or_ci",
+                                         "security_sensitive",
+                                         "review_change"
+                                     ],
+                       "update_when":  [
+                                           "default_rule_changed",
+                                           "automation_changed",
+                                           "review_policy_changed",
+                                           "convention_changed",
+                                           "ci_changed"
+                                       ],
+                       "conflict_policy":  "derived_must_yield_to_ssot",
+                       "rollback_target":  [
+                                               "docs/governance/rules.md",
+                                               "docs/governance/change-management.md",
+                                               "docs/governance/metadata-schema.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance.ps1",
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:48:26.1833604Z"
+                   },
+                   {
+                       "state_id":  "GOV-CHANGE-001",
+                       "title":  "治理变更管理",
+                       "file_path":  "docs/governance/change-management.md",
+                       "doc_role":  "governance_process",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "repo",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/rules.md",
+                                            "docs/adr/20260515-governance-state-model.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "governance_change",
+                                         "boundary_sensitive",
+                                         "migration_sensitive",
+                                         "async_sensitive",
+                                         "exception_review"
+                                     ],
+                       "update_when":  [
+                                           "default_behavior_changed",
+                                           "default_rule_changed",
+                                           "adr_policy_changed",
+                                           "exception_policy_changed",
+                                           "governance_structure_changed"
+                                       ],
+                       "conflict_policy":  "change_management_orchestrates_sync_under_ssot",
+                       "rollback_target":  [
+                                               "docs/governance/rules.md",
+                                               "docs/adr/20260515-governance-state-model.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-exception-expiry.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:48:26.1828316Z"
+                   },
+                   {
+                       "state_id":  "EXC-TPL-001",
+                       "title":  "exceptions.template.yaml",
+                       "file_path":  "docs/governance/exceptions.template.yaml",
+                       "doc_role":  "template",
+                       "memory_level":  "L1",
+                       "state_scope":  "module",
+                       "scope":  "repo",
+                       "authority_level":  "template",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+                                             "GOV-P1-002",
+                                             "GOV-P1-003"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/change-management.md",
+                                               "docs/governance/exceptions.yaml"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/change-management.md",
+                                            "docs/governance/exceptions.yaml"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "governance_change",
+                                         "exception_review"
+                                     ],
+                       "update_when":  [
+                                           "exception_policy_changed",
+                                           "template_changed"
+                                       ],
+                       "conflict_policy":  "template_is_not_executable",
+                       "rollback_target":  [
+                                               "docs/governance/change-management.md",
+                                               "docs/governance/exceptions.yaml"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:50:44.9960566Z"
+                   },
+                   {
+                       "state_id":  "EXC-REG-001",
+                       "title":  "exceptions.yaml",
+                       "file_path":  "docs/governance/exceptions.yaml",
+                       "doc_role":  "exception_registry",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "repo",
+                       "authority_level":  "record",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/exceptions.yaml"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/change-management.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "governance_change",
+                                         "exception_review",
+                                         "review_change"
+                                     ],
+                       "update_when":  [
+                                           "exception_registry_changed",
+                                           "exception_policy_changed"
+                                       ],
+                       "conflict_policy":  "record_must_not_override_ssot",
+                       "rollback_target":  [
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-exception-expiry.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:50:44.9960566Z"
+                   },
+                   {
+                       "state_id":  "GOV-META-001",
+                       "title":  "治理元数据标准",
+                       "file_path":  "docs/governance/metadata-schema.md",
+                       "doc_role":  "metadata_schema",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "repo",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/metadata-schema.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/adr/20260515-governance-ssot-structure.md",
+                                            "docs/adr/20260515-governance-state-model.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "metadata_standard_changed",
+                                           "governance_structure_changed",
+                                           "automation_changed"
+                                       ],
+                       "conflict_policy":  "metadata_schema_defines_governance_taxonomy",
+                       "rollback_target":  [
+                                               "docs/adr/20260515-governance-ssot-structure.md",
+                                               "docs/adr/20260515-governance-state-model.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance-metadata.ps1",
+                                                   "scripts/check-governance-taxonomy.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:48:26.1823093Z"
+                   },
+                   {
+                       "state_id":  "GOV-NAV-001",
+                       "title":  "治理导航",
+                       "file_path":  "docs/governance/README.md",
+                       "doc_role":  "navigation",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "repo",
+                       "authority_level":  "ssot_navigation",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/README.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/adr/20260515-governance-ssot-structure.md",
+                                            "docs/adr/20260515-governance-state-model.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "all_tasks",
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "routing_changed",
+                                           "metadata_standard_changed",
+                                           "governance_structure_changed",
+                                           "default_rule_changed",
+                                           "adr_accepted"
+                                       ],
+                       "conflict_policy":  "navigation_routes_to_ssot_only",
+                       "rollback_target":  [
+                                               "docs/adr/20260515-governance-ssot-structure.md",
+                                               "docs/adr/20260515-governance-state-model.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance.ps1",
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:48:26.1812622Z"
+                   },
+                   {
+                       "state_id":  "GOV-RULES-001",
+                       "title":  "工程治理规则",
+                       "file_path":  "docs/governance/rules.md",
+                       "doc_role":  "governance_rules",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "repo",
+                       "authority_level":  "ssot_rules",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+                                             "GOV-P0-001",
+                                             "GOV-P0-002",
+                                             "GOV-P0-003",
+                                             "GOV-P0-004",
+                                             "GOV-P1-001",
+                                             "GOV-P1-002",
+                                             "GOV-P1-003",
+                                             "GOV-P1-004",
+                                             "GOV-P1-005",
+                                             "GOV-P1-006"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/rules.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/adr/20260515-default-backend-direction.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "all_tasks",
+                                         "governance_change",
+                                         "pkg_change",
+                                         "boundary_sensitive",
+                                         "migration_sensitive",
+                                         "async_sensitive",
+                                         "test_or_ci",
+                                         "security_sensitive"
+                                     ],
+                       "update_when":  [
+                                           "default_rule_changed",
+                                           "default_behavior_changed",
+                                           "adr_accepted",
+                                           "automation_changed",
+                                           "review_policy_changed"
+                                       ],
+                       "conflict_policy":  "ssot_rules_override_lower_layers",
+                       "rollback_target":  [
+                                               "docs/adr/20260515-default-backend-direction.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance.ps1",
+                                                   "scripts/check-rule-links.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:50:44.9950459Z"
+                   },
+                   {
+                       "state_id":  "MIG-TPL-001",
+                       "title":  "Migration 灰度变更模板",
+                       "file_path":  "docs/migrations/gray-release-template.md",
+                       "doc_role":  "template",
+                       "memory_level":  "L1",
+                       "state_scope":  "module",
+                       "scope":  "migrations",
+                       "authority_level":  "template",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+                                             "GOV-P1-003",
+                                             "GOV-P1-004"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/rules.md",
+                                               "docs/conventions/migrations.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/rules.md",
+                                            "docs/conventions/migrations.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "migration_sensitive",
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "migration_policy_changed",
+                                           "adr_accepted",
+                                           "template_changed"
+                                       ],
+                       "conflict_policy":  "template_is_not_executable",
+                       "rollback_target":  [
+                                               "docs/governance/rules.md",
+                                               "docs/conventions/migrations.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:50:44.9980769Z"
+                   },
+                   {
+                       "state_id":  "REVIEW-CODE-001",
+                       "title":  "代码评审清单",
+                       "file_path":  "docs/review/checklist.md",
+                       "doc_role":  "review_checklist",
+                       "memory_level":  "L1",
+                       "state_scope":  "module",
+                       "scope":  "review",
+                       "authority_level":  "derived",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+                                             "GOV-P0-001",
+                                             "GOV-P0-002",
+                                             "GOV-P0-003",
+                                             "GOV-P0-004",
+                                             "GOV-P1-001",
+                                             "GOV-P1-002",
+                                             "GOV-P1-003",
+                                             "GOV-P1-004",
+                                             "GOV-P1-005",
+                                             "GOV-P1-006"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/rules.md",
+                                               "docs/governance/change-management.md",
+                                               "docs/conventions/layering.md",
+                                               "docs/conventions/security-logging.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/rules.md",
+                                            "docs/governance/change-management.md",
+                                            "docs/conventions/layering.md",
+                                            "docs/conventions/security-logging.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "review_change",
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "review_policy_changed",
+                                           "default_rule_changed",
+                                           "automation_changed"
+                                       ],
+                       "conflict_policy":  "derived_must_yield_to_ssot",
+                       "rollback_target":  [
+                                               "docs/governance/rules.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:50:44.9980769Z"
+                   },
+                   {
+                       "state_id":  "REVIEW-GOV-001",
+                       "title":  "治理变更评审清单",
+                       "file_path":  "docs/review/governance-change-checklist.md",
+                       "doc_role":  "review_checklist",
+                       "memory_level":  "L1",
+                       "state_scope":  "module",
+                       "scope":  "review",
+                       "authority_level":  "derived",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/rules.md",
+                                               "docs/governance/change-management.md",
+                                               "docs/governance/metadata-schema.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/rules.md",
+                                            "docs/governance/change-management.md",
+                                            "docs/governance/metadata-schema.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "governance_change",
+                                         "review_change"
+                                     ],
+                       "update_when":  [
+                                           "review_policy_changed",
+                                           "governance_structure_changed",
+                                           "metadata_standard_changed"
+                                       ],
+                       "conflict_policy":  "derived_must_yield_to_ssot",
+                       "rollback_target":  [
+                                               "docs/governance/change-management.md",
+                                               "docs/governance/metadata-schema.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T01:48:26.1842159Z"
+                   }
+               ]
+}

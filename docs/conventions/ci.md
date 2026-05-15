@@ -1,14 +1,22 @@
 ---
+state_id: CONV-CI-001
 doc_role: convention
+memory_level: L1
+state_scope: module
 scope: ci
 authority_level: binding
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
-version: 1.0
+version: 2.0
 related_rules: []
+source_of_truth: [docs/governance/automation-matrix.md, docs/governance/change-management.md]
+derived_from: [docs/governance/automation-matrix.md, docs/governance/change-management.md]
 read_when: [test_or_ci, governance_change]
 update_when: [ci_changed, automation_changed, default_rule_changed]
+conflict_policy: binding_must_yield_to_ssot
+rollback_target: [docs/governance/automation-matrix.md, docs/governance/change-management.md]
+verification_target: [scripts/check-governance.ps1, scripts/check-go-package-state.ps1, scripts/check-governance-map.ps1]
 ---
 
 # CI 约定

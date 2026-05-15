@@ -37,6 +37,11 @@ if (Test-Path -LiteralPath $docsPath -PathType Container) {
     $files += Get-ChildItem -LiteralPath $docsPath -Recurse -File -Include "*.md", "*.yaml", "*.yml"
 }
 
+$governanceMap = Join-Path $Root "docs/governance/governance-map.json"
+if (Test-Path -LiteralPath $governanceMap -PathType Leaf) {
+    $files += Get-Item -LiteralPath $governanceMap
+}
+
 $windowsDrivePath = "(?i)(^|[\s\(\[`"'])/?[A-Z]:[\\/][^\s\)\]]+"
 $localUnixPath = "(?i)(^|[\s\(\[`"'])/(Users|home|mnt|workspaces|workspace|tmp|var/folders)/[^\s\)\]]+"
 

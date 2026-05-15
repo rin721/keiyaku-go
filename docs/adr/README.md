@@ -1,19 +1,27 @@
 ---
+state_id: ADR-INDEX-001
 doc_role: adr_index
+memory_level: L0
+state_scope: global
 scope: repo
 authority_level: binding
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
-version: 1.0
+version: 2.0
 related_rules: []
+source_of_truth: [docs/adr/README.md]
+derived_from: [docs/governance/change-management.md, docs/adr/20260515-governance-ssot-structure.md, docs/adr/20260515-governance-state-model.md]
 read_when: [governance_change, boundary_sensitive, migration_sensitive, async_sensitive]
 update_when: [adr_policy_changed, governance_structure_changed, default_rule_changed]
+conflict_policy: adr_index_routes_to_accepted_decisions
+rollback_target: [docs/governance/change-management.md]
+verification_target: [scripts/check-governance-sync.ps1, scripts/check-governance-map.ps1]
 ---
 
 # 架构决策记录
 
-ADR 是 Keiyaku 的设计意图来源。`docs/adr/*.md` 中状态为 `accepted` 且 `authority_level: ssot_decision` 的 ADR 才是偏离默认规则与重大设计取舍的裁决真相。任何偏离 P1 治理规范或改变默认行为的变更，都必须先记录 ADR，并在合入前完成审批。
+ADR 是 Keiyaku 的设计意图来源。`docs/adr/*.md` 中状态为 `accepted` 且 `authority_level: ssot_decision` 的 ADR 才是偏离默认规则与重大设计取舍的裁决真相。任何偏离 P1 治理规范、改变默认行为，或把 Local/Ephemeral 结论提升为长期治理状态的变更，都必须先记录 ADR，并在合入前完成审批。
 
 ## 命名规范
 

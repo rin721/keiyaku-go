@@ -16,6 +16,11 @@ repos:
 
   - repo: local
     hooks:
+      - id: governance-map-refresh
+        name: Refresh governance map
+        entry: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-governance-map.ps1
+        language: system
+        pass_filenames: false
       - id: governance-check
         name: 治理检查
         entry: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-governance.ps1

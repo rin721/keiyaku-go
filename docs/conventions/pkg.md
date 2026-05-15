@@ -1,14 +1,22 @@
 ---
+state_id: CONV-PKG-001
 doc_role: convention
+memory_level: L1
+state_scope: module
 scope: pkg
 authority_level: binding
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
-version: 1.0
+version: 2.0
 related_rules: [GOV-P0-002]
+source_of_truth: [docs/governance/rules.md, docs/conventions/layering.md]
+derived_from: [docs/governance/rules.md, docs/conventions/layering.md]
 read_when: [pkg_change, governance_change]
 update_when: [default_rule_changed, default_behavior_changed, adr_accepted, automation_changed]
+conflict_policy: binding_must_yield_to_ssot
+rollback_target: [docs/governance/rules.md, docs/conventions/layering.md]
+verification_target: [scripts/check-layering.ps1, scripts/check-governance-map.ps1]
 ---
 
 # pkg 设计约定

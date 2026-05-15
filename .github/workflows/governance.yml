@@ -18,6 +18,14 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
+      - name: 刷新治理索引
+        shell: pwsh
+        run: ./scripts/export-governance-map.ps1
+
+      - name: 验证 governance-map 已提交
+        shell: pwsh
+        run: git diff --exit-code -- docs/governance/governance-map.json
+
       - name: 运行治理检查
         shell: pwsh
         run: ./scripts/check-governance.ps1

@@ -1,14 +1,22 @@
 ---
+state_id: ADR-TPL-001
 doc_role: template
+memory_level: L1
+state_scope: module
 scope: repo
 authority_level: template
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
-version: 1.0
+version: 2.0
 related_rules: []
+source_of_truth: [docs/adr/README.md, docs/governance/change-management.md]
+derived_from: [docs/adr/README.md, docs/governance/change-management.md]
 read_when: [governance_change, boundary_sensitive, migration_sensitive, async_sensitive]
 update_when: [template_changed, adr_policy_changed, governance_structure_changed]
+conflict_policy: template_is_not_executable
+rollback_target: [docs/adr/README.md, docs/governance/change-management.md]
+verification_target: [scripts/check-governance.ps1, scripts/check-governance-map.ps1]
 ---
 
 # ADR 0000：决策标题
@@ -50,5 +58,6 @@ P0 不允许偏离。
 
 - [ ] 文档已更新。
 - [ ] `metadata-schema.md`、`automation-matrix.md` 与评审清单已按需同步。
+- [ ] `governance-map.json` 与相关导出/校验脚本已按需同步。
 - [ ] 如果决策改变了可执行规则，CI 或静态检查已更新。
 - [ ] 如涉及迁移或高风险变更，已记录回滚或补偿方案。

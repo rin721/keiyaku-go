@@ -74,6 +74,8 @@ if (-not (Test-Path -LiteralPath $schemaPath -PathType Leaf)) {
 } else {
     $schemaContent = Get-Content -LiteralPath $schemaPath -Raw -Encoding UTF8
     $allowedDocRoles = Get-AllowedValues $schemaContent "DOC_ROLE"
+    $allowedMemoryLevels = Get-AllowedValues $schemaContent "MEMORY_LEVEL"
+    $allowedStateScopes = Get-AllowedValues $schemaContent "STATE_SCOPE"
     $allowedScopes = Get-AllowedValues $schemaContent "SCOPE"
     $allowedAuthorities = Get-AllowedValues $schemaContent "AUTHORITY_LEVEL"
     $allowedStatuses = Get-AllowedValues $schemaContent "STATUS"
@@ -88,7 +90,7 @@ if (-not (Test-Path -LiteralPath $schemaPath -PathType Leaf)) {
     }
     $docsPath = Join-Path $Root "docs"
     if (Test-Path -LiteralPath $docsPath -PathType Container) {
-        $files += Get-ChildItem -LiteralPath $docsPath -Recurse -File -Include "*.md", "*.yaml", "*.yml"
+        $files += Get-ChildItem -LiteralPath $docsPath -Recurse -File | Where-Object { $_.Extension -in @(".md", ".yaml", ".yml") }
     }
 
     foreach ($file in $files) {
@@ -100,14 +102,23 @@ if (-not (Test-Path -LiteralPath $schemaPath -PathType Leaf)) {
         }
 
         $docRole = Parse-SingleValue $frontMatter "doc_role"
+        $memoryLevel = Parse-SingleValue $frontMatter "memory_level"
+        $stateScope = Parse-SingleValue $frontMatter "state_scope"
         $scope = Parse-SingleValue $frontMatter "scope"
         $authority = Parse-SingleValue $frontMatter "authority_level"
         $status = Parse-SingleValue $frontMatter "status"
         $readWhen = Parse-InlineList $frontMatter "read_when"
         $updateWhen = Parse-InlineList $frontMatter "update_when"
+        $taskEntrypoint = Parse-SingleValue $frontMatter "task_entrypoint"
 
         if ($docRole -notin $allowedDocRoles) {
             Add-Failure "Invalid doc_role: $relativePath -> $docRole"
+        }
+        if ($memoryLevel -notin $allowedMemoryLevels) {
+            Add-Failure "Invalid memory_level: $relativePath -> $memoryLevel"
+        }
+        if ($stateScope -notin $allowedStateScopes) {
+            Add-Failure "Invalid state_scope: $relativePath -> $stateScope"
         }
         if ($scope -notin $allowedScopes) {
             Add-Failure "Invalid scope: $relativePath -> $scope"
@@ -134,25 +145,77 @@ if (-not (Test-Path -LiteralPath $schemaPath -PathType Leaf)) {
                 if ($authority -ne "entry") {
                     Add-Failure "AI entry documents must use authority_level: entry -> $relativePath"
                 }
+                if ($memoryLevel -ne "L0" -or $stateScope -ne "global") {
+                    Add-Failure "AI entry documents must use memory_level L0 and state_scope global -> $relativePath"
+                }
             }
             "navigation" {
                 if ($authority -ne "ssot_navigation") {
                     Add-Failure "Navigation SSOT must use authority_level: ssot_navigation -> $relativePath"
+                }
+                if ($memoryLevel -ne "L0" -or $stateScope -ne "global") {
+                    Add-Failure "Navigation SSOT must use memory_level L0 and state_scope global -> $relativePath"
                 }
             }
             "governance_rules" {
                 if ($authority -ne "ssot_rules") {
                     Add-Failure "Rules SSOT must use authority_level: ssot_rules -> $relativePath"
                 }
+                if ($memoryLevel -ne "L0" -or $stateScope -ne "global") {
+                    Add-Failure "Rules SSOT must use memory_level L0 and state_scope global -> $relativePath"
+                }
+            }
+            "ai_execution" {
+                if ($memoryLevel -ne "L0" -or $stateScope -ne "global") {
+                    Add-Failure "AI execution documents must use memory_level L0 and state_scope global -> $relativePath"
+                }
+            }
+            "governance_process" {
+                if ($memoryLevel -ne "L0" -or $stateScope -ne "global") {
+                    Add-Failure "Governance process documents must use memory_level L0 and state_scope global -> $relativePath"
+                }
+            }
+            "automation_spec" {
+                if ($stateScope -ne "global") {
+                    Add-Failure "Automation specs must use state_scope global -> $relativePath"
+                }
+            }
+            "metadata_schema" {
+                if ($memoryLevel -ne "L0" -or $stateScope -ne "global") {
+                    Add-Failure "Metadata schema documents must use memory_level L0 and state_scope global -> $relativePath"
+                }
+            }
+            "adr_index" {
+                if ($memoryLevel -ne "L0" -or $stateScope -ne "global") {
+                    Add-Failure "ADR index documents must use memory_level L0 and state_scope global -> $relativePath"
+                }
             }
             "adr" {
                 if ($authority -ne "ssot_decision") {
                     Add-Failure "ADR decision records must use authority_level: ssot_decision -> $relativePath"
                 }
+                if ($memoryLevel -ne "L0" -or $stateScope -ne "global") {
+                    Add-Failure "ADR decision records must use memory_level L0 and state_scope global -> $relativePath"
+                }
             }
             "template" {
                 if ($authority -ne "template") {
                     Add-Failure "Template documents must use authority_level: template -> $relativePath"
+                }
+            }
+            "convention" {
+                if ($memoryLevel -ne "L1" -or $stateScope -ne "module") {
+                    Add-Failure "Convention documents must use memory_level L1 and state_scope module -> $relativePath"
+                }
+            }
+            "review_checklist" {
+                if ($memoryLevel -ne "L1" -or $stateScope -ne "module") {
+                    Add-Failure "Review checklists must use memory_level L1 and state_scope module -> $relativePath"
+                }
+            }
+            "exception_registry" {
+                if ($stateScope -ne "global") {
+                    Add-Failure "Exception registries must use state_scope global -> $relativePath"
                 }
             }
             "historical_reference" {
@@ -164,6 +227,12 @@ if (-not (Test-Path -LiteralPath $schemaPath -PathType Leaf)) {
 
         if ($authority -eq "ssot_decision" -and $docRole -ne "adr") {
             Add-Failure "Only ADR documents may use authority_level: ssot_decision -> $relativePath"
+        }
+        if (-not [string]::IsNullOrWhiteSpace($taskEntrypoint) -and $taskEntrypoint -notin @("true", "false")) {
+            Add-Failure "task_entrypoint must be 'true' or 'false': $relativePath"
+        }
+        if ($taskEntrypoint -eq "true" -and $docRole -ne "ai_entry") {
+            Add-Failure "Only ai_entry documents may set task_entrypoint: true -> $relativePath"
         }
         if ($relativePath -eq "docs/architecture/governance.md" -and $status -ne "historical") {
             Add-Failure "Historical governance document must use status historical -> $relativePath"

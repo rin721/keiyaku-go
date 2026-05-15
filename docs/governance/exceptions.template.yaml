@@ -1,14 +1,22 @@
 ---
+state_id: EXC-TPL-001
 doc_role: template
+memory_level: L1
+state_scope: module
 scope: repo
 authority_level: template
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
-version: 1.0
+version: 2.0
 related_rules: [GOV-P1-002, GOV-P1-003]
+source_of_truth: [docs/governance/change-management.md, docs/governance/exceptions.yaml]
+derived_from: [docs/governance/change-management.md, docs/governance/exceptions.yaml]
 read_when: [governance_change, exception_review]
 update_when: [exception_policy_changed, template_changed]
+conflict_policy: template_is_not_executable
+rollback_target: [docs/governance/change-management.md, docs/governance/exceptions.yaml]
+verification_target: [scripts/check-governance.ps1, scripts/check-governance-map.ps1]
 ---
 
 exceptions:
@@ -23,6 +31,10 @@ exceptions:
     expiry: null
     required_followup: Define touched-code first cleanup scope, validation method, and stop condition.
     adr_ref: null
+    rollback_target:
+      - docs/governance/change-management.md
+    verification_target:
+      - scripts/check-exception-expiry.ps1
     status: draft
 
   - id: EXC-YYYYMMDD-002
@@ -36,4 +48,8 @@ exceptions:
     expiry: YYYY-MM-DD
     required_followup: Restore the default path, add the missing guardrail, and close or convert this entry before expiry.
     adr_ref: temporary ADR required if this changes default behavior or lasts beyond one release cycle
+    rollback_target:
+      - docs/governance/change-management.md
+    verification_target:
+      - scripts/check-exception-expiry.ps1
     status: draft

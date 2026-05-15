@@ -1,14 +1,23 @@
 ---
+state_id: ADR-20260515-BACKEND-001
 doc_role: adr
+memory_level: L0
+state_scope: global
 scope: repo
 authority_level: ssot_decision
 owners: [tech-lead]
 status: accepted
 effective_date: 2026-05-15
-version: 1.0
+version: 2.0
 related_rules: [GOV-P1-002, GOV-P1-006]
+source_of_truth: [docs/adr/20260515-default-backend-direction.md]
+derived_from: [docs/governance/rules.md, docs/conventions/dependency-injection.md]
 read_when: [boundary_sensitive, governance_change]
 update_when: [default_rule_changed, dependency_injection_policy_changed, convention_changed]
+conflict_policy: accepted_adr_overrides_default_backend_direction
+rollback_target: [docs/governance/rules.md, docs/conventions/dependency-injection.md]
+verification_target: [scripts/check-governance-sync.ps1, scripts/check-governance-map.ps1]
+change_reason: establish default backend direction before application code exists
 ---
 
 # ADR 20260515：默认后端方向与依赖注入方式

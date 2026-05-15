@@ -1,14 +1,22 @@
 ---
+state_id: GOV-RULES-001
 doc_role: governance_rules
+memory_level: L0
+state_scope: global
 scope: repo
 authority_level: ssot_rules
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
-version: 1.0
+version: 2.0
 related_rules: [GOV-P0-001, GOV-P0-002, GOV-P0-003, GOV-P0-004, GOV-P1-001, GOV-P1-002, GOV-P1-003, GOV-P1-004, GOV-P1-005, GOV-P1-006]
+source_of_truth: [docs/governance/rules.md]
+derived_from: [docs/adr/20260515-default-backend-direction.md]
 read_when: [all_tasks, governance_change, pkg_change, boundary_sensitive, migration_sensitive, async_sensitive, test_or_ci, security_sensitive]
 update_when: [default_rule_changed, default_behavior_changed, adr_accepted, automation_changed, review_policy_changed]
+conflict_policy: ssot_rules_override_lower_layers
+rollback_target: [docs/adr/20260515-default-backend-direction.md]
+verification_target: [scripts/check-governance.ps1, scripts/check-rule-links.ps1, scripts/check-governance-map.ps1]
 ---
 
 # 工程治理规则

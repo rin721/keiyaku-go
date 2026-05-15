@@ -1,14 +1,22 @@
 ---
+state_id: EXC-REG-001
 doc_role: exception_registry
+memory_level: L0
+state_scope: global
 scope: repo
 authority_level: record
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
-version: 1.0
+version: 2.0
 related_rules: []
+source_of_truth: [docs/governance/exceptions.yaml]
+derived_from: [docs/governance/change-management.md]
 read_when: [governance_change, exception_review, review_change]
 update_when: [exception_registry_changed, exception_policy_changed]
+conflict_policy: record_must_not_override_ssot
+rollback_target: [docs/governance/change-management.md]
+verification_target: [scripts/check-exception-expiry.ps1, scripts/check-governance-map.ps1]
 ---
 
 exceptions:
@@ -23,6 +31,12 @@ exceptions:
     expiry: null
     required_followup: Completed by introducing docs/governance/rules.md and updating navigation SSOT references.
     adr_ref: null
+    rollback_target:
+      - docs/governance/rules.md
+      - docs/governance/README.md
+    verification_target:
+      - scripts/check-governance-sync.ps1
+      - scripts/check-governance.ps1
     status: closed
 
   - id: EXC-20260515-002
@@ -36,6 +50,11 @@ exceptions:
     expiry: null
     required_followup: Completed by adding metadata headers to legacy governance, ADR, migration, and review documents.
     adr_ref: null
+    rollback_target:
+      - docs/governance/metadata-schema.md
+    verification_target:
+      - scripts/check-governance-metadata.ps1
+      - scripts/check-governance-taxonomy.ps1
     status: closed
 
   - id: EXC-20260515-003
@@ -49,4 +68,11 @@ exceptions:
     expiry: null
     required_followup: Completed by adding scripts/check-go-package-state.ps1 and updating CI/Make package detection.
     adr_ref: null
+    rollback_target:
+      - scripts/check-go-package-state.ps1
+      - .github/workflows/governance.yml
+      - Makefile
+    verification_target:
+      - scripts/check-governance.ps1
+      - scripts/check-go-package-state.ps1
     status: closed

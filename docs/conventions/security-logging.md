@@ -1,14 +1,22 @@
 ---
+state_id: CONV-SECLOG-001
 doc_role: convention
+memory_level: L1
+state_scope: module
 scope: security
 authority_level: binding
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
-version: 1.0
+version: 2.0
 related_rules: [GOV-P0-003, GOV-P0-004, GOV-P1-001]
+source_of_truth: [docs/governance/rules.md, docs/governance/change-management.md]
+derived_from: [docs/governance/rules.md, docs/governance/change-management.md]
 read_when: [security_sensitive, governance_change, test_or_ci]
 update_when: [security_policy_changed, automation_changed, default_rule_changed]
+conflict_policy: binding_must_yield_to_ssot
+rollback_target: [docs/governance/rules.md, docs/governance/change-management.md]
+verification_target: [scripts/check-governance.ps1, scripts/check-governance-map.ps1]
 ---
 
 # 安全与日志约定

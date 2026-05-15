@@ -1,14 +1,22 @@
 ---
+state_id: CONV-TEST-001
 doc_role: convention
+memory_level: L1
+state_scope: module
 scope: testing
 authority_level: binding
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
-version: 1.0
+version: 2.0
 related_rules: [GOV-P1-005]
+source_of_truth: [docs/governance/rules.md, docs/governance/automation-matrix.md]
+derived_from: [docs/governance/rules.md, docs/governance/automation-matrix.md]
 read_when: [test_or_ci, governance_change, async_sensitive]
 update_when: [test_policy_changed, automation_changed, ci_changed, adr_accepted]
+conflict_policy: binding_must_yield_to_ssot
+rollback_target: [docs/governance/rules.md, docs/governance/automation-matrix.md]
+verification_target: [scripts/check-test-conventions.ps1, scripts/check-governance-map.ps1]
 ---
 
 # 测试约定

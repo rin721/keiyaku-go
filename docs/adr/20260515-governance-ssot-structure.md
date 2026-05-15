@@ -1,14 +1,23 @@
 ---
+state_id: ADR-20260515-SSOT-001
 doc_role: adr
+memory_level: L0
+state_scope: global
 scope: repo
 authority_level: ssot_decision
 owners: [tech-lead]
 status: accepted
 effective_date: 2026-05-15
-version: 1.0
+version: 2.0
 related_rules: []
+source_of_truth: [docs/adr/20260515-governance-ssot-structure.md]
+derived_from: [docs/architecture/governance.md]
 read_when: [governance_change]
 update_when: [governance_structure_changed, metadata_standard_changed, automation_changed]
+conflict_policy: accepted_adr_overrides_legacy_governance_layout
+rollback_target: [docs/governance/README.md, docs/governance/rules.md, docs/architecture/governance.md]
+verification_target: [scripts/check-governance-sync.ps1, scripts/check-governance-map.ps1]
+change_reason: remove duplicated SSOTs from the legacy governance document
 ---
 
 # ADR 20260515：治理 SSOT 结构整固

@@ -31,15 +31,47 @@ function Get-RelativePath {
 }
 
 $requiredFields = @(
+    "state_id",
     "doc_role",
+    "memory_level",
+    "state_scope",
     "scope",
     "authority_level",
     "owners",
     "status",
     "related_rules",
+    "source_of_truth",
+    "derived_from",
     "read_when",
-    "update_when"
+    "update_when",
+    "conflict_policy",
+    "rollback_target",
+    "verification_target"
 )
+
+function Parse-InlineList {
+    param([string]$FrontMatter, [string]$FieldName)
+
+    if ($FrontMatter -notmatch "(?m)^$([regex]::Escape($FieldName))\s*:\s*\[(.*)\]\s*$") {
+        return @()
+    }
+
+    $raw = $Matches[1].Trim()
+    if ([string]::IsNullOrWhiteSpace($raw)) {
+        return @()
+    }
+
+    return $raw.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+}
+
+function Parse-SingleValue {
+    param([string]$FrontMatter, [string]$FieldName)
+
+    if ($FrontMatter -match "(?m)^$([regex]::Escape($FieldName))\s*:\s*(.+)\s*$") {
+        return $Matches[1].Trim()
+    }
+    return ""
+}
 
 $files = @()
 $files += Get-ChildItem -LiteralPath $Root -File -Filter "AGENTS.md"
@@ -49,8 +81,11 @@ if (Test-Path -LiteralPath $claude -PathType Leaf) {
 }
 $docsPath = Join-Path $Root "docs"
 if (Test-Path -LiteralPath $docsPath -PathType Container) {
-    $files += Get-ChildItem -LiteralPath $docsPath -Recurse -File -Include "*.md", "*.yaml", "*.yml"
+    $files += Get-ChildItem -LiteralPath $docsPath -Recurse -File | Where-Object { $_.Extension -in @(".md", ".yaml", ".yml") }
 }
+
+$stateIds = @{}
+$taskEntryPoints = @()
 
 foreach ($file in $files) {
     $relativePath = Get-RelativePath $Root $file.FullName
@@ -71,6 +106,41 @@ foreach ($file in $files) {
     if ($frontMatter -notmatch "(?m)^(version|effective_date)\s*:") {
         Add-Failure "Missing metadata field 'version' or 'effective_date': $relativePath"
     }
+
+    $stateId = Parse-SingleValue $frontMatter "state_id"
+    if ([string]::IsNullOrWhiteSpace($stateId)) {
+        Add-Failure "Empty state_id: $relativePath"
+    } elseif ($stateIds.ContainsKey($stateId)) {
+        Add-Failure "Duplicate state_id '$stateId': $relativePath and $($stateIds[$stateId])"
+    } else {
+        $stateIds[$stateId] = $relativePath
+    }
+
+    foreach ($listField in @("owners", "read_when", "update_when", "source_of_truth", "rollback_target", "verification_target")) {
+        $values = Parse-InlineList $frontMatter $listField
+        if ($values.Count -eq 0) {
+            Add-Failure "Metadata field '$listField' must not be empty: $relativePath"
+        }
+    }
+
+    foreach ($scalarField in @("memory_level", "state_scope", "conflict_policy")) {
+        if ([string]::IsNullOrWhiteSpace((Parse-SingleValue $frontMatter $scalarField))) {
+            Add-Failure "Metadata field '$scalarField' must not be empty: $relativePath"
+        }
+    }
+
+    $taskEntrypoint = Parse-SingleValue $frontMatter "task_entrypoint"
+    if (-not [string]::IsNullOrWhiteSpace($taskEntrypoint)) {
+        if ($taskEntrypoint -notin @("true", "false")) {
+            Add-Failure "task_entrypoint must be 'true' or 'false': $relativePath"
+        } elseif ($taskEntrypoint -eq "true") {
+            $taskEntryPoints += $relativePath
+        }
+    }
+}
+
+if ($taskEntryPoints.Count -ne 1) {
+    Add-Failure "Exactly one governance document must set task_entrypoint: true"
 }
 
 if ($failures.Count -gt 0) {

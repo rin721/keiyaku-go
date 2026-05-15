@@ -1,14 +1,22 @@
 ---
+state_id: CONV-MIG-001
 doc_role: convention
+memory_level: L1
+state_scope: module
 scope: migrations
 authority_level: binding
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
-version: 1.0
+version: 2.0
 related_rules: [GOV-P1-003]
+source_of_truth: [docs/governance/rules.md, docs/governance/change-management.md]
+derived_from: [docs/governance/rules.md, docs/governance/change-management.md]
 read_when: [migration_sensitive, governance_change]
 update_when: [migration_policy_changed, adr_accepted, automation_changed]
+conflict_policy: binding_must_yield_to_ssot
+rollback_target: [docs/governance/rules.md, docs/governance/change-management.md]
+verification_target: [scripts/check-governance-sync.ps1, scripts/check-governance-map.ps1]
 ---
 
 # Migration 约定

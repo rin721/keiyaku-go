@@ -46,7 +46,8 @@ function Get-FrontMatter {
 
 Require-Contains "AGENTS.md" @(
     "docs/governance/metadata-schema.md",
-    "docs/governance/change-management.md"
+    "docs/governance/change-management.md",
+    "docs/governance/governance-map.json"
 )
 
 Require-Contains "docs/governance/README.md" @(
@@ -54,19 +55,34 @@ Require-Contains "docs/governance/README.md" @(
     "change-management.md",
     "automation-matrix.md",
     "exceptions.yaml",
-    "exceptions.template.yaml"
+    "exceptions.template.yaml",
+    "governance-map.json",
+    "20260515-governance-state-model.md"
 )
 
 Require-Contains "docs/governance/ai-execution.md" @(
     "metadata-schema.md",
     "automation-matrix.md",
-    "exceptions.yaml"
+    "exceptions.yaml",
+    "governance-map.json"
 )
 
 Require-Contains "docs/governance/automation-matrix.md" @(
     "check-governance-taxonomy.ps1",
     "check-governance-sync.ps1",
-    "dependency-injection.md"
+    "dependency-injection.md",
+    "check-governance-map.ps1",
+    "export-governance-map.ps1",
+    "governance-map.json"
+)
+
+Require-Contains "docs/governance/metadata-schema.md" @(
+    "governance_map",
+    "memory_level",
+    "state_scope",
+    "source_of_truth",
+    "rollback_target",
+    "verification_target"
 )
 
 Require-Contains "docs/review/governance-change-checklist.md" @(
@@ -75,7 +91,8 @@ Require-Contains "docs/review/governance-change-checklist.md" @(
     "metadata-schema.md",
     "automation-matrix.md",
     "exceptions.yaml",
-    "stop-condition"
+    "stop-condition",
+    "governance-map.json"
 )
 
 Require-Contains "docs/adr/README.md" @(
@@ -85,7 +102,8 @@ Require-Contains "docs/adr/README.md" @(
 
 foreach ($adrPath in @(
     "docs/adr/20260515-governance-ssot-structure.md",
-    "docs/adr/20260515-default-backend-direction.md"
+    "docs/adr/20260515-default-backend-direction.md",
+    "docs/adr/20260515-governance-state-model.md"
 )) {
     $content = Read-Text $adrPath
     $frontMatter = Get-FrontMatter $content
@@ -93,6 +111,11 @@ foreach ($adrPath in @(
         Add-Failure "Accepted ADR has the wrong status: $adrPath"
     }
 }
+
+Require-Contains "docs/adr/0000-template.md" @(
+    "governance-map.json",
+    "automation-matrix.md"
+)
 
 $historicalDoc = Read-Text "docs/architecture/governance.md"
 $historicalFrontMatter = Get-FrontMatter $historicalDoc
@@ -106,6 +129,10 @@ if ($historicalDoc -match "## P0" -or $historicalDoc -match "## P1") {
 $exceptions = Read-Text "docs/governance/exceptions.yaml"
 if ($exceptions -match "status:\s+example") {
     Add-Failure "Production exception registry must not keep example entries: docs/governance/exceptions.yaml"
+}
+
+if (-not (Test-Path -LiteralPath (Join-Path $Root "docs/governance/governance-map.json") -PathType Leaf)) {
+    Add-Failure "Missing governance map artifact: docs/governance/governance-map.json"
 }
 
 if ($failures.Count -gt 0) {

@@ -1,14 +1,22 @@
 ---
+state_id: MIG-TPL-001
 doc_role: template
+memory_level: L1
+state_scope: module
 scope: migrations
 authority_level: template
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
-version: 1.0
+version: 2.0
 related_rules: [GOV-P1-003, GOV-P1-004]
+source_of_truth: [docs/governance/rules.md, docs/conventions/migrations.md]
+derived_from: [docs/governance/rules.md, docs/conventions/migrations.md]
 read_when: [migration_sensitive, governance_change]
 update_when: [migration_policy_changed, adr_accepted, template_changed]
+conflict_policy: template_is_not_executable
+rollback_target: [docs/governance/rules.md, docs/conventions/migrations.md]
+verification_target: [scripts/check-governance.ps1, scripts/check-governance-map.ps1]
 ---
 
 # Migration 灰度变更模板
