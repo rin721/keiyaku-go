@@ -34,6 +34,7 @@ verification_target: [scripts/check-governance.ps1, scripts/check-governance-syn
 | Repository Port 归属 | GOV-P1-002 / `conventions/layering.md` | 评审清单 |
 | 运行时反射型 DI 容器 | GOV-P1-006 / `conventions/dependency-injection.md` | 评审清单 + ADR |
 | Wire 等编译期 DI 代码生成是否提交 | GOV-P1-006 / `conventions/dependency-injection.md` | 评审清单 |
+| 可复用封装风格 | `adr/20260515-adopt-encapsulation-style.md` / `conventions/encapsulation.md` | 评审清单；`pkg` 依赖方向仍由 `scripts/check-layering.ps1` 检查 |
 
 ## 测试
 

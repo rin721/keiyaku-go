@@ -42,3 +42,7 @@ verification_target: [scripts/check-layering.ps1, scripts/check-governance-map.p
 - 包名表达能力，不表达具体业务场景。
 - 新增通用能力前，优先确认是否只是当前业务的局部抽象。
 - 如果某个 `pkg` 设计风格将成为默认模式，必须更新本文档，并评估是否需要 ADR 与自动化联动。
+
+## 封装风格
+
+`pkg` 下新增可复用能力时，默认遵循 [可复用封装风格约定](encapsulation.md)：明确包边界，拆分概述文档、常量、数据类型、错误类型、核心实现和测试；概述文档必须包含使用说明。

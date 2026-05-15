@@ -43,3 +43,4 @@ verification_target: [scripts/check-governance.ps1, scripts/check-governance-map
 
 - [ ] 观测、指标、文件处理、邮件能力、并发控制等推荐实践已按当前变更风险合理取舍。
 - [ ] 如果某个局部实践正在成为默认风格，已按 `change-management.md` 判断是否需要 ADR 与闭环同步。
+- [ ] 新增可复用封装已按 `docs/conventions/encapsulation.md` 检查概述文档、常量/类型、错误类型、边界和测试。

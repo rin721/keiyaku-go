@@ -41,7 +41,7 @@
                                                  "scripts/check-governance.ps1",
                                                  "scripts/check-governance-map.ps1"
                                              ],
-                     "generated_at":  "2026-05-15T02:45:22.9781144Z"
+                     "generated_at":  "2026-05-15T05:55:51.7648694Z"
                  },
     "states":  [
                    {
@@ -197,6 +197,61 @@
                                                    "scripts/check-governance-map.ps1"
                                                ],
                        "last_updated":  "2026-05-15T01:50:44.9980769Z"
+                   },
+                   {
+                       "state_id":  "ADR-20260515-ENCAP-001",
+                       "title":  "ADR 20260515：采用可复用封装风格",
+                       "file_path":  "docs/adr/20260515-adopt-encapsulation-style.md",
+                       "doc_role":  "adr",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "repo",
+                       "authority_level":  "ssot_decision",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "accepted",
+                       "related_rules":  [
+                                             "GOV-P0-002",
+                                             "GOV-P1-002",
+                                             "GOV-P1-005"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/adr/20260515-adopt-encapsulation-style.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/change-management.md",
+                                            "docs/conventions/pkg.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "governance_change",
+                                         "pkg_change",
+                                         "boundary_sensitive",
+                                         "review_change"
+                                     ],
+                       "update_when":  [
+                                           "default_behavior_changed",
+                                           "convention_changed",
+                                           "review_policy_changed",
+                                           "automation_changed"
+                                       ],
+                       "conflict_policy":  "accepted_adr_defines_default_encapsulation_style",
+                       "rollback_target":  [
+                                               "docs/conventions/pkg.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-governance-map.ps1",
+                                                   "scripts/check-layering.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T05:55:44.7628139Z"
                    },
                    {
                        "state_id":  "ADR-20260515-BACKEND-002",
@@ -821,6 +876,62 @@
                        "last_updated":  "2026-05-15T01:50:45.0000973Z"
                    },
                    {
+                       "state_id":  "CONV-ENCAP-001",
+                       "title":  "可复用封装风格约定",
+                       "file_path":  "docs/conventions/encapsulation.md",
+                       "doc_role":  "convention",
+                       "memory_level":  "L1",
+                       "state_scope":  "module",
+                       "scope":  "repo",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "active",
+                       "related_rules":  [
+                                             "GOV-P0-002",
+                                             "GOV-P1-002",
+                                             "GOV-P1-005"
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/adr/20260515-adopt-encapsulation-style.md",
+                                               "docs/governance/rules.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/adr/20260515-adopt-encapsulation-style.md",
+                                            "docs/conventions/pkg.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "governance_change",
+                                         "pkg_change",
+                                         "boundary_sensitive",
+                                         "review_change"
+                                     ],
+                       "update_when":  [
+                                           "default_behavior_changed",
+                                           "convention_changed",
+                                           "review_policy_changed",
+                                           "automation_changed"
+                                       ],
+                       "conflict_policy":  "binding_must_yield_to_accepted_adr_and_rules",
+                       "rollback_target":  [
+                                               "docs/adr/20260515-adopt-encapsulation-style.md",
+                                               "docs/conventions/pkg.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-layering.ps1",
+                                                   "scripts/check-governance-map.ps1",
+                                                   "scripts/check-governance-sync.ps1"
+                                               ],
+                       "last_updated":  "2026-05-15T05:55:44.7633451Z"
+                   },
+                   {
                        "state_id":  "CONV-LAYER-001",
                        "title":  "分层约定",
                        "file_path":  "docs/conventions/layering.md",
@@ -975,7 +1086,7 @@
                                                    "scripts/check-layering.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:50:45.0016072Z"
+                       "last_updated":  "2026-05-15T05:55:44.7638712Z"
                    },
                    {
                        "state_id":  "CONV-SECLOG-001",
@@ -1204,7 +1315,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:48:26.1833604Z"
+                       "last_updated":  "2026-05-15T05:55:44.7649106Z"
                    },
                    {
                        "state_id":  "GOV-CHANGE-001",
@@ -1637,7 +1748,7 @@
                                                    "scripts/check-governance.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:50:44.9980769Z"
+                       "last_updated":  "2026-05-15T05:55:44.7643840Z"
                    },
                    {
                        "state_id":  "REVIEW-GOV-001",
