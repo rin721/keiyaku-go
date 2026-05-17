@@ -102,7 +102,11 @@ func runMigration(ctx context.Context, cliCtx *cmdcli.Context) error {
 	if err != nil {
 		return cmdcli.WrapRuntimeError(cmdcli.OperationAction, "打开数据库连接失败", err)
 	}
-	defer db.Close()
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			ui.Warnf("关闭数据库连接失败：%v", closeErr)
+		}
+	}()
 	if err := db.Ping(); err != nil {
 		return cmdcli.WrapRuntimeError(cmdcli.OperationAction, "数据库连接检查失败", err)
 	}
@@ -187,7 +191,7 @@ func migrateUp(db *sql.DB, dir string, ui *cmdcli.UI) error {
 		if applied {
 			continue
 		}
-		if err := execFile(db, file); err != nil {
+		if err := execFile(db, dir, file); err != nil {
 			return err
 		}
 		if _, err := db.Exec("INSERT INTO schema_migrations(version, applied_at) VALUES(?, ?)", version, time.Now().UTC()); err != nil {
@@ -210,7 +214,11 @@ func migrateDown(db *sql.DB, dir string, steps int, ui *cmdcli.UI) error {
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			ui.Warnf("关闭迁移查询结果失败：%v", closeErr)
+		}
+	}()
 	var versions []string
 	for rows.Next() {
 		var version string
@@ -228,7 +236,7 @@ func migrateDown(db *sql.DB, dir string, steps int, ui *cmdcli.UI) error {
 	}
 	for _, version := range versions {
 		file := filepath.Join(dir, version+migrationDownSuffix)
-		if err := execFile(db, file); err != nil {
+		if err := execFile(db, dir, file); err != nil {
 			return err
 		}
 		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = ?", version); err != nil {
@@ -251,8 +259,13 @@ func migrationApplied(db *sql.DB, version string) (bool, error) {
 	return false, err
 }
 
-func execFile(db *sql.DB, file string) error {
-	content, err := os.ReadFile(file)
+func execFile(db *sql.DB, dir, file string) error {
+	safeFile, err := resolveMigrationFile(dir, file)
+	if err != nil {
+		return err
+	}
+	// #nosec G304 -- migration files are constrained to the configured migration directory.
+	content, err := os.ReadFile(safeFile)
 	if err != nil {
 		return err
 	}
@@ -270,6 +283,25 @@ func execFile(db *sql.DB, file string) error {
 		}
 	}
 	return nil
+}
+
+func resolveMigrationFile(dir, file string) (string, error) {
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return "", fmt.Errorf("resolve migration dir: %w", err)
+	}
+	absFile, err := filepath.Abs(file)
+	if err != nil {
+		return "", fmt.Errorf("resolve migration file: %w", err)
+	}
+	rel, err := filepath.Rel(absDir, absFile)
+	if err != nil {
+		return "", fmt.Errorf("check migration file path: %w", err)
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || filepath.IsAbs(rel) {
+		return "", fmt.Errorf("migration file escapes migration dir: %s", file)
+	}
+	return absFile, nil
 }
 
 func migrationVersion(file, suffix string) string {

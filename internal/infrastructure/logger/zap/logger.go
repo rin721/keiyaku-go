@@ -27,7 +27,7 @@ func New(cfg config.LogConfig) (*Logger, func() error, error) {
 	encoderCfg.EncodeDuration = zapcore.StringDurationEncoder
 	encoder := zapcore.NewJSONEncoder(encoderCfg)
 
-	if err := os.MkdirAll(cfg.OutputDir, 0o755); err != nil {
+	if err := os.MkdirAll(cfg.OutputDir, 0o750); err != nil {
 		return nil, nil, fmt.Errorf("create log directory: %w", err)
 	}
 	infoWriter := zapcore.AddSync(&lumberjack.Logger{

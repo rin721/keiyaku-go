@@ -40,8 +40,7 @@
                      "verification_target":  [
                                                  "scripts/check-governance.ps1",
                                                  "scripts/check-governance-map.ps1"
-                                             ],
-                     "generated_at":  "2026-05-17T07:07:12.8259907Z"
+                                             ]
                  },
     "states":  [
                    {
@@ -93,7 +92,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-17T07:05:57.1734192Z",
+                       "content_hash":  "219295032df21628d0812d1a13cdd528051bcc70b5a5bbdb8585705572823f20",
                        "task_entrypoint":  true
                    },
                    {
@@ -144,7 +143,7 @@
                                                    "scripts/check-governance.ps1",
                                                    "scripts/check-governance-sync.ps1"
                                                ],
-                       "last_updated":  "2026-05-17T07:05:57.1744867Z"
+                       "content_hash":  "ac8976390f0127cdb6da365afa51ecf33c354a6b94015c649e388aaedb048f97"
                    },
                    {
                        "state_id":  "ADR-TPL-001",
@@ -196,7 +195,7 @@
                                                    "scripts/check-governance.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:50:44.9980769Z"
+                       "content_hash":  "99d1958db2f85dd90d27e962cf9d7fc67b300f2d7b6fc325ec4d7984a1142e18"
                    },
                    {
                        "state_id":  "ADR-20260515-ENCAP-001",
@@ -251,7 +250,7 @@
                                                    "scripts/check-governance-map.ps1",
                                                    "scripts/check-layering.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T05:55:44.7628139Z"
+                       "content_hash":  "420d58173e4a5544840ab82fd57c61982c81a05bc92f1dfe99686e71285fa630"
                    },
                    {
                        "state_id":  "ADR-20260515-BACKEND-002",
@@ -312,7 +311,7 @@
                                                    "scripts/check-governance-map.ps1",
                                                    "scripts/check-layering.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T02:33:50.8462001Z",
+                       "content_hash":  "2b608f2dcc8e05754a7ff0c698ebcccb9016795cea52fc048aea749aeb266e2d",
                        "change_reason":  "align implementation stack with product architecture request"
                    },
                    {
@@ -363,7 +362,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:50:44.9960566Z",
+                       "content_hash":  "4ffc966d555cdfd0c7c4e5a196092a0a818038b315426b9beb04d2afdfd54f72",
                        "change_reason":  "establish default backend direction before application code exists"
                    },
                    {
@@ -412,7 +411,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:50:44.9960566Z",
+                       "content_hash":  "74372d08a8ca6fe623ce938bbd47383cf597a1cf6b6a9441d9ced66b73c378ab",
                        "change_reason":  "remove duplicated SSOTs from the legacy governance document"
                    },
                    {
@@ -463,7 +462,7 @@
                                                    "scripts/check-governance-map.ps1",
                                                    "scripts/check-governance-sync.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:48:26.1847396Z",
+                       "content_hash":  "f14bf9ed14f00269f5541a7d119699805a56f5969f6b1aeed28aa85e84d5335a",
                        "supersedes":  [
 
                                       ],
@@ -521,7 +520,7 @@
                                                    "scripts/check-governance-taxonomy.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-17T07:05:57.1779544Z",
+                       "content_hash":  "388185ffbb27b78c1f09cf03e27a208b6169f1a53180ad4b39004e86e7813990",
                        "change_reason":  "introduce a stateful governance pipeline for AI governance tasks"
                    },
                    {
@@ -573,7 +572,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:48:26.1837120Z"
+                       "content_hash":  "a16fdf6a30d15a5628f0158ddb8bb6d6e5f75a0e88720f73cd5a3440ead1f40f"
                    },
                    {
                        "state_id":  "AI-PROMPT-PIPELINE-001",
@@ -627,7 +626,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-17T07:07:08.4725928Z"
+                       "content_hash":  "d1cd43ced8f38872c34b254aff1ae9a5e528ea0e522f4ea6963473fb292ed64d"
                    },
                    {
                        "state_id":  "AI-PROMPT-MAINTAIN-001",
@@ -678,7 +677,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-17T07:05:57.1774195Z"
+                       "content_hash":  "93808b8a9f33b7da13e4675920bfb134c7273e3ada494c5246cef3b1b99b537a"
                    },
                    {
                        "state_id":  "API-HTTP-001",
@@ -727,7 +726,7 @@
                                                    "scripts/check-layering.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T02:33:50.8482162Z"
+                       "content_hash":  "d4488d1b27fa0c6053277f44c6bbc888318501dbbd36369267eb4fa84614ba17"
                    },
                    {
                        "state_id":  "ARCH-DB-001",
@@ -775,7 +774,7 @@
                        "verification_target":  [
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T02:33:50.8482162Z"
+                       "content_hash":  "0c83e572b61f0c3f854b19868fb57a6b9d0cf5b0313c68445ab18d4cc4584d14"
                    },
                    {
                        "state_id":  "GOV-HIST-001",
@@ -823,7 +822,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:50:44.9980769Z",
+                       "content_hash":  "259bc00c78aa3234b6bb33ddfda272ed8ab104cc52f22fdb811b38a582bc7986",
                        "superseded_by":  [
                                              "docs/governance/README.md",
                                              "docs/governance/rules.md",
@@ -881,7 +880,7 @@
                                                    "scripts/check-layering.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T02:33:50.8462001Z"
+                       "content_hash":  "fa86e31859f9056518b7311fc7067bf179b5d61b82dc8af59c0725dae24fd2f2"
                    },
                    {
                        "state_id":  "CONV-ASYNC-001",
@@ -932,7 +931,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:50:44.9980769Z"
+                       "content_hash":  "e03a80f1397620322942b5760f8080b573fb07934860e73160e544f0c925028f"
                    },
                    {
                        "state_id":  "CONV-CI-001",
@@ -983,7 +982,7 @@
                                                    "scripts/check-go-package-state.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:50:45.0000973Z"
+                       "content_hash":  "68c6e0725ca5179c871314e6119228e15956af628592165adfb964e9b4b0e559"
                    },
                    {
                        "state_id":  "CONV-DI-001",
@@ -1033,7 +1032,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:50:45.0000973Z"
+                       "content_hash":  "3d4e50cc8f5a9ddf90c6b16ae120a5ed42f891f9b531e159ba4236f4dfcfc0e4"
                    },
                    {
                        "state_id":  "CONV-ENCAP-001",
@@ -1089,7 +1088,7 @@
                                                    "scripts/check-governance-map.ps1",
                                                    "scripts/check-governance-sync.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T05:55:44.7633451Z"
+                       "content_hash":  "c0e89ac81a15da2c071203a54515aad0a483dc624a94f6974b5dee37168d0ea8"
                    },
                    {
                        "state_id":  "CONV-LAYER-001",
@@ -1145,7 +1144,7 @@
                                                    "scripts/check-layering.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:50:45.0000973Z"
+                       "content_hash":  "780c5a7bcb5e0ec792d51d69a4b1f1cd73bd50e44a39f93a02c543eac7b4715c"
                    },
                    {
                        "state_id":  "CONV-MIG-001",
@@ -1195,7 +1194,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:50:45.0016072Z"
+                       "content_hash":  "6f4824f933178a65fef72615919f3e26083ab44fc3c9708f57a5d14532a59e96"
                    },
                    {
                        "state_id":  "CONV-PKG-001",
@@ -1246,7 +1245,7 @@
                                                    "scripts/check-layering.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T05:55:44.7638712Z"
+                       "content_hash":  "fbccea471995f576dcc7ec1a700f54faf60483321218e7ee54d65af2c5d5d9fc"
                    },
                    {
                        "state_id":  "CONV-SECLOG-001",
@@ -1299,7 +1298,7 @@
                                                    "scripts/check-governance.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:50:45.0016072Z"
+                       "content_hash":  "80c1b03f668cd952d86c7021459c0ef319fadbca4da9ed356ff3026fd9b80639"
                    },
                    {
                        "state_id":  "CONV-TEST-001",
@@ -1351,7 +1350,7 @@
                                                    "scripts/check-test-conventions.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:50:45.0028501Z"
+                       "content_hash":  "8104ddf2e9f6e9d362aa7719ba8e4710bc8c6ecb805f81126707f89f0f5cfa52"
                    },
                    {
                        "state_id":  "GOV-AIEXEC-001",
@@ -1404,7 +1403,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-17T07:05:57.1763722Z"
+                       "content_hash":  "730166c7dc4100574e6590d856d9b2c4d8a270fd0570d59561f95feb499b239c"
                    },
                    {
                        "state_id":  "GOV-AUTO-001",
@@ -1477,7 +1476,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-17T07:06:47.0086643Z"
+                       "content_hash":  "c6f61e7256eb42c0537ff9cfd6b109fca4dd24d9ae2985336070c5e668379844"
                    },
                    {
                        "state_id":  "GOV-CHANGE-001",
@@ -1532,7 +1531,7 @@
                                                    "scripts/check-exception-expiry.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:48:26.1828316Z"
+                       "content_hash":  "7837712178cc787a45558737e414a880ab2a5f1966974ea5c47bea6ab0fe3e27"
                    },
                    {
                        "state_id":  "EXC-TPL-001",
@@ -1582,7 +1581,7 @@
                                                    "scripts/check-governance.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:50:44.9960566Z"
+                       "content_hash":  "045801036f99a0c2ba66708f7a3386c468699b176f4e559e7be642f7699b5b5e"
                    },
                    {
                        "state_id":  "EXC-REG-001",
@@ -1629,7 +1628,7 @@
                                                    "scripts/check-exception-expiry.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:50:44.9960566Z"
+                       "content_hash":  "a1ec4fd687453f6c13dcfda305563ca0d147821a32b64bb3b0fef9c75e58fc88"
                    },
                    {
                        "state_id":  "GOV-META-001",
@@ -1678,7 +1677,7 @@
                                                    "scripts/check-governance-taxonomy.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-17T07:05:57.1755747Z"
+                       "content_hash":  "acac51297d6f789453309c308e735275bb00b6805557ed9a150f1fb3a712a08f"
                    },
                    {
                        "state_id":  "GOV-NAV-001",
@@ -1730,7 +1729,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-17T07:05:57.1749988Z"
+                       "content_hash":  "73ad2bcbd86d2152deba20e73c4848142beb47f95b2f72fac3032ccab65bdd53"
                    },
                    {
                        "state_id":  "GOV-RULES-001",
@@ -1796,7 +1795,7 @@
                                                    "scripts/check-rule-links.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T02:33:50.8462001Z"
+                       "content_hash":  "7858f4b7f9f3bd60fcc1bfd02a419c1e9c451e119566696d896c314523897d97"
                    },
                    {
                        "state_id":  "MIG-TPL-001",
@@ -1847,7 +1846,7 @@
                                                    "scripts/check-governance.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:50:44.9980769Z"
+                       "content_hash":  "d21c5fa3ebc9ea07c5f0f818c26fc04e80c5ccde7040b10720d2976e1802cd91"
                    },
                    {
                        "state_id":  "REVIEW-CODE-001",
@@ -1910,7 +1909,7 @@
                                                    "scripts/check-governance.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T05:55:44.7643840Z"
+                       "content_hash":  "17333d66d6b0bfd8049fa3ce3c49bd4959c4976873b499e1139fde29cc7a4d4b"
                    },
                    {
                        "state_id":  "REVIEW-GOV-001",
@@ -1964,7 +1963,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-17T07:06:47.0092065Z"
+                       "content_hash":  "57db95d3ef493a64efad1d8069d35f4df718e5fa9794ef9082feee3ae0a3fd9b"
                    }
                ]
 }

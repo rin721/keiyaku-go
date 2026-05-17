@@ -55,6 +55,20 @@ function Get-Body {
     return $Matches[1]
 }
 
+function Get-ContentHash {
+    param([string]$Content)
+
+    $normalized = $Content.Replace("`r`n", "`n").Replace("`r", "`n")
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($normalized)
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $hash = $sha256.ComputeHash($bytes)
+        return ([System.BitConverter]::ToString($hash)).Replace("-", "").ToLowerInvariant()
+    } finally {
+        $sha256.Dispose()
+    }
+}
+
 function Parse-InlineList {
     param(
         [string]$FrontMatter,
@@ -130,8 +144,7 @@ function Build-StateObject {
     param(
         [string]$RelativePath,
         [string]$Content,
-        [string]$FrontMatter,
-        [DateTime]$LastWriteTimeUtc
+        [string]$FrontMatter
     )
 
     $state = [ordered]@{
@@ -155,7 +168,7 @@ function Build-StateObject {
         conflict_policy = Parse-SingleValue $FrontMatter "conflict_policy"
         rollback_target = @(Parse-InlineList $FrontMatter "rollback_target")
         verification_target = @(Parse-InlineList $FrontMatter "verification_target")
-        last_updated = $LastWriteTimeUtc.ToString("o")
+        content_hash = Get-ContentHash $Content
     }
 
     foreach ($optionalListField in @("supersedes", "superseded_by")) {
@@ -185,7 +198,7 @@ $states = foreach ($file in Get-GovernanceFiles $Root) {
     }
 
     $relativePath = Get-RelativePath $Root $file.FullName
-    Build-StateObject $relativePath $content $frontMatter $file.LastWriteTimeUtc
+    Build-StateObject $relativePath $content $frontMatter
 }
 
 $outputAbsolutePath = Join-Path $Root $OutputPath
@@ -218,7 +231,6 @@ $metadata = [ordered]@{
     conflict_policy = "index_must_yield_to_ssot"
     rollback_target = @("docs/governance/README.md", "docs/governance/metadata-schema.md")
     verification_target = @("scripts/check-governance.ps1", "scripts/check-governance-map.ps1")
-    generated_at = (Get-Date).ToUniversalTime().ToString("o")
 }
 
 $document = [ordered]@{

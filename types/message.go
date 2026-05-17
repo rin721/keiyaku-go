@@ -40,7 +40,7 @@ const (
 	MessageLoadUserFailed       = "failed to load user"
 	MessageCreateUserFailed     = "failed to create user"
 	MessageAllocateUserIDFailed = "failed to allocate user id"
-	MessageHashPasswordFailed   = "failed to hash password"
+	MessageHashPasswordFailed   = "failed to hash password" // #nosec G101 -- user-facing failure message, not a credential.
 	MessageVerifyPasswordFailed = "failed to verify password"
 	MessageIssueTokenFailed     = "failed to issue token"
 

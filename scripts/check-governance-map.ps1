@@ -50,6 +50,20 @@ function Get-FrontMatter {
     return $Matches[1]
 }
 
+function Get-ContentHash {
+    param([string]$Content)
+
+    $normalized = $Content.Replace("`r`n", "`n").Replace("`r", "`n")
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($normalized)
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $hash = $sha256.ComputeHash($bytes)
+        return ([System.BitConverter]::ToString($hash)).Replace("-", "").ToLowerInvariant()
+    } finally {
+        $sha256.Dispose()
+    }
+}
+
 function Parse-InlineList {
     param(
         [string]$FrontMatter,
@@ -165,7 +179,7 @@ if (-not (Test-Path -LiteralPath $mapPath -PathType Leaf)) {
 } else {
     $map = Get-Content -LiteralPath $mapPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
-    foreach ($field in @("state_id", "title", "file_path", "doc_role", "memory_level", "state_scope", "scope", "authority_level", "owners", "status", "source_of_truth", "derived_from", "read_when", "update_when", "conflict_policy", "rollback_target", "verification_target", "generated_at")) {
+    foreach ($field in @("state_id", "title", "file_path", "doc_role", "memory_level", "state_scope", "scope", "authority_level", "owners", "status", "source_of_truth", "derived_from", "read_when", "update_when", "conflict_policy", "rollback_target", "verification_target")) {
         if (-not $map.metadata.PSObject.Properties.Name.Contains($field)) {
             Add-Failure "governance-map.json metadata is missing field: $field"
         }
@@ -237,7 +251,7 @@ if (-not (Test-Path -LiteralPath $mapPath -PathType Leaf)) {
             conflict_policy = Parse-SingleValue $frontMatter "conflict_policy"
             rollback_target = @(Parse-InlineList $frontMatter "rollback_target")
             verification_target = @(Parse-InlineList $frontMatter "verification_target")
-            last_updated = $file.LastWriteTimeUtc.ToString("o")
+            content_hash = Get-ContentHash $content
         }
 
         $documentStates[$stateId] = $expected
