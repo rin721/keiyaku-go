@@ -62,11 +62,13 @@ jobs:
         if: steps.go-packages.outputs.present == 'true'
         run: go test ./...
 
+      - name: 安装 golangci-lint
+        if: steps.go-packages.outputs.present == 'true'
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+
       - name: 运行 golangci-lint
         if: steps.go-packages.outputs.present == 'true'
-        uses: golangci/golangci-lint-action@v6
-        with:
-          args: --config=.golangci.yml
+        run: "$(go env GOPATH)/bin/golangci-lint" run --config=.golangci.yml
 
   secrets:
     name: Secret 扫描

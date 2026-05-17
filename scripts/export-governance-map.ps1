@@ -238,7 +238,7 @@ $document = [ordered]@{
     states = @($states)
 }
 
-$json = $document | ConvertTo-Json -Depth 10
+$json = $document | ConvertTo-Json -Depth 10 -Compress
 Set-Content -LiteralPath $outputAbsolutePath -Value $json -Encoding UTF8
 
 Write-Host "Governance map exported to $OutputPath" -ForegroundColor Green
