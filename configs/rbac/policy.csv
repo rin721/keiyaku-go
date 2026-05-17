@@ -1,0 +1,4 @@
+p, admin, /api/v1/*, (GET|POST|PUT|PATCH|DELETE)
+p, author, /api/v1/users/me, GET
+p, author, /api/v1/articles, POST
+g, admin, author

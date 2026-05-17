@@ -14,3 +14,10 @@ type Catalog struct {
 	Supported []language.Tag
 	Messages  map[language.Tag][]Message
 }
+
+// FileCatalog describes supported languages and message files for a translator.
+type FileCatalog struct {
+	Default   language.Tag
+	Supported []language.Tag
+	Files     map[language.Tag]string
+}

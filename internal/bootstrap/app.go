@@ -8,6 +8,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/rin721/keiyaku-go/internal/api/http/handler"
+	httpi18n "github.com/rin721/keiyaku-go/internal/api/http/i18n"
 	httprouter "github.com/rin721/keiyaku-go/internal/api/http/router"
 	apparticle "github.com/rin721/keiyaku-go/internal/application/article"
 	"github.com/rin721/keiyaku-go/internal/application/auth"
@@ -39,6 +40,9 @@ func New(ctx context.Context, configPath string) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := httpi18n.Init(cfg.I18N.Default, cfg.I18N.Supported, cfg.I18N.Files); err != nil {
+		return nil, err
+	}
 	logBundle, syncLogger, err := zaplogger.New(cfg.Log)
 	if err != nil {
 		return nil, err
@@ -66,7 +70,7 @@ func New(ctx context.Context, configPath string) (*App, error) {
 	}
 	tokenService := authjwt.NewService(cfg.JWT)
 	hasher := password.NewBcryptHasher(cfg.Security.BcryptCost)
-	enforcer, err := authcasbin.NewEnforcer()
+	authorizer, err := authcasbin.NewAuthorizer(cfg.RBAC)
 	if err != nil {
 		_ = redisClient.Close()
 		_ = mysql.Close(db)
@@ -84,7 +88,7 @@ func New(ctx context.Context, configPath string) (*App, error) {
 		Config:         cfg,
 		Logger:         logger,
 		Tokens:         tokenService,
-		Enforcer:       enforcer,
+		Authorizer:     authorizer,
 		AuthHandler:    handler.NewAuthHandler(authService),
 		UserHandler:    handler.NewUserHandler(userService),
 		ArticleHandler: handler.NewArticleHandler(articleService),

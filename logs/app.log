@@ -1,0 +1,23 @@
+{"level":"info","ts":"2026-05-17T19:40:36.525+0800","caller":"mysql/db.go:46","msg":"mysql connected"}
+{"level":"info","ts":"2026-05-17T19:40:37.415+0800","caller":"api/main.go:57","msg":"http server starting","addr":":8080"}
+{"level":"info","ts":"2026-05-17T20:24:01.498+0800","caller":"api/main.go:68","msg":"shutdown signal received"}
+{"level":"info","ts":"2026-05-17T20:24:16.549+0800","caller":"mysql/db.go:46","msg":"mysql connected"}
+{"level":"info","ts":"2026-05-17T20:24:17.400+0800","caller":"api/main.go:57","msg":"http server starting","addr":":8080"}
+{"level":"info","ts":"2026-05-17T20:24:28.477+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"a846c4b37085f0695869a82e6055ea14","method":"GET","path":"","status":404,"latency":"0s","client_ip":"127.0.0.1"}
+{"level":"info","ts":"2026-05-17T20:24:28.570+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"377ff29b3b03fda183f3867105b10d8f","method":"GET","path":"","status":404,"latency":"0s","client_ip":"127.0.0.1"}
+{"level":"info","ts":"2026-05-17T20:28:19.131+0800","caller":"api/main.go:68","msg":"shutdown signal received"}
+{"level":"info","ts":"2026-05-17T21:53:49.279+0800","caller":"mysql/db.go:46","msg":"mysql connected"}
+{"level":"info","ts":"2026-05-17T21:53:50.180+0800","caller":"api/main.go:57","msg":"http server starting","addr":":8080"}
+{"level":"info","ts":"2026-05-17T22:24:58.837+0800","caller":"api/main.go:68","msg":"shutdown signal received"}
+{"level":"info","ts":"2026-05-18T00:22:01.228+0800","caller":"mysql/db.go:46","msg":"mysql connected"}
+{"level":"info","ts":"2026-05-18T00:22:02.128+0800","caller":"api/main.go:57","msg":"http server starting","addr":":8080"}
+{"level":"info","ts":"2026-05-18T00:22:15.100+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"796f5c433f9d2665110bdf1f1e389a55","method":"GET","path":"/api/v1/users/me","status":401,"latency":"1.4804ms","client_ip":"127.0.0.1"}
+{"level":"info","ts":"2026-05-18T00:22:17.063+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"a9a2545da792a9e7c06abbd12a2b5a0d","method":"GET","path":"/api/v1/users/me","status":401,"latency":"0s","client_ip":"127.0.0.1"}
+{"level":"info","ts":"2026-05-18T00:22:18.703+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"6c8dcbf8df5ee79a4bd2e676599729e4","method":"GET","path":"/api/v1/users/me","status":401,"latency":"0s","client_ip":"127.0.0.1"}
+{"level":"info","ts":"2026-05-18T00:22:21.229+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"2e237e31e0442f944267241cbb4aac4f","method":"GET","path":"/api/v1/users/me","status":401,"latency":"0s","client_ip":"127.0.0.1"}
+{"level":"info","ts":"2026-05-18T00:22:21.509+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"d759b4a7547d8d8c110ae96ea48337b2","method":"GET","path":"/api/v1/users/me","status":401,"latency":"0s","client_ip":"127.0.0.1"}
+{"level":"info","ts":"2026-05-18T00:22:21.712+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"e5e443c900600b91197bab1665803351","method":"GET","path":"/api/v1/users/me","status":401,"latency":"0s","client_ip":"127.0.0.1"}
+{"level":"info","ts":"2026-05-18T00:22:21.882+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"e24e1b3725f021776204bb48a2e23ffb","method":"GET","path":"/api/v1/users/me","status":401,"latency":"0s","client_ip":"127.0.0.1"}
+{"level":"info","ts":"2026-05-18T00:22:22.090+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"e379668ed162deb27a32ab1bea08adb0","method":"GET","path":"/api/v1/users/me","status":401,"latency":"0s","client_ip":"127.0.0.1"}
+{"level":"info","ts":"2026-05-18T00:22:22.279+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"b31b0260417a4e6498319f4c32b9a4ac","method":"GET","path":"/api/v1/users/me","status":401,"latency":"0s","client_ip":"127.0.0.1"}
+{"level":"info","ts":"2026-05-18T02:41:40.835+0800","caller":"api/main.go:68","msg":"shutdown signal received"}

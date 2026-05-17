@@ -3,7 +3,6 @@ package router
 import (
 	"net/http"
 
-	casbinv3 "github.com/casbin/casbin/v3"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/rin721/keiyaku-go/internal/api/http/handler"
@@ -16,10 +15,10 @@ import (
 )
 
 type Deps struct {
-	Config   *config.Config
-	Logger   *zap.Logger
-	Tokens   port.TokenIssuer
-	Enforcer *casbinv3.Enforcer
+	Config     *config.Config
+	Logger     *zap.Logger
+	Tokens     port.TokenIssuer
+	Authorizer port.Authorizer
 
 	AuthHandler    *handler.AuthHandler
 	UserHandler    *handler.UserHandler
@@ -50,7 +49,7 @@ func New(deps Deps) *gin.Engine {
 		v1.GET("/articles/:id", deps.ArticleHandler.Get)
 
 		protected := v1.Group("")
-		protected.Use(middleware.Auth(deps.Tokens), middleware.Casbin(deps.Enforcer))
+		protected.Use(middleware.Auth(deps.Tokens), middleware.Casbin(deps.Authorizer))
 		protected.GET("/users/me", deps.UserHandler.Me)
 		protected.POST("/articles", deps.ArticleHandler.Create)
 	}

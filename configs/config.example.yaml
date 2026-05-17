@@ -18,7 +18,7 @@ log:
   compress: true
 
 mysql:
-  dsn: "keiyaku:123456@tcp(38.14.250.76:3306)/keiyaku?charset=utf8mb4&parseTime=True&loc=UTC"
+  dsn: "keiyaku:keiyaku@tcp(127.0.0.1:3306)/keiyaku?charset=utf8mb4&parseTime=True&loc=UTC"
   max_open_conns: 50
   max_idle_conns: 10
   conn_max_lifetime: 1h
@@ -26,9 +26,9 @@ mysql:
   slow_threshold: 200ms
 
 redis:
-  addr: "38.14.250.76:6379"
+  addr: "127.0.0.1:6379"
   username: ""
-  password: "redis_858b27"
+  password: ""
   db: 0
   dial_timeout: 3s
   read_timeout: 1s

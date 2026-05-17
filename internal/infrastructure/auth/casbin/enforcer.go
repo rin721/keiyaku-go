@@ -4,62 +4,28 @@ import (
 	"fmt"
 
 	casbinv3 "github.com/casbin/casbin/v3"
-	"github.com/casbin/casbin/v3/model"
+	"github.com/rin721/keiyaku-go/internal/infrastructure/config"
 )
 
-const rbacModel = `
-[request_definition]
-r = sub, obj, act
-
-[policy_definition]
-p = sub, obj, act
-
-[role_definition]
-g = _, _
-
-[policy_effect]
-e = some(where (p.eft == allow))
-
-[matchers]
-m = g(r.sub, p.sub) && keyMatch2(r.obj, p.obj) && regexMatch(r.act, p.act)
-`
-
-func NewEnforcer() (*casbinv3.Enforcer, error) {
-	m, err := model.NewModelFromString(rbacModel)
-	if err != nil {
-		return nil, fmt.Errorf("build casbin model: %w", err)
-	}
-	enforcer, err := casbinv3.NewEnforcer(m)
-	if err != nil {
-		return nil, fmt.Errorf("build casbin enforcer: %w", err)
-	}
-	if err := seedPolicies(enforcer); err != nil {
-		return nil, err
-	}
-	return enforcer, nil
+type Authorizer struct {
+	enforcer *casbinv3.Enforcer
 }
 
-func seedPolicies(enforcer *casbinv3.Enforcer) error {
-	if enforcer == nil {
-		return fmt.Errorf("casbin enforcer is nil")
+func NewAuthorizer(cfg config.RBACConfig) (*Authorizer, error) {
+	enforcer, err := casbinv3.NewEnforcer(cfg.ModelPath, cfg.PolicyPath)
+	if err != nil {
+		return nil, fmt.Errorf("build casbin authorizer: %w", err)
 	}
-	policies := [][]string{
-		{"admin", "/api/v1/*", "(GET|POST|PUT|PATCH|DELETE)"},
-		{"author", "/api/v1/users/me", "GET"},
-		{"author", "/api/v1/articles", "POST"},
+	return &Authorizer{enforcer: enforcer}, nil
+}
+
+func (a *Authorizer) Allow(role string, object string, action string) (bool, error) {
+	if a == nil || a.enforcer == nil {
+		return false, fmt.Errorf("casbin authorizer is nil")
 	}
-	for _, policy := range policies {
-		if _, err := enforcer.AddPolicy(policy[0], policy[1], policy[2]); err != nil {
-			return fmt.Errorf("add casbin policy: %w", err)
-		}
+	allowed, err := a.enforcer.Enforce(role, object, action)
+	if err != nil {
+		return false, fmt.Errorf("enforce casbin policy: %w", err)
 	}
-	roles := [][]string{
-		{"admin", "author"},
-	}
-	for _, role := range roles {
-		if _, err := enforcer.AddGroupingPolicy(role[0], role[1]); err != nil {
-			return fmt.Errorf("add casbin role: %w", err)
-		}
-	}
-	return nil
+	return allowed, nil
 }

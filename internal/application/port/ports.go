@@ -42,6 +42,10 @@ type TokenIssuer interface {
 	ParseAccessToken(ctx context.Context, token string) (TokenClaims, error)
 }
 
+type Authorizer interface {
+	Allow(role string, object string, action string) (bool, error)
+}
+
 type UserRepository interface {
 	Create(ctx context.Context, entity *user.User) error
 	FindByID(ctx context.Context, id int64) (*user.User, error)

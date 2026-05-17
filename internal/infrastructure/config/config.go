@@ -2,10 +2,12 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/spf13/viper"
+	"golang.org/x/text/language"
 )
 
 type Config struct {
@@ -17,6 +19,8 @@ type Config struct {
 	JWT       JWTConfig       `mapstructure:"jwt"`
 	Snowflake SnowflakeConfig `mapstructure:"snowflake"`
 	Security  SecurityConfig  `mapstructure:"security"`
+	I18N      I18NConfig      `mapstructure:"i18n"`
+	RBAC      RBACConfig      `mapstructure:"rbac"`
 }
 
 type AppConfig struct {
@@ -83,6 +87,17 @@ type SecurityConfig struct {
 	} `mapstructure:"circuit_breaker"`
 }
 
+type I18NConfig struct {
+	Default   string            `mapstructure:"default"`
+	Supported []string          `mapstructure:"supported"`
+	Files     map[string]string `mapstructure:"files"`
+}
+
+type RBACConfig struct {
+	ModelPath  string `mapstructure:"model_path"`
+	PolicyPath string `mapstructure:"policy_path"`
+}
+
 func Load(path string) (*Config, error) {
 	v := viper.New()
 	setDefaults(v)
@@ -98,7 +113,10 @@ func Load(path string) (*Config, error) {
 		v.AddConfigPath(".")
 	}
 	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok && path != "" {
+		if path != "" {
+			return nil, fmt.Errorf("read config: %w", err)
+		}
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, fmt.Errorf("read config: %w", err)
 		}
 	}
@@ -106,13 +124,20 @@ func Load(path string) (*Config, error) {
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("decode config: %w", err)
 	}
+	if err := cfg.normalizeI18N(); err != nil {
+		return nil, err
+	}
+	cfg.resolvePaths(configBaseDir(v.ConfigFileUsed()))
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 	return &cfg, nil
 }
 
-func (c Config) Validate() error {
+func (c *Config) Validate() error {
+	if c == nil {
+		return fmt.Errorf("config is required")
+	}
 	if c.Server.Addr == "" {
 		return fmt.Errorf("server.addr is required")
 	}
@@ -130,6 +155,60 @@ func (c Config) Validate() error {
 	}
 	if c.Security.BcryptCost == 0 {
 		c.Security.BcryptCost = 12
+	}
+	if err := c.I18N.Validate(); err != nil {
+		return err
+	}
+	if err := c.RBAC.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c I18NConfig) Validate() error {
+	if c.Default == "" {
+		return fmt.Errorf("i18n.default is required")
+	}
+	if _, err := language.Parse(c.Default); err != nil {
+		return fmt.Errorf("parse i18n.default %q: %w", c.Default, err)
+	}
+	if len(c.Supported) == 0 {
+		return fmt.Errorf("i18n.supported is required")
+	}
+	if len(c.Files) == 0 {
+		return fmt.Errorf("i18n.files is required")
+	}
+	supported := make(map[string]struct{}, len(c.Supported))
+	for _, tag := range c.Supported {
+		if strings.TrimSpace(tag) == "" {
+			return fmt.Errorf("i18n.supported contains empty language")
+		}
+		parsed, err := language.Parse(tag)
+		if err != nil {
+			return fmt.Errorf("parse i18n.supported %q: %w", tag, err)
+		}
+		canonical := parsed.String()
+		supported[canonical] = struct{}{}
+		if strings.TrimSpace(c.Files[canonical]) == "" {
+			return fmt.Errorf("i18n.files.%s is required", tag)
+		}
+	}
+	defaultTag, err := language.Parse(c.Default)
+	if err != nil {
+		return fmt.Errorf("parse i18n.default %q: %w", c.Default, err)
+	}
+	if _, ok := supported[defaultTag.String()]; !ok {
+		return fmt.Errorf("i18n.default must be included in i18n.supported")
+	}
+	return nil
+}
+
+func (c RBACConfig) Validate() error {
+	if c.ModelPath == "" {
+		return fmt.Errorf("rbac.model_path is required")
+	}
+	if c.PolicyPath == "" {
+		return fmt.Errorf("rbac.policy_path is required")
 	}
 	return nil
 }
@@ -166,4 +245,74 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("security.rate_limit.burst", 200)
 	v.SetDefault("security.circuit_breaker.failure_threshold", 5)
 	v.SetDefault("security.circuit_breaker.open_timeout", "5s")
+	v.SetDefault("i18n.default", "en-US")
+	v.SetDefault("i18n.supported", []string{"en-US", "zh-CN"})
+	v.SetDefault("i18n.files", map[string]string{
+		"en-US": "i18n/en-US.yaml",
+		"zh-CN": "i18n/zh-CN.yaml",
+	})
+	v.SetDefault("rbac.model_path", "rbac/model.conf")
+	v.SetDefault("rbac.policy_path", "rbac/policy.csv")
+}
+
+func (c *Config) resolvePaths(baseDir string) {
+	if c == nil {
+		return
+	}
+	for tag, path := range c.I18N.Files {
+		c.I18N.Files[tag] = resolvePath(baseDir, path)
+	}
+	c.RBAC.ModelPath = resolvePath(baseDir, c.RBAC.ModelPath)
+	c.RBAC.PolicyPath = resolvePath(baseDir, c.RBAC.PolicyPath)
+}
+
+func (c *Config) normalizeI18N() error {
+	if c == nil {
+		return nil
+	}
+	if c.I18N.Default != "" {
+		tag, err := language.Parse(c.I18N.Default)
+		if err != nil {
+			return fmt.Errorf("parse i18n.default %q: %w", c.I18N.Default, err)
+		}
+		c.I18N.Default = tag.String()
+	}
+	for index, raw := range c.I18N.Supported {
+		tag, err := language.Parse(raw)
+		if err != nil {
+			return fmt.Errorf("parse i18n.supported %q: %w", raw, err)
+		}
+		c.I18N.Supported[index] = tag.String()
+	}
+	files := make(map[string]string, len(c.I18N.Files))
+	for raw, path := range c.I18N.Files {
+		tag, err := language.Parse(raw)
+		if err != nil {
+			return fmt.Errorf("parse i18n.files language %q: %w", raw, err)
+		}
+		files[tag.String()] = path
+	}
+	c.I18N.Files = files
+	return nil
+}
+
+func configBaseDir(configFile string) string {
+	if configFile == "" {
+		return "configs"
+	}
+	return filepath.Dir(configFile)
+}
+
+func resolvePath(baseDir string, path string) string {
+	if path == "" || filepath.IsAbs(path) {
+		return filepath.Clean(path)
+	}
+	if baseDir == "" {
+		baseDir = "."
+	}
+	abs, err := filepath.Abs(filepath.Join(baseDir, path))
+	if err != nil {
+		return filepath.Clean(filepath.Join(baseDir, path))
+	}
+	return abs
 }
