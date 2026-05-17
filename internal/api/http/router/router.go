@@ -30,6 +30,7 @@ func New(deps Deps) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 	engine.Use(
+		middleware.I18N(),
 		middleware.TraceID(),
 		middleware.Recovery(deps.Logger),
 		middleware.Logging(deps.Logger),
@@ -55,7 +56,7 @@ func New(deps Deps) *gin.Engine {
 	}
 
 	engine.NoRoute(func(c *gin.Context) {
-		c.JSON(http.StatusNotFound, response.Body{Code: types.CodeNotFound, Msg: types.MessageRouteNotFound})
+		response.JSON(c, http.StatusNotFound, types.CodeNotFound, types.MessageRouteNotFound, nil)
 	})
 	return engine
 }
