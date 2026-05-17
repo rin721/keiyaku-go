@@ -62,6 +62,7 @@ metadata v2 适用于所有持久化治理资产。`governance-map.json` 作为 
 
 <!-- META-DOC_ROLE-START -->
 - `ai_entry`
+- `ai_prompt`
 - `navigation`
 - `governance_rules`
 - `ai_execution`
@@ -109,6 +110,7 @@ metadata v2 适用于所有持久化治理资产。`governance-map.json` 作为 
 - `dependency_injection`
 - `review`
 - `architecture_history`
+- `ai`
 <!-- META-SCOPE-END -->
 
 ## `authority_level`
@@ -182,6 +184,7 @@ metadata v2 适用于所有持久化治理资产。`governance-map.json` 作为 
 ## 约束说明
 
 - `AGENTS.md` 和 `CLAUDE.md` 使用 `doc_role: ai_entry` 与 `authority_level: entry`。
+- AI Prompt 文档使用 `doc_role: ai_prompt`、`scope: ai` 与 `authority_level: binding`；它们只承载执行协议、路由、门禁、产物格式和状态封存，不承载稳定工程规则 SSOT。
 - 仓库导航真相必须使用 `doc_role: navigation` 与 `authority_level: ssot_navigation`。
 - 仓库规则真相必须使用 `doc_role: governance_rules` 与 `authority_level: ssot_rules`。
 - `governance-map.json` 是派生索引，其等价元数据必须满足 `doc_role: governance_map`、`authority_level: derived` 和 `state_scope: global`。

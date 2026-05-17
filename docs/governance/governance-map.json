@@ -41,7 +41,7 @@
                                                  "scripts/check-governance.ps1",
                                                  "scripts/check-governance-map.ps1"
                                              ],
-                     "generated_at":  "2026-05-15T05:55:51.7648694Z"
+                     "generated_at":  "2026-05-17T07:07:12.8259907Z"
                  },
     "states":  [
                    {
@@ -93,7 +93,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:48:26.1802095Z",
+                       "last_updated":  "2026-05-17T07:05:57.1734192Z",
                        "task_entrypoint":  true
                    },
                    {
@@ -144,7 +144,7 @@
                                                    "scripts/check-governance.ps1",
                                                    "scripts/check-governance-sync.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:48:26.1807327Z"
+                       "last_updated":  "2026-05-17T07:05:57.1744867Z"
                    },
                    {
                        "state_id":  "ADR-TPL-001",
@@ -470,6 +470,61 @@
                        "change_reason":  "promote governance assets from document-oriented routing to state-oriented routing"
                    },
                    {
+                       "state_id":  "ADR-20260517-PIPELINE-001",
+                       "title":  "ADR 20260517：采用治理任务 Pipeline Controller",
+                       "file_path":  "docs/adr/20260517-adopt-governance-architect-pipeline-controller.md",
+                       "doc_role":  "adr",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "ai",
+                       "authority_level":  "ssot_decision",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "draft",
+                       "related_rules":  [
+
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/adr/20260517-adopt-governance-architect-pipeline-controller.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/governance/ai-execution.md",
+                                            "docs/governance/change-management.md",
+                                            "docs/adr/20260515-governance-state-model.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "execution_protocol_changed",
+                                           "governance_structure_changed",
+                                           "metadata_standard_changed",
+                                           "review_policy_changed",
+                                           "automation_changed"
+                                       ],
+                       "conflict_policy":  "draft_adr_does_not_override_active_execution_protocol",
+                       "rollback_target":  [
+                                               "docs/governance/ai-execution.md",
+                                               "docs/governance/README.md",
+                                               "docs/governance/metadata-schema.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance.ps1",
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-governance-taxonomy.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-17T07:05:57.1779544Z",
+                       "change_reason":  "introduce a stateful governance pipeline for AI governance tasks"
+                   },
+                   {
                        "state_id":  "ADR-INDEX-001",
                        "title":  "架构决策记录",
                        "file_path":  "docs/adr/README.md",
@@ -519,6 +574,111 @@
                                                    "scripts/check-governance-map.ps1"
                                                ],
                        "last_updated":  "2026-05-15T01:48:26.1837120Z"
+                   },
+                   {
+                       "state_id":  "AI-PROMPT-PIPELINE-001",
+                       "title":  "Governance Architect Pipeline Controller",
+                       "file_path":  "docs/ai/prompts/00-governance-architect-controller.md",
+                       "doc_role":  "ai_prompt",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "ai",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "draft",
+                       "related_rules":  [
+
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/ai-execution.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/adr/20260517-adopt-governance-architect-pipeline-controller.md",
+                                            "docs/governance/ai-execution.md",
+                                            "docs/governance/change-management.md",
+                                            "docs/adr/20260515-governance-state-model.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "execution_protocol_changed",
+                                           "governance_structure_changed",
+                                           "metadata_standard_changed",
+                                           "review_policy_changed",
+                                           "automation_changed"
+                                       ],
+                       "conflict_policy":  "prompt_must_yield_to_governance_ssot",
+                       "rollback_target":  [
+                                               "docs/governance/ai-execution.md",
+                                               "docs/adr/20260517-adopt-governance-architect-pipeline-controller.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance.ps1",
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-17T07:07:08.4725928Z"
+                   },
+                   {
+                       "state_id":  "AI-PROMPT-MAINTAIN-001",
+                       "title":  "Governance Maintain Prompt",
+                       "file_path":  "docs/ai/prompts/10-governance-maintain.md",
+                       "doc_role":  "ai_prompt",
+                       "memory_level":  "L0",
+                       "state_scope":  "global",
+                       "scope":  "ai",
+                       "authority_level":  "binding",
+                       "owners":  [
+                                      "tech-lead"
+                                  ],
+                       "status":  "draft",
+                       "related_rules":  [
+
+                                         ],
+                       "source_of_truth":  [
+                                               "docs/governance/ai-execution.md",
+                                               "docs/governance/change-management.md"
+                                           ],
+                       "derived_from":  [
+                                            "docs/adr/20260517-adopt-governance-architect-pipeline-controller.md",
+                                            "docs/governance/ai-execution.md",
+                                            "docs/governance/change-management.md"
+                                        ],
+                       "depends_on":  [
+
+                                      ],
+                       "impacts":  [
+
+                                   ],
+                       "read_when":  [
+                                         "governance_change"
+                                     ],
+                       "update_when":  [
+                                           "execution_protocol_changed",
+                                           "governance_structure_changed",
+                                           "review_policy_changed"
+                                       ],
+                       "conflict_policy":  "prompt_must_yield_to_governance_ssot",
+                       "rollback_target":  [
+                                               "docs/governance/ai-execution.md",
+                                               "docs/adr/20260517-adopt-governance-architect-pipeline-controller.md"
+                                           ],
+                       "verification_target":  [
+                                                   "scripts/check-governance.ps1",
+                                                   "scripts/check-governance-sync.ps1",
+                                                   "scripts/check-governance-map.ps1"
+                                               ],
+                       "last_updated":  "2026-05-17T07:05:57.1774195Z"
                    },
                    {
                        "state_id":  "API-HTTP-001",
@@ -1244,7 +1404,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:48:26.1817859Z"
+                       "last_updated":  "2026-05-17T07:05:57.1763722Z"
                    },
                    {
                        "state_id":  "GOV-AUTO-001",
@@ -1274,12 +1434,14 @@
                        "source_of_truth":  [
                                                "docs/governance/rules.md",
                                                "docs/governance/change-management.md",
-                                               "docs/governance/metadata-schema.md"
+                                               "docs/governance/metadata-schema.md",
+                                               "docs/governance/ai-execution.md"
                                            ],
                        "derived_from":  [
                                             "docs/governance/rules.md",
                                             "docs/governance/change-management.md",
-                                            "docs/governance/metadata-schema.md"
+                                            "docs/governance/metadata-schema.md",
+                                            "docs/governance/ai-execution.md"
                                         ],
                        "depends_on":  [
 
@@ -1315,7 +1477,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T05:55:44.7649106Z"
+                       "last_updated":  "2026-05-17T07:06:47.0086643Z"
                    },
                    {
                        "state_id":  "GOV-CHANGE-001",
@@ -1516,7 +1678,7 @@
                                                    "scripts/check-governance-taxonomy.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:48:26.1823093Z"
+                       "last_updated":  "2026-05-17T07:05:57.1755747Z"
                    },
                    {
                        "state_id":  "GOV-NAV-001",
@@ -1568,7 +1730,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:48:26.1812622Z"
+                       "last_updated":  "2026-05-17T07:05:57.1749988Z"
                    },
                    {
                        "state_id":  "GOV-RULES-001",
@@ -1769,12 +1931,14 @@
                        "source_of_truth":  [
                                                "docs/governance/rules.md",
                                                "docs/governance/change-management.md",
-                                               "docs/governance/metadata-schema.md"
+                                               "docs/governance/metadata-schema.md",
+                                               "docs/governance/ai-execution.md"
                                            ],
                        "derived_from":  [
                                             "docs/governance/rules.md",
                                             "docs/governance/change-management.md",
-                                            "docs/governance/metadata-schema.md"
+                                            "docs/governance/metadata-schema.md",
+                                            "docs/governance/ai-execution.md"
                                         ],
                        "depends_on":  [
 
@@ -1800,7 +1964,7 @@
                                                    "scripts/check-governance-sync.ps1",
                                                    "scripts/check-governance-map.ps1"
                                                ],
-                       "last_updated":  "2026-05-15T01:48:26.1842159Z"
+                       "last_updated":  "2026-05-17T07:06:47.0092065Z"
                    }
                ]
 }

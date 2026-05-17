@@ -29,8 +29,9 @@ verification_target: [scripts/check-governance.ps1, scripts/check-governance-syn
 1. 读取 [docs/governance/README.md](docs/governance/README.md)。
 2. 读取 [docs/governance/ai-execution.md](docs/governance/ai-execution.md)。
 3. 如果任务属于 `governance_change`，或跨多个治理作用域，读取 [docs/governance/governance-map.json](docs/governance/governance-map.json) 获取派生索引。
-4. 只读取导航文档按任务路由出的治理上下文。
-5. 在治理路由清晰之后，再阅读代码。
+4. 如果任务属于治理或 Prompt 体系变更，读取 [docs/ai/prompts/00-governance-architect-controller.md](docs/ai/prompts/00-governance-architect-controller.md) 获取治理任务 Pipeline Controller 流程。
+5. 只读取导航文档按任务路由出的治理上下文。
+6. 在治理路由清晰之后，再阅读代码。
 
 不要默认加载全部治理文档。先完成路由，再加载满足任务所需的最小上下文集合。
 
@@ -41,6 +42,7 @@ verification_target: [scripts/check-governance.ps1, scripts/check-governance-syn
 - 仓库级治理规则真相：[docs/governance/rules.md](docs/governance/rules.md)
 - 元数据标准真相：[docs/governance/metadata-schema.md](docs/governance/metadata-schema.md)
 - 治理演进与冲突处理真相：[docs/governance/change-management.md](docs/governance/change-management.md)
+- 治理任务 Pipeline Controller：[docs/ai/prompts/00-governance-architect-controller.md](docs/ai/prompts/00-governance-architect-controller.md)
 - 偏离与设计决策真相：[docs/adr](docs/adr) 下状态为 Accepted 的 ADR
 - 治理破例与债务登记真相：[docs/governance/exceptions.yaml](docs/governance/exceptions.yaml)
 - 机器可读派生索引：[docs/governance/governance-map.json](docs/governance/governance-map.json)
@@ -58,7 +60,7 @@ verification_target: [scripts/check-governance.ps1, scripts/check-governance-syn
 - 测试、CI、lint、安全扫描、治理脚本变更：
   读取导航、执行协议、仓库级治理规则、测试约定、CI 约定、安全约定、自动化矩阵和相关脚本/workflow。
 - 治理或 Prompt 体系变更：
-  读取导航、执行协议、仓库级治理规则、元数据标准、治理演进规则、ADR 指引、评审清单和治理自动化脚本。
+  读取导航、执行协议、治理任务 Pipeline Controller、仓库级治理规则、元数据标准、治理演进规则、ADR 指引、评审清单和治理自动化脚本。
 
 ## 元数据标准
 

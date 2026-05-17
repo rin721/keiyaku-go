@@ -28,6 +28,7 @@ verification_target: [scripts/check-governance.ps1, scripts/check-governance-syn
 - 导航真相：[docs/governance/README.md](README.md)
 - 仓库级治理规则真相：[docs/governance/rules.md](rules.md)
 - AI 执行协议真相：[docs/governance/ai-execution.md](ai-execution.md)
+- 治理任务 Pipeline Controller：[docs/ai/prompts/00-governance-architect-controller.md](../ai/prompts/00-governance-architect-controller.md) 与 [docs/ai/prompts/10-governance-maintain.md](../ai/prompts/10-governance-maintain.md)
 - 元数据标准真相：[docs/governance/metadata-schema.md](metadata-schema.md)
 - 治理演进与冲突处理真相：[docs/governance/change-management.md](change-management.md)
 - 自动化归位矩阵：[docs/governance/automation-matrix.md](automation-matrix.md)
@@ -64,8 +65,9 @@ verification_target: [scripts/check-governance.ps1, scripts/check-governance-syn
 2. 读取本文档，确定 SSOT、冲突优先级和任务路由。
 3. 读取 [docs/governance/ai-execution.md](ai-execution.md)，确认执行协议。
 4. 如果任务属于 `governance_change`，或需要快速识别多个治理状态对象的读写面，读取 [docs/governance/governance-map.json](governance-map.json)。
-5. 按任务类型读取最小充分上下文。
-6. 在编辑前确认是否需要 ADR、治理债务登记、break-glass 或人工升级。
+5. 如果任务属于治理或 Prompt 体系变更，读取 [docs/ai/prompts/00-governance-architect-controller.md](../ai/prompts/00-governance-architect-controller.md)。
+6. 按任务类型读取最小充分上下文。
+7. 在编辑前确认是否需要 ADR、治理债务登记、break-glass 或人工升级。
 
 不要为了保险而默认读完整个 `docs/` 目录。上下文加载应由 `read_when`、任务标签和变更类型共同决定。
 
@@ -76,7 +78,7 @@ verification_target: [scripts/check-governance.ps1, scripts/check-governance-syn
 - `boundary_sensitive`：
   读取 [docs/governance/rules.md](rules.md)、[docs/conventions/layering.md](../conventions/layering.md)、[docs/conventions/dependency-injection.md](../conventions/dependency-injection.md)、[docs/governance/change-management.md](change-management.md)、[docs/adr/README.md](../adr/README.md) 和相关 Accepted ADR。
 - `governance_change`：
-  读取本文档、[docs/governance/rules.md](rules.md)、[docs/governance/ai-execution.md](ai-execution.md)、[docs/governance/metadata-schema.md](metadata-schema.md)、[docs/governance/change-management.md](change-management.md)、[docs/governance/automation-matrix.md](automation-matrix.md)、[docs/adr/0000-template.md](../adr/0000-template.md) 和 [docs/review/governance-change-checklist.md](../review/governance-change-checklist.md)。
+  读取本文档、[docs/governance/rules.md](rules.md)、[docs/governance/ai-execution.md](ai-execution.md)、[docs/ai/prompts/00-governance-architect-controller.md](../ai/prompts/00-governance-architect-controller.md)、[docs/governance/metadata-schema.md](metadata-schema.md)、[docs/governance/change-management.md](change-management.md)、[docs/governance/automation-matrix.md](automation-matrix.md)、[docs/adr/0000-template.md](../adr/0000-template.md) 和 [docs/review/governance-change-checklist.md](../review/governance-change-checklist.md)。
 - `migration_sensitive`：
   读取 [docs/governance/rules.md](rules.md)、[docs/conventions/migrations.md](../conventions/migrations.md)、[docs/migrations/gray-release-template.md](../migrations/gray-release-template.md) 和相关 ADR。
 - `async_sensitive`：
@@ -128,7 +130,7 @@ verification_target: [scripts/check-governance.ps1, scripts/check-governance-syn
 
 - 新增或修改治理规则时，必须判断它应归入规则文档、专题约定、ADR、评审清单还是自动化。
 - 可由脚本、lint、测试或 CI 稳定检查的规则，不应长期停留在 Prompt 正文里。
-- Prompt 和工具入口只保留路由逻辑、执行约束和升级条件。
+- Prompt 和工具入口只保留路由逻辑、执行约束、阶段状态、产物协议和升级条件，不承载稳定工程规则真相。
 - 改变默认工程风格、默认边界、默认依赖方式、默认工作流或治理政策时，必须评估是否需要 ADR 和闭环同步。
 - 允许历史代码暂时不完全符合新治理，但必须通过 [docs/governance/exceptions.yaml](exceptions.yaml) 可追踪。
 - Markdown 文档链接必须使用相对路径；不得写入本机绝对路径，例如 Windows 盘符路径或 `/Users/...`、`/home/...` 这类机器相关路径。

@@ -29,6 +29,7 @@ Claude Code 在本仓库中的入口规则与 `AGENTS.md` 保持一致。
 2. 再读 [docs/governance/README.md](docs/governance/README.md)。
 3. 再读 [docs/governance/ai-execution.md](docs/governance/ai-execution.md)。
 4. 如果任务属于 `governance_change`，或跨多个治理作用域，读取 [docs/governance/governance-map.json](docs/governance/governance-map.json)。
-5. 按导航文档中的任务路由加载最小上下文。
+5. 如果任务属于治理或 Prompt 体系变更，读取 [docs/ai/prompts/00-governance-architect-controller.md](docs/ai/prompts/00-governance-architect-controller.md)。
+6. 按导航文档中的任务路由加载最小上下文。
 
 本文件只做 Claude Code 薄适配，不复制稳定工程规则，不承担规则真相职责。

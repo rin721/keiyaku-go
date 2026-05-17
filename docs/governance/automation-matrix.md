@@ -10,8 +10,8 @@ status: active
 effective_date: 2026-05-15
 version: 2.0
 related_rules: [GOV-P0-001, GOV-P0-002, GOV-P0-003, GOV-P0-004, GOV-P1-001, GOV-P1-002, GOV-P1-003, GOV-P1-004, GOV-P1-005, GOV-P1-006]
-source_of_truth: [docs/governance/rules.md, docs/governance/change-management.md, docs/governance/metadata-schema.md]
-derived_from: [docs/governance/rules.md, docs/governance/change-management.md, docs/governance/metadata-schema.md]
+source_of_truth: [docs/governance/rules.md, docs/governance/change-management.md, docs/governance/metadata-schema.md, docs/governance/ai-execution.md]
+derived_from: [docs/governance/rules.md, docs/governance/change-management.md, docs/governance/metadata-schema.md, docs/governance/ai-execution.md]
 read_when: [governance_change, pkg_change, boundary_sensitive, migration_sensitive, async_sensitive, test_or_ci, security_sensitive, review_change]
 update_when: [default_rule_changed, automation_changed, review_policy_changed, convention_changed, ci_changed]
 conflict_policy: derived_must_yield_to_ssot
@@ -77,7 +77,10 @@ verification_target: [scripts/check-governance.ps1, scripts/check-governance-syn
 | 治理变更同步面 | `change-management.md` | `scripts/check-governance-sync.ps1` + `review/governance-change-checklist.md` |
 | 历史治理文档不再承载 SSOT | `adr/20260515-governance-ssot-structure.md` | `scripts/check-governance-sync.ps1` |
 | 派生索引生成 | `governance/governance-map.json` | `scripts/export-governance-map.ps1`、`Makefile`、pre-commit、CI |
+| AI Prompt 元数据与枚举合法性 | `metadata-schema.md` / `ai-execution.md` | `scripts/check-governance-taxonomy.ps1`、`scripts/check-governance-map.ps1` |
+| Pipeline Controller 同步引用 | `ai-execution.md` / `adr/20260517-adopt-governance-architect-pipeline-controller.md` | `scripts/check-governance-sync.ps1` + `review/governance-change-checklist.md` |
+| `decision_audit`、`PIPELINE_STATE_LOCK`、Artifact Manifest 的适用范围 | `ai-execution.md` / `docs/ai/prompts` | 评审清单；脚本检查文件存在与同步引用 |
 
 ## Prompt 边界
 
-Agent 入口只保留 first-hop、任务路由、自检、ADR/破例升级条件。稳定规则不得只存在于 Prompt 中。`governance-map.json` 只能节省上下文，不能取代 SSOT。
+Agent 入口只保留 first-hop、任务路由、自检、ADR/破例升级条件。治理任务 Pipeline Controller 可保留阶段状态、Artifact Manifest、`decision_audit` 与 `PIPELINE_STATE_LOCK` 输出约束，但稳定规则不得只存在于 Prompt 中。`governance-map.json` 只能节省上下文，不能取代 SSOT。

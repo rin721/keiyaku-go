@@ -47,7 +47,8 @@ function Get-FrontMatter {
 Require-Contains "AGENTS.md" @(
     "docs/governance/metadata-schema.md",
     "docs/governance/change-management.md",
-    "docs/governance/governance-map.json"
+    "docs/governance/governance-map.json",
+    "docs/ai/prompts/00-governance-architect-controller.md"
 )
 
 Require-Contains "docs/governance/README.md" @(
@@ -57,6 +58,7 @@ Require-Contains "docs/governance/README.md" @(
     "exceptions.yaml",
     "exceptions.template.yaml",
     "governance-map.json",
+    "00-governance-architect-controller.md",
     "20260515-governance-state-model.md"
 )
 
@@ -64,7 +66,11 @@ Require-Contains "docs/governance/ai-execution.md" @(
     "metadata-schema.md",
     "automation-matrix.md",
     "exceptions.yaml",
-    "governance-map.json"
+    "governance-map.json",
+    "00-governance-architect-controller.md",
+    "10-governance-maintain.md",
+    "PIPELINE_STATE_LOCK",
+    "Artifact Manifest"
 )
 
 Require-Contains "docs/governance/automation-matrix.md" @(
@@ -73,10 +79,14 @@ Require-Contains "docs/governance/automation-matrix.md" @(
     "dependency-injection.md",
     "check-governance-map.ps1",
     "export-governance-map.ps1",
-    "governance-map.json"
+    "governance-map.json",
+    "PIPELINE_STATE_LOCK",
+    "Artifact Manifest"
 )
 
 Require-Contains "docs/governance/metadata-schema.md" @(
+    "ai_prompt",
+    "scope: ai",
     "governance_map",
     "memory_level",
     "state_scope",
@@ -92,7 +102,30 @@ Require-Contains "docs/review/governance-change-checklist.md" @(
     "automation-matrix.md",
     "exceptions.yaml",
     "stop-condition",
-    "governance-map.json"
+    "governance-map.json",
+    "00-governance-architect-controller.md",
+    "PIPELINE_STATE_LOCK",
+    "Artifact Manifest"
+)
+
+Require-Contains "docs/ai/prompts/00-governance-architect-controller.md" @(
+    "decision_audit",
+    "PIPELINE_STATE_LOCK",
+    "Artifact Manifest",
+    "docs/adr/20260517-adopt-governance-architect-pipeline-controller.md",
+    "10-governance-maintain.md"
+)
+
+Require-Contains "docs/ai/prompts/10-governance-maintain.md" @(
+    "00-governance-architect-controller.md",
+    "Maintain"
+)
+
+Require-Contains "docs/adr/20260517-adopt-governance-architect-pipeline-controller.md" @(
+    "draft",
+    "decision_audit",
+    "PIPELINE_STATE_LOCK",
+    "Artifact Manifest"
 )
 
 Require-Contains "docs/adr/README.md" @(

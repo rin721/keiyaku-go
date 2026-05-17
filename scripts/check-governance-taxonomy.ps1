@@ -170,6 +170,17 @@ if (-not (Test-Path -LiteralPath $schemaPath -PathType Leaf)) {
                     Add-Failure "AI execution documents must use memory_level L0 and state_scope global -> $relativePath"
                 }
             }
+            "ai_prompt" {
+                if ($memoryLevel -ne "L0" -or $stateScope -ne "global") {
+                    Add-Failure "AI prompt documents must use memory_level L0 and state_scope global -> $relativePath"
+                }
+                if ($scope -ne "ai") {
+                    Add-Failure "AI prompt documents must use scope: ai -> $relativePath"
+                }
+                if ($authority -ne "binding") {
+                    Add-Failure "AI prompt documents must use authority_level: binding -> $relativePath"
+                }
+            }
             "governance_process" {
                 if ($memoryLevel -ne "L0" -or $stateScope -ne "global") {
                     Add-Failure "Governance process documents must use memory_level L0 and state_scope global -> $relativePath"
