@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -47,5 +48,47 @@ func TestNewWithZeroOptionsRegistersHealthz(t *testing.T) {
 	}
 	if body.Code != apperror.CodeOK {
 		t.Fatalf("code = %d, want %d", body.Code, apperror.CodeOK)
+	}
+}
+
+func TestNewInjectsAPIDocsByDefault(t *testing.T) {
+	engine := New(Deps{})
+
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/docs", nil)
+	engine.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("docs status = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	if body := recorder.Body.String(); !strings.Contains(body, "SwaggerUIBundle") {
+		t.Fatalf("docs body does not include Swagger UI bootstrap: %q", body)
+	}
+
+	recorder = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/docs/openapi.yaml", nil)
+	engine.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("openapi status = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	if body := recorder.Body.String(); !strings.Contains(body, "openapi: 3.0.3") {
+		t.Fatalf("openapi body does not include embedded contract: %q", body)
+	}
+}
+
+func TestNewCanDisableAPIDocs(t *testing.T) {
+	engine := New(Deps{
+		Options: Options{
+			APIDocs: APIDocsOptions{Disabled: true},
+		},
+	})
+	recorder := httptest.NewRecorder()
+
+	req := httptest.NewRequest(http.MethodGet, "/docs/openapi.yaml", nil)
+	engine.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusNotFound)
 	}
 }

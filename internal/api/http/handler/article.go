@@ -19,6 +19,20 @@ func NewArticleHandler(service *apparticle.Service) *ArticleHandler {
 	return &ArticleHandler{service: service}
 }
 
+// Create handles article creation.
+// @Summary Create article
+// @Description Create an article for the authenticated user.
+// @Tags Article
+// @Accept json
+// @Produce json
+// @Security bearerAuth
+// @Param request body dto.CreateArticleRequest true "Article payload"
+// @Success 200 {object} dto.ArticleResponse "OK"
+// @Failure 400 {object} response.Body "Invalid request"
+// @Failure 401 {object} response.Body "Unauthorized"
+// @Failure 403 {object} response.Body "Forbidden"
+// @Failure 500 {object} response.Body "Internal server error"
+// @Router /articles [post]
 func (h *ArticleHandler) Create(c *gin.Context) {
 	if h == nil || h.service == nil {
 		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessageArticleHandlerNotReady))
@@ -51,6 +65,17 @@ func (h *ArticleHandler) Create(c *gin.Context) {
 	response.OK(c, dto.NewArticleResponse(entity))
 }
 
+// Get handles published article lookup.
+// @Summary Get published article
+// @Description Get a published article by ID.
+// @Tags Article
+// @Produce json
+// @Param id path int64 true "Article ID"
+// @Success 200 {object} dto.ArticleResponse "OK"
+// @Failure 400 {object} response.Body "Invalid article ID"
+// @Failure 404 {object} response.Body "Article not found"
+// @Failure 500 {object} response.Body "Internal server error"
+// @Router /articles/{id} [get]
 func (h *ArticleHandler) Get(c *gin.Context) {
 	if h == nil || h.service == nil {
 		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessageArticleHandlerNotReady))
@@ -69,6 +94,16 @@ func (h *ArticleHandler) Get(c *gin.Context) {
 	response.OK(c, dto.NewArticleResponse(entity))
 }
 
+// List handles published article listing.
+// @Summary List published articles
+// @Description List published articles with pagination.
+// @Tags Article
+// @Produce json
+// @Param page query int false "Page number"
+// @Param page_size query int false "Page size"
+// @Success 200 {object} dto.ArticleListResponse "OK"
+// @Failure 500 {object} response.Body "Internal server error"
+// @Router /articles [get]
 func (h *ArticleHandler) List(c *gin.Context) {
 	if h == nil || h.service == nil {
 		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessageArticleHandlerNotReady))

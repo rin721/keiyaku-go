@@ -7,8 +7,8 @@ scope: repo
 authority_level: binding
 owners: [tech-lead]
 status: active
-effective_date: 2026-05-15
-version: 1.0
+effective_date: 2026-05-19
+version: 1.2
 related_rules: [GOV-P0-001, GOV-P0-002, GOV-P1-001]
 source_of_truth: [docs/adr/20260515-adopt-gin-gorm-clean-architecture.md]
 derived_from: [docs/architecture/system-design.md]
@@ -21,7 +21,7 @@ verification_target: [scripts/check-layering.ps1, scripts/check-governance-map.p
 
 # HTTP API 契约
 
-所有接口使用 `/api/v1` 前缀，响应体统一为：
+业务接口使用 `/api/v1` 前缀，响应体统一为：
 
 ```json
 {"code":0,"msg":"ok","data":{}}
@@ -45,8 +45,26 @@ verification_target: [scripts/check-layering.ps1, scripts/check-governance-map.p
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
 | POST | `/api/v1/articles` | JWT | 创建文章，可选择立即发布 |
-| GET | `/api/v1/articles/:id` | No | 获取已发布文章详情 |
+| GET | `/api/v1/articles/{id}` | No | 获取已发布文章详情 |
 | GET | `/api/v1/articles` | No | 分页获取已发布文章 |
+
+## OpenAPI Generation
+
+`api/openapi.yaml` 是生成物，不手动编辑。HTTP API 契约由 handler 上的 OpenAPI 注释和 `internal/api/http/dto` 中的 DTO 结构生成：
+
+```powershell
+go run ./cmd/openapi generate
+go run ./cmd/openapi generate --check
+```
+
+## API Docs
+
+Swagger API 文档由 HTTP 路由构造器自动注入：
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/docs` | No | Swagger UI |
+| GET | `/docs/openapi.yaml` | No | OpenAPI 3.0 契约 |
 
 ## Reserved CMS/RBAC
 

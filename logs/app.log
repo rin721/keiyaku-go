@@ -21,3 +21,14 @@
 {"level":"info","ts":"2026-05-18T00:22:22.090+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"e379668ed162deb27a32ab1bea08adb0","method":"GET","path":"/api/v1/users/me","status":401,"latency":"0s","client_ip":"127.0.0.1"}
 {"level":"info","ts":"2026-05-18T00:22:22.279+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"b31b0260417a4e6498319f4c32b9a4ac","method":"GET","path":"/api/v1/users/me","status":401,"latency":"0s","client_ip":"127.0.0.1"}
 {"level":"info","ts":"2026-05-18T02:41:40.835+0800","caller":"api/main.go:68","msg":"shutdown signal received"}
+{"level":"info","ts":"2026-05-19T01:58:02.494+0800","caller":"mysql/db.go:46","msg":"mysql connected"}
+{"level":"info","ts":"2026-05-19T01:58:03.336+0800","caller":"api/main.go:57","msg":"http server starting","addr":":8080"}
+{"level":"info","ts":"2026-05-19T02:27:43.501+0800","caller":"api/main.go:68","msg":"shutdown signal received"}
+{"level":"info","ts":"2026-05-19T02:27:57.658+0800","caller":"mysql/db.go:46","msg":"mysql connected"}
+{"level":"info","ts":"2026-05-19T02:27:58.520+0800","caller":"api/main.go:57","msg":"http server starting","addr":":8080"}
+{"level":"info","ts":"2026-05-19T02:28:15.891+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"a8e6d62b6df841ff54f443fded069e4a","method":"GET","path":"/docs","status":200,"latency":"782.5µs","client_ip":"127.0.0.1"}
+{"level":"info","ts":"2026-05-19T02:28:17.719+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"af5569ae5754b34f6e2c3c6b3bc28d00","method":"GET","path":"/docs/openapi.yaml","status":200,"latency":"0s","client_ip":"127.0.0.1"}
+{"level":"info","ts":"2026-05-19T02:28:17.763+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"4d6f75fc02b8355b68cdd63c7356fcc2","method":"GET","path":"","status":404,"latency":"0s","client_ip":"127.0.0.1"}
+{"level":"info","ts":"2026-05-19T04:51:33.736+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"acbc01ac46cc7b22864b0d0cafe02a5f","method":"GET","path":"/docs","status":200,"latency":"0s","client_ip":"127.0.0.1"}
+{"level":"info","ts":"2026-05-19T04:51:33.885+0800","caller":"middleware/logging.go:18","msg":"http request","trace_id":"8bbf8297f060ec38b5b6a7ffac0d51e1","method":"GET","path":"/docs/openapi.yaml","status":200,"latency":"0s","client_ip":"127.0.0.1"}
+{"level":"info","ts":"2026-05-19T05:00:52.052+0800","caller":"api/main.go:68","msg":"shutdown signal received"}

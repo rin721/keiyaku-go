@@ -17,6 +17,18 @@ func NewUserHandler(service *appuser.Service) *UserHandler {
 	return &UserHandler{service: service}
 }
 
+// Me handles current user profile lookup.
+// @Summary Current user profile
+// @Description Get the authenticated user's profile.
+// @Tags User
+// @Produce json
+// @Security bearerAuth
+// @Success 200 {object} dto.UserResponse "OK"
+// @Failure 401 {object} response.Body "Unauthorized"
+// @Failure 403 {object} response.Body "Forbidden"
+// @Failure 404 {object} response.Body "User not found"
+// @Failure 500 {object} response.Body "Internal server error"
+// @Router /users/me [get]
 func (h *UserHandler) Me(c *gin.Context) {
 	if h == nil || h.service == nil {
 		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessageUserHandlerNotReady))

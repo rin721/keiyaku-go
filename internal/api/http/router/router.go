@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	apispec "github.com/rin721/keiyaku-go/api"
+	"github.com/rin721/keiyaku-go/internal/api/http/apidocs"
 	"github.com/rin721/keiyaku-go/internal/api/http/handler"
 	"github.com/rin721/keiyaku-go/internal/api/http/middleware"
 	"github.com/rin721/keiyaku-go/internal/api/http/response"
@@ -17,6 +19,7 @@ import (
 type Options struct {
 	RateLimit      RateLimitOptions
 	CircuitBreaker CircuitBreakerOptions
+	APIDocs        APIDocsOptions
 }
 
 type RateLimitOptions struct {
@@ -28,6 +31,13 @@ type CircuitBreakerOptions struct {
 	Name             string
 	FailureThreshold uint32
 	OpenTimeout      time.Duration
+}
+
+type APIDocsOptions struct {
+	Disabled bool
+	Path     string
+	SpecPath string
+	Title    string
 }
 
 type Deps struct {
@@ -56,6 +66,13 @@ func New(deps Deps) *gin.Engine {
 	)
 	engine.GET("/healthz", func(c *gin.Context) {
 		response.OK(c, gin.H{"status": "ok"})
+	})
+	apidocs.Inject(engine, apidocs.Options{
+		Disabled: options.APIDocs.Disabled,
+		Path:     options.APIDocs.Path,
+		SpecPath: options.APIDocs.SpecPath,
+		Title:    options.APIDocs.Title,
+		Spec:     apispec.OpenAPIYAML(),
 	})
 
 	v1 := engine.Group("/api/v1")
