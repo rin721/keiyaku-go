@@ -43,6 +43,7 @@ HTTP DTO、响应结构和 HTTP 状态映射只存在于 Gin 适配层附近。G
 4. 网关默认透传 TraceID 和脱敏用户上下文，不默认透传原始 `Authorization`。
 
 更多细节见：[系统结构设计](docs/architecture/system-design.md)。
+插件系统细节见：[远端插件系统设计](docs/architecture/plugin-system.md) 和 [插件开发文档](docs/plugins/development.md)。
 
 ## 目录说明
 
@@ -134,6 +135,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-governance.ps1
 ## 关键文档
 
 - [系统结构设计](docs/architecture/system-design.md)
+- [远端插件系统设计](docs/architecture/plugin-system.md)
+- [插件开发文档](docs/plugins/development.md)
 - [HTTP API 契约](docs/api/http-api.md)
 - [数据库结构](docs/architecture/database-schema.md)
 - [Gin 与 GORM 架构决策](docs/adr/20260515-adopt-gin-gorm-clean-architecture.md)

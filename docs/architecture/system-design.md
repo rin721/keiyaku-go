@@ -89,3 +89,5 @@ flowchart LR
 - `internal/infrastructure/persistence/mysql` 只实现注册表持久化，不向 Handler 泄露 GORM Model。
 - `pkg/plugin` 是插件服务侧 SDK，可被独立插件服务依赖，不得 import `internal`。
 - 网关默认只透传 TraceID、插件 key 和脱敏用户上下文；插件业务响应原样返回，主服务只包装自身网关错误。
+
+详细设计见 [远端插件系统设计](plugin-system.md)，插件开发流程见 [插件开发文档](../plugins/development.md)。
