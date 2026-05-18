@@ -2,6 +2,7 @@ package response
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -10,7 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 	httpi18n "github.com/rin721/keiyaku-go/internal/api/http/i18n"
 	"github.com/rin721/keiyaku-go/internal/application/apperror"
-	"github.com/rin721/keiyaku-go/types"
 )
 
 func TestErrorLocalizesMessageFromAcceptLanguage(t *testing.T) {
@@ -22,11 +22,17 @@ func TestErrorLocalizesMessageFromAcceptLanguage(t *testing.T) {
 	c.Request = httptest.NewRequest("GET", "/", nil)
 	c.Request.Header.Set("Accept-Language", "zh-CN,zh;q=0.9")
 
-	Error(c, apperror.New(apperror.CodeInvalidArgument, types.MessageInvalidRequestBody))
+	Error(c, apperror.New(apperror.CodeInvalidArgument, apperror.MessageInvalidRequestBody))
 
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusBadRequest)
+	}
 	var body Body
 	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
+	}
+	if body.Code != apperror.CodeInvalidArgument {
+		t.Fatalf("code = %d, want %d", body.Code, apperror.CodeInvalidArgument)
 	}
 	if body.Msg != "请求体无效" {
 		t.Fatalf("localized msg = %q", body.Msg)
@@ -47,8 +53,8 @@ func TestOKKeepsEnglishByDefault(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
 	}
-	if body.Msg != types.MessageOK {
-		t.Fatalf("default msg = %q, want %q", body.Msg, types.MessageOK)
+	if body.Msg != apperror.MessageOK {
+		t.Fatalf("default msg = %q, want %q", body.Msg, apperror.MessageOK)
 	}
 }
 

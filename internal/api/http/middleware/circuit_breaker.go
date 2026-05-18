@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rin721/keiyaku-go/internal/api/http/response"
 	"github.com/rin721/keiyaku-go/internal/application/apperror"
-	"github.com/rin721/keiyaku-go/types"
 	"github.com/sony/gobreaker"
 )
 
@@ -32,7 +31,7 @@ func CircuitBreaker(name string, threshold uint32, timeout time.Duration) gin.Ha
 			return nil, nil
 		})
 		if err != nil && !c.Writer.Written() {
-			response.Error(c, apperror.New(apperror.CodeDependency, types.MessageServiceUnavailable))
+			response.Error(c, apperror.New(apperror.CodeDependency, apperror.MessageServiceUnavailable))
 			c.Abort()
 		}
 	}

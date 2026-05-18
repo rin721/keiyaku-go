@@ -6,7 +6,6 @@ import (
 	"github.com/rin721/keiyaku-go/internal/api/http/response"
 	"github.com/rin721/keiyaku-go/internal/application/apperror"
 	"github.com/rin721/keiyaku-go/internal/application/auth"
-	"github.com/rin721/keiyaku-go/types"
 )
 
 type AuthHandler struct {
@@ -19,12 +18,12 @@ func NewAuthHandler(service *auth.Service) *AuthHandler {
 
 func (h *AuthHandler) Register(c *gin.Context) {
 	if h == nil || h.service == nil {
-		response.Error(c, apperror.New(apperror.CodeInternal, types.MessageAuthHandlerNotReady))
+		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessageAuthHandlerNotReady))
 		return
 	}
 	var req dto.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, apperror.Wrap(apperror.CodeInvalidArgument, types.MessageInvalidRequestBody, err))
+		response.Error(c, apperror.Wrap(apperror.CodeInvalidArgument, apperror.MessageInvalidRequestBody, err))
 		return
 	}
 	result, err := h.service.Register(c.Request.Context(), auth.RegisterCommand{
@@ -47,12 +46,12 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 func (h *AuthHandler) Login(c *gin.Context) {
 	if h == nil || h.service == nil {
-		response.Error(c, apperror.New(apperror.CodeInternal, types.MessageAuthHandlerNotReady))
+		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessageAuthHandlerNotReady))
 		return
 	}
 	var req dto.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, apperror.Wrap(apperror.CodeInvalidArgument, types.MessageInvalidRequestBody, err))
+		response.Error(c, apperror.Wrap(apperror.CodeInvalidArgument, apperror.MessageInvalidRequestBody, err))
 		return
 	}
 	result, err := h.service.Login(c.Request.Context(), auth.LoginCommand{Username: req.Username, Password: req.Password})

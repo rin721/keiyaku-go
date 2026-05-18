@@ -85,7 +85,17 @@ func New(ctx context.Context, configPath string) (*App, error) {
 	articleService := apparticle.NewService(articleRepo, idGenerator)
 
 	router := httprouter.New(httprouter.Deps{
-		Config:         cfg,
+		Options: httprouter.Options{
+			RateLimit: httprouter.RateLimitOptions{
+				RequestsPerSecond: cfg.Security.RateLimit.RequestsPerSecond,
+				Burst:             cfg.Security.RateLimit.Burst,
+			},
+			CircuitBreaker: httprouter.CircuitBreakerOptions{
+				Name:             "http-api",
+				FailureThreshold: cfg.Security.CircuitBreaker.FailureThreshold,
+				OpenTimeout:      cfg.Security.CircuitBreaker.OpenTimeout,
+			},
+		},
 		Logger:         logger,
 		Tokens:         tokenService,
 		Authorizer:     authorizer,

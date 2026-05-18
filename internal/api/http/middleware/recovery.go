@@ -8,7 +8,6 @@ import (
 	"github.com/rin721/keiyaku-go/internal/api/http/response"
 	"github.com/rin721/keiyaku-go/internal/application/apperror"
 	"github.com/rin721/keiyaku-go/internal/observability/trace"
-	"github.com/rin721/keiyaku-go/types"
 	"go.uber.org/zap"
 )
 
@@ -24,7 +23,7 @@ func Recovery(logger *zap.Logger) gin.HandlerFunc {
 					zap.String("trace_id", trace.IDFromContext(c.Request.Context())),
 					zap.ByteString("stack", debug.Stack()),
 				)
-				response.Error(c, apperror.New(apperror.CodeInternal, types.MessageInternal))
+				response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessageInternal))
 				c.Abort()
 			}
 		}()

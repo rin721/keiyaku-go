@@ -36,7 +36,9 @@ flowchart LR
   Infra --> Security["JWT / Casbin / Snowflake"]
 ```
 
-依赖方向固定为 `api -> application -> domain`。`infrastructure` 只能实现 `application` 或 `domain` 暴露的 Port，不允许把 Gin DTO、GORM Model、Redis、JWT 或 Casbin 类型传入 Domain。
+依赖方向固定为 `domain <- application <- api/infrastructure`。`api` 只通过 Application Service 和 Port 进入业务内核，不直接依赖具体 Infrastructure 或 Repository adapter；`infrastructure` 只能实现 `application` 或 `domain` 暴露的 Port，不允许把 Gin DTO、GORM Model、Redis、JWT 或 Casbin 类型传入 Domain。
+
+HTTP 响应结构、HTTP 状态映射和 Gin context key 属于 `internal/api/http` 外圈。应用错误码、应用错误包装和领域错误映射属于 `internal/application/apperror`，不携带 HTTP 状态语义。项目不再使用根目录 `types` 包承载跨层公共结构。
 
 ## 请求链路
 
@@ -62,4 +64,4 @@ flowchart TD
   Server --> Shutdown["SIGINT/SIGTERM Graceful Shutdown"]
 ```
 
-`cmd/api/main.go` 只负责进程生命周期。依赖装配集中在 `internal/bootstrap`，并通过显式构造函数自下而上创建。
+`cmd/api/main.go` 只负责进程生命周期。依赖装配集中在 `internal/bootstrap`，并通过显式构造函数自下而上创建。Bootstrap 负责把 Viper 配置拆成各外圈 adapter 需要的局部配置，例如传给 HTTP Router 的 `router.Options`，Router 不直接依赖 `internal/infrastructure/config.Config`。

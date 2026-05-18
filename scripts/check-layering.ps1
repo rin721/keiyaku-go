@@ -61,6 +61,16 @@ foreach ($file in $applicationGoFiles) {
     }
 }
 
+$apiGoFiles = Get-GoFiles @("internal/api")
+foreach ($file in $apiGoFiles) {
+    $content = Get-Content -LiteralPath $file.FullName -Raw
+    $importsConcreteAdapter = (Test-ImportPattern $content '"[^"]*/internal/(infrastructure|repository)(/[^"]*)?"') -or
+        (Test-ImportPattern $content '"internal/(infrastructure|repository)(/[^"]*)?"')
+    if ($importsConcreteAdapter) {
+        Add-Failure "GOV-P1-002: api must not import concrete infrastructure or repository adapters: $($file.FullName)"
+    }
+}
+
 $adapterGoFiles = Get-GoFiles @("internal/repository", "internal/infrastructure")
 foreach ($file in $adapterGoFiles) {
     $content = Get-Content -LiteralPath $file.FullName -Raw

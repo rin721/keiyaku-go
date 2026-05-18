@@ -7,28 +7,27 @@ import (
 	"github.com/rin721/keiyaku-go/internal/api/http/response"
 	"github.com/rin721/keiyaku-go/internal/application/apperror"
 	"github.com/rin721/keiyaku-go/internal/application/port"
-	"github.com/rin721/keiyaku-go/types"
 )
 
-const claimsKey = types.ContextAuthClaims
+const claimsKey = "auth.claims"
 
 func Auth(tokens port.TokenIssuer) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
 		if header == "" {
-			response.Error(c, apperror.New(apperror.CodeUnauthorized, types.MessageMissingAuthHeader))
+			response.Error(c, apperror.New(apperror.CodeUnauthorized, apperror.MessageMissingAuthHeader))
 			c.Abort()
 			return
 		}
 		const prefix = "Bearer "
 		if !strings.HasPrefix(header, prefix) {
-			response.Error(c, apperror.New(apperror.CodeUnauthorized, types.MessageInvalidAuthScheme))
+			response.Error(c, apperror.New(apperror.CodeUnauthorized, apperror.MessageInvalidAuthScheme))
 			c.Abort()
 			return
 		}
 		claims, err := tokens.ParseAccessToken(c.Request.Context(), strings.TrimSpace(strings.TrimPrefix(header, prefix)))
 		if err != nil {
-			response.Error(c, apperror.New(apperror.CodeUnauthorized, types.MessageInvalidAccessToken))
+			response.Error(c, apperror.New(apperror.CodeUnauthorized, apperror.MessageInvalidAccessToken))
 			c.Abort()
 			return
 		}

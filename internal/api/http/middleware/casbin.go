@@ -5,26 +5,25 @@ import (
 	"github.com/rin721/keiyaku-go/internal/api/http/response"
 	"github.com/rin721/keiyaku-go/internal/application/apperror"
 	"github.com/rin721/keiyaku-go/internal/application/port"
-	"github.com/rin721/keiyaku-go/types"
 )
 
 func Casbin(authorizer port.Authorizer) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if authorizer == nil {
-			response.Error(c, apperror.New(apperror.CodeForbidden, types.MessagePermissionNotReady))
+			response.Error(c, apperror.New(apperror.CodeForbidden, apperror.MessagePermissionNotReady))
 			c.Abort()
 			return
 		}
 		claims, ok := Claims(c)
 		if !ok {
-			response.Error(c, apperror.New(apperror.CodeUnauthorized, types.MessageMissingAuthClaims))
+			response.Error(c, apperror.New(apperror.CodeUnauthorized, apperror.MessageMissingAuthClaims))
 			c.Abort()
 			return
 		}
 		for _, role := range claims.Roles {
 			allowed, err := authorizer.Allow(role, c.FullPath(), c.Request.Method)
 			if err != nil {
-				response.Error(c, apperror.Wrap(apperror.CodeDependency, types.MessagePermissionCheckFail, err))
+				response.Error(c, apperror.Wrap(apperror.CodeDependency, apperror.MessagePermissionCheckFail, err))
 				c.Abort()
 				return
 			}
@@ -33,7 +32,7 @@ func Casbin(authorizer port.Authorizer) gin.HandlerFunc {
 				return
 			}
 		}
-		response.Error(c, apperror.New(apperror.CodeForbidden, types.MessagePermissionDenied))
+		response.Error(c, apperror.New(apperror.CodeForbidden, apperror.MessagePermissionDenied))
 		c.Abort()
 	}
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/rin721/keiyaku-go/internal/api/http/response"
 	"github.com/rin721/keiyaku-go/internal/application/apperror"
 	apparticle "github.com/rin721/keiyaku-go/internal/application/article"
-	"github.com/rin721/keiyaku-go/types"
 )
 
 type ArticleHandler struct {
@@ -22,17 +21,17 @@ func NewArticleHandler(service *apparticle.Service) *ArticleHandler {
 
 func (h *ArticleHandler) Create(c *gin.Context) {
 	if h == nil || h.service == nil {
-		response.Error(c, apperror.New(apperror.CodeInternal, types.MessageArticleHandlerNotReady))
+		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessageArticleHandlerNotReady))
 		return
 	}
 	claims, ok := middleware.Claims(c)
 	if !ok {
-		response.Error(c, apperror.New(apperror.CodeUnauthorized, types.MessageMissingAuthClaims))
+		response.Error(c, apperror.New(apperror.CodeUnauthorized, apperror.MessageMissingAuthClaims))
 		return
 	}
 	var req dto.CreateArticleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, apperror.Wrap(apperror.CodeInvalidArgument, types.MessageInvalidRequestBody, err))
+		response.Error(c, apperror.Wrap(apperror.CodeInvalidArgument, apperror.MessageInvalidRequestBody, err))
 		return
 	}
 	entity, err := h.service.Create(c.Request.Context(), apparticle.CreateCommand{
@@ -54,12 +53,12 @@ func (h *ArticleHandler) Create(c *gin.Context) {
 
 func (h *ArticleHandler) Get(c *gin.Context) {
 	if h == nil || h.service == nil {
-		response.Error(c, apperror.New(apperror.CodeInternal, types.MessageArticleHandlerNotReady))
+		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessageArticleHandlerNotReady))
 		return
 	}
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || id <= 0 {
-		response.Error(c, apperror.New(apperror.CodeInvalidArgument, types.MessageInvalidArticleID))
+		response.Error(c, apperror.New(apperror.CodeInvalidArgument, apperror.MessageInvalidArticleID))
 		return
 	}
 	entity, err := h.service.GetPublished(c.Request.Context(), id)
@@ -72,7 +71,7 @@ func (h *ArticleHandler) Get(c *gin.Context) {
 
 func (h *ArticleHandler) List(c *gin.Context) {
 	if h == nil || h.service == nil {
-		response.Error(c, apperror.New(apperror.CodeInternal, types.MessageArticleHandlerNotReady))
+		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessageArticleHandlerNotReady))
 		return
 	}
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))

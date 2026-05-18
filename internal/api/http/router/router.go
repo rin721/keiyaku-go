@@ -2,20 +2,36 @@ package router
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/rin721/keiyaku-go/internal/api/http/handler"
 	"github.com/rin721/keiyaku-go/internal/api/http/middleware"
 	"github.com/rin721/keiyaku-go/internal/api/http/response"
+	"github.com/rin721/keiyaku-go/internal/application/apperror"
 	"github.com/rin721/keiyaku-go/internal/application/port"
-	"github.com/rin721/keiyaku-go/internal/infrastructure/config"
-	"github.com/rin721/keiyaku-go/types"
 	"go.uber.org/zap"
 )
 
+type Options struct {
+	RateLimit      RateLimitOptions
+	CircuitBreaker CircuitBreakerOptions
+}
+
+type RateLimitOptions struct {
+	RequestsPerSecond float64
+	Burst             int
+}
+
+type CircuitBreakerOptions struct {
+	Name             string
+	FailureThreshold uint32
+	OpenTimeout      time.Duration
+}
+
 type Deps struct {
-	Config     *config.Config
+	Options    Options
 	Logger     *zap.Logger
 	Tokens     port.TokenIssuer
 	Authorizer port.Authorizer
@@ -27,6 +43,7 @@ type Deps struct {
 
 func New(deps Deps) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
+	options := normalizeOptions(deps.Options)
 	engine := gin.New()
 	engine.Use(
 		middleware.I18N(),
@@ -34,8 +51,8 @@ func New(deps Deps) *gin.Engine {
 		middleware.Recovery(deps.Logger),
 		middleware.Logging(deps.Logger),
 		cors.Default(),
-		middleware.RateLimit(deps.Config.Security.RateLimit.RequestsPerSecond, deps.Config.Security.RateLimit.Burst),
-		middleware.CircuitBreaker("http-api", deps.Config.Security.CircuitBreaker.FailureThreshold, deps.Config.Security.CircuitBreaker.OpenTimeout),
+		middleware.RateLimit(options.RateLimit.RequestsPerSecond, options.RateLimit.Burst),
+		middleware.CircuitBreaker(options.CircuitBreaker.Name, options.CircuitBreaker.FailureThreshold, options.CircuitBreaker.OpenTimeout),
 	)
 	engine.GET("/healthz", func(c *gin.Context) {
 		response.OK(c, gin.H{"status": "ok"})
@@ -55,7 +72,26 @@ func New(deps Deps) *gin.Engine {
 	}
 
 	engine.NoRoute(func(c *gin.Context) {
-		response.JSON(c, http.StatusNotFound, types.CodeNotFound, types.MessageRouteNotFound, nil)
+		response.JSON(c, http.StatusNotFound, apperror.CodeNotFound, apperror.MessageRouteNotFound, nil)
 	})
 	return engine
+}
+
+func normalizeOptions(options Options) Options {
+	if options.RateLimit.RequestsPerSecond <= 0 {
+		options.RateLimit.RequestsPerSecond = 100
+	}
+	if options.RateLimit.Burst <= 0 {
+		options.RateLimit.Burst = int(options.RateLimit.RequestsPerSecond)
+	}
+	if options.CircuitBreaker.Name == "" {
+		options.CircuitBreaker.Name = "http-api"
+	}
+	if options.CircuitBreaker.FailureThreshold == 0 {
+		options.CircuitBreaker.FailureThreshold = 5
+	}
+	if options.CircuitBreaker.OpenTimeout <= 0 {
+		options.CircuitBreaker.OpenTimeout = 5 * time.Second
+	}
+	return options
 }

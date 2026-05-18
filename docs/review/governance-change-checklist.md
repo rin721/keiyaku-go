@@ -24,10 +24,14 @@ verification_target: [scripts/check-governance-sync.ps1, scripts/check-governanc
 治理变更 PR 必须确认以下事项：
 
 - [ ] 是否改变默认规则或默认设计风格。
+- [ ] 主要动作是否已按 Classify、Scope、Sync、Execute、Verify、Record 完成闭环。
+- [ ] 主要动作是否已判定 `sync_required` 或 `sync_not_required`，且 `sync_not_required` 有明确依据。
 - [ ] 如果改变默认规则，是否已补 ADR。
 - [ ] 是否同步更新 `rules.md`、导航文档、`ai-execution.md`、`metadata-schema.md` 和相关 convention。
 - [ ] 是否同步更新 `automation-matrix.md`、脚本、lint、测试或 CI。
 - [ ] 是否同步更新 `governance-map.json` 及其生成/校验脚本。
+- [ ] 对判断为“不需要更新”的同步面，是否明确记录了不更新依据，而不是沉默跳过。
+- [ ] 如果变更影响项目结构、目录职责、启动方式、公开契约、架构边界或验证命令，是否同步更新 README、架构、API 或相关项目说明文档。
 - [ ] metadata v2 字段是否完整，`source_of_truth`、`derived_from`、`rollback_target`、`verification_target` 是否可追踪。
 - [ ] 如果变更涉及治理任务 Pipeline Controller，是否同步检查 `docs/ai/prompts/00-governance-architect-controller.md`、`decision_audit`、`PIPELINE_STATE_LOCK` 和 Artifact Manifest 的适用范围。
 - [ ] Prompt 是否只承载执行协议、路由、门禁、产物格式和状态封存，没有把稳定工程规则写成 Prompt-only SSOT。

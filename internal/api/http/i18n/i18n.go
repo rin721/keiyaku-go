@@ -2,7 +2,7 @@ package i18n
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/rin721/keiyaku-go/types"
+	"github.com/rin721/keiyaku-go/internal/application/apperror"
 	"golang.org/x/text/language"
 )
 
@@ -42,9 +42,9 @@ func FromContext(c *gin.Context) language.Tag {
 	return Resolve(c.GetHeader(HeaderAcceptLanguage))
 }
 
-func Message(c *gin.Context, code types.Code, msg string) string {
+func Message(c *gin.Context, code apperror.Code, msg string) string {
 	if msg == "" {
-		msg = types.Message(code)
+		msg = apperror.Message(code)
 	}
 	return Translate(msg, FromContext(c))
 }

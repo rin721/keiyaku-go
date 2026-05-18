@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/rin721/keiyaku-go/types"
+	"github.com/rin721/keiyaku-go/internal/application/apperror"
 	"golang.org/x/text/language"
 )
 
@@ -31,10 +31,10 @@ func TestResolve(t *testing.T) {
 func TestTranslate(t *testing.T) {
 	initTestTranslator(t)
 
-	if got := Translate(types.MessageInvalidRequestBody, LanguageZHCN); got != "请求体无效" {
+	if got := Translate(apperror.MessageInvalidRequestBody, LanguageZHCN); got != "请求体无效" {
 		t.Fatalf("Translate zh-CN = %q", got)
 	}
-	if got := Translate(types.MessageInvalidRequestBody, LanguageENUS); got != types.MessageInvalidRequestBody {
+	if got := Translate(apperror.MessageInvalidRequestBody, LanguageENUS); got != apperror.MessageInvalidRequestBody {
 		t.Fatalf("Translate en-US = %q", got)
 	}
 	if got := Translate("custom message", LanguageZHCN); got != "custom message" {
@@ -51,7 +51,7 @@ func TestInitLoadsRepositoryConfigFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Init() error = %v", err)
 	}
-	if got := Translate(types.MessageInvalidRequestBody, LanguageZHCN); got != "请求体无效" {
+	if got := Translate(apperror.MessageInvalidRequestBody, LanguageZHCN); got != "请求体无效" {
 		t.Fatalf("Translate zh-CN = %q", got)
 	}
 }

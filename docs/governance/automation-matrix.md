@@ -29,6 +29,7 @@ verification_target: [scripts/check-governance.ps1, scripts/check-governance-syn
 | --- | --- | --- |
 | `pkg` 不得 import `internal` | GOV-P0-002 / `conventions/pkg.md` | `scripts/check-layering.ps1`、`.golangci.yml` |
 | Domain 不得 import 上层或 adapter | GOV-P1-002 / `conventions/layering.md` | `scripts/check-layering.ps1` |
+| API/Transport 不得 import 具体 Infrastructure 或 Repository adapter | GOV-P1-002 / `conventions/layering.md` | `scripts/check-layering.ps1` |
 | Application/Repository/Infrastructure 不得 import transport | GOV-P0-002 / `conventions/layering.md` | `scripts/check-layering.ps1`、`.golangci.yml` |
 | DTO/PO/ORM 模型语义泄露 | GOV-P0-001 / `conventions/layering.md` | 评审清单，后续可扩展静态检查 |
 | Repository Port 归属 | GOV-P1-002 / `conventions/layering.md` | 评审清单 |

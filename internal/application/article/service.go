@@ -8,7 +8,6 @@ import (
 	"github.com/rin721/keiyaku-go/internal/application/port"
 	domainarticle "github.com/rin721/keiyaku-go/internal/domain/article"
 	"github.com/rin721/keiyaku-go/internal/domain/shared"
-	"github.com/rin721/keiyaku-go/types"
 )
 
 type Service struct {
@@ -46,14 +45,14 @@ type ListResult struct {
 
 func (s *Service) Create(ctx context.Context, cmd CreateCommand) (*domainarticle.Article, error) {
 	if s == nil || s.articles == nil || s.ids == nil {
-		return nil, apperror.New(apperror.CodeInternal, types.MessageArticleServiceNotReady)
+		return nil, apperror.New(apperror.CodeInternal, apperror.MessageArticleServiceNotReady)
 	}
 	if cmd.AuthorID <= 0 {
-		return nil, apperror.New(apperror.CodeUnauthorized, types.MessageMissingUser)
+		return nil, apperror.New(apperror.CodeUnauthorized, apperror.MessageMissingUser)
 	}
 	id, err := s.ids.NewID(ctx)
 	if err != nil {
-		return nil, apperror.Wrap(apperror.CodeDependency, types.MessageAllocateArticleIDFailed, err)
+		return nil, apperror.Wrap(apperror.CodeDependency, apperror.MessageAllocateArticleIDFailed, err)
 	}
 	entity, err := domainarticle.New(id, cmd.AuthorID, cmd.CategoryID, cmd.Title, cmd.Slug, cmd.Summary, cmd.Content, cmd.Tags, s.now())
 	if err != nil {
@@ -65,29 +64,29 @@ func (s *Service) Create(ctx context.Context, cmd CreateCommand) (*domainarticle
 		}
 	}
 	if err := s.articles.Create(ctx, entity); err != nil {
-		return nil, apperror.Wrap(apperror.CodeDependency, types.MessageCreateArticleFailed, err)
+		return nil, apperror.Wrap(apperror.CodeDependency, apperror.MessageCreateArticleFailed, err)
 	}
 	return entity, nil
 }
 
 func (s *Service) GetPublished(ctx context.Context, id int64) (*domainarticle.Article, error) {
 	if s == nil || s.articles == nil {
-		return nil, apperror.New(apperror.CodeInternal, types.MessageArticleServiceNotReady)
+		return nil, apperror.New(apperror.CodeInternal, apperror.MessageArticleServiceNotReady)
 	}
 	if id <= 0 {
-		return nil, apperror.New(apperror.CodeInvalidArgument, types.MessageInvalidArticleID)
+		return nil, apperror.New(apperror.CodeInvalidArgument, apperror.MessageInvalidArticleID)
 	}
 	return s.articles.FindPublishedByID(ctx, id)
 }
 
 func (s *Service) ListPublished(ctx context.Context, query ListQuery) (*ListResult, error) {
 	if s == nil || s.articles == nil {
-		return nil, apperror.New(apperror.CodeInternal, types.MessageArticleServiceNotReady)
+		return nil, apperror.New(apperror.CodeInternal, apperror.MessageArticleServiceNotReady)
 	}
 	pagination := shared.NewPagination(query.Page, query.PageSize)
 	items, total, err := s.articles.ListPublished(ctx, pagination)
 	if err != nil {
-		return nil, apperror.Wrap(apperror.CodeDependency, types.MessageListArticlesFailed, err)
+		return nil, apperror.Wrap(apperror.CodeDependency, apperror.MessageListArticlesFailed, err)
 	}
 	return &ListResult{Items: items, Total: total, Page: pagination.Page, Size: pagination.PageSize}, nil
 }
