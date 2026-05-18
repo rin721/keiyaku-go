@@ -49,6 +49,7 @@ type Deps struct {
 	AuthHandler    *handler.AuthHandler
 	UserHandler    *handler.UserHandler
 	ArticleHandler *handler.ArticleHandler
+	PluginHandler  *handler.PluginHandler
 }
 
 func New(deps Deps) *gin.Engine {
@@ -81,11 +82,21 @@ func New(deps Deps) *gin.Engine {
 		v1.POST("/auth/login", deps.AuthHandler.Login)
 		v1.GET("/articles", deps.ArticleHandler.List)
 		v1.GET("/articles/:id", deps.ArticleHandler.Get)
+		if deps.PluginHandler != nil {
+			v1.POST("/plugins/registrations", deps.PluginHandler.Register)
+			v1.POST("/plugins/:plugin_key/instances/:instance_id/heartbeat", deps.PluginHandler.Heartbeat)
+			v1.DELETE("/plugins/:plugin_key/instances/:instance_id", deps.PluginHandler.Unregister)
+			v1.Any("/extensions/:plugin_key/*proxy_path", deps.PluginHandler.Gateway)
+		}
 
 		protected := v1.Group("")
 		protected.Use(middleware.Auth(deps.Tokens), middleware.Casbin(deps.Authorizer))
 		protected.GET("/users/me", deps.UserHandler.Me)
 		protected.POST("/articles", deps.ArticleHandler.Create)
+		if deps.PluginHandler != nil {
+			protected.GET("/plugins", deps.PluginHandler.List)
+			protected.GET("/plugins/:plugin_key", deps.PluginHandler.Get)
+		}
 	}
 
 	engine.NoRoute(func(c *gin.Context) {

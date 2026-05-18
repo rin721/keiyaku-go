@@ -28,8 +28,11 @@ const (
 )
 
 const (
-	CodeInternal   Code = 50001
-	CodeDependency Code = 50002
+	CodeInternal           Code = 50001
+	CodeDependency         Code = 50002
+	CodeBadGateway         Code = 50003
+	CodeServiceUnavailable Code = 50004
+	CodeGatewayTimeout     Code = 50005
 )
 
 const (
@@ -44,6 +47,8 @@ const (
 	MessageUserDisabled        = "user disabled"
 	MessageInternal            = "internal server error"
 	MessageDependency          = "dependency error"
+	MessageBadGateway          = "bad gateway"
+	MessageGatewayTimeout      = "gateway timeout"
 	MessageRouteNotFound       = "route not found"
 	MessageServiceUnavailable  = "service temporarily unavailable"
 	MessageMissingAuthClaims   = "missing auth claims"
@@ -61,6 +66,8 @@ const (
 	MessageAuthHandlerNotReady    = "auth handler is not ready"
 	MessageUserHandlerNotReady    = "user handler is not ready"
 	MessageArticleHandlerNotReady = "article handler is not ready"
+	MessagePluginServiceNotReady  = "plugin service is not ready"
+	MessagePluginHandlerNotReady  = "plugin handler is not ready"
 
 	MessageInvalidUserID    = "invalid user id"
 	MessageInvalidArticleID = "invalid article id"
@@ -79,20 +86,32 @@ const (
 	MessageAllocateArticleIDFailed = "failed to allocate article id"
 	MessageCreateArticleFailed     = "failed to create article"
 	MessageListArticlesFailed      = "failed to list articles"
+
+	MessagePluginRegistrationDisabled = "plugin registration is disabled"
+	MessageInvalidPluginToken         = "invalid plugin registration token"
+	MessageInvalidPluginManifest      = "invalid plugin manifest"
+	MessagePluginKeyNotAllowed        = "plugin key is not allowed"
+	MessagePluginRouteNotFound        = "plugin route not found"
+	MessagePluginUnavailable          = "plugin is unavailable"
+	MessagePluginUpstreamFailed       = "plugin upstream failed"
+	MessagePluginUpstreamTimeout      = "plugin upstream timed out"
 )
 
 var defaultMessages = map[Code]string{
-	CodeOK:                MessageOK,
-	CodeInvalidArgument:   MessageInvalidArgument,
-	CodeUnauthorized:      MessageUnauthorized,
-	CodeForbidden:         MessageForbidden,
-	CodeNotFound:          MessageNotFound,
-	CodeConflict:          MessageConflict,
-	CodeTooManyRequests:   MessageTooManyRequests,
-	CodeInvalidCredential: MessageInvalidCredential,
-	CodeUserDisabled:      MessageUserDisabled,
-	CodeInternal:          MessageInternal,
-	CodeDependency:        MessageDependency,
+	CodeOK:                 MessageOK,
+	CodeInvalidArgument:    MessageInvalidArgument,
+	CodeUnauthorized:       MessageUnauthorized,
+	CodeForbidden:          MessageForbidden,
+	CodeNotFound:           MessageNotFound,
+	CodeConflict:           MessageConflict,
+	CodeTooManyRequests:    MessageTooManyRequests,
+	CodeInvalidCredential:  MessageInvalidCredential,
+	CodeUserDisabled:       MessageUserDisabled,
+	CodeInternal:           MessageInternal,
+	CodeDependency:         MessageDependency,
+	CodeBadGateway:         MessageBadGateway,
+	CodeServiceUnavailable: MessageServiceUnavailable,
+	CodeGatewayTimeout:     MessageGatewayTimeout,
 }
 
 type Error struct {

@@ -12,6 +12,7 @@ import (
 	httprouter "github.com/rin721/keiyaku-go/internal/api/http/router"
 	apparticle "github.com/rin721/keiyaku-go/internal/application/article"
 	"github.com/rin721/keiyaku-go/internal/application/auth"
+	appplugin "github.com/rin721/keiyaku-go/internal/application/plugin"
 	appuser "github.com/rin721/keiyaku-go/internal/application/user"
 	authcasbin "github.com/rin721/keiyaku-go/internal/infrastructure/auth/casbin"
 	authjwt "github.com/rin721/keiyaku-go/internal/infrastructure/auth/jwt"
@@ -80,9 +81,29 @@ func New(ctx context.Context, configPath string) (*App, error) {
 
 	userRepo := mysql.NewUserRepository(db)
 	articleRepo := mysql.NewArticleRepository(db)
+	pluginRepo := mysql.NewPluginRegistryRepository(db)
 	authService := auth.NewService(userRepo, idGenerator, hasher, tokenService)
 	userService := appuser.NewService(userRepo)
 	articleService := apparticle.NewService(articleRepo, idGenerator)
+	pluginService, err := appplugin.NewService(pluginRepo, appplugin.Config{
+		Enabled:              cfg.Plugins.Enabled,
+		RegistrationTokens:   cfg.Plugins.RegistrationTokens,
+		AllowedPluginKeys:    cfg.Plugins.AllowedPluginKeys,
+		PublicPrefix:         cfg.Plugins.PublicPrefix,
+		HeartbeatTTL:         cfg.Plugins.HeartbeatTTL,
+		RequestTimeout:       cfg.Plugins.RequestTimeout,
+		AllowedHosts:         cfg.Plugins.AllowedHosts,
+		AllowedCIDRs:         cfg.Plugins.AllowedCIDRs,
+		AllowLoopback:        cfg.Plugins.AllowLoopback,
+		AllowPublicRoutes:    cfg.Plugins.AllowPublicRoutes,
+		GatewaySigningSecret: cfg.Plugins.GatewaySigningSecret,
+	})
+	if err != nil {
+		_ = redisClient.Close()
+		_ = mysql.Close(db)
+		_ = syncLogger()
+		return nil, err
+	}
 
 	router := httprouter.New(httprouter.Deps{
 		Options: httprouter.Options{
@@ -102,6 +123,7 @@ func New(ctx context.Context, configPath string) (*App, error) {
 		AuthHandler:    handler.NewAuthHandler(authService),
 		UserHandler:    handler.NewUserHandler(userService),
 		ArticleHandler: handler.NewArticleHandler(articleService),
+		PluginHandler:  handler.NewPluginHandler(pluginService, tokenService, authorizer),
 	})
 	server := &http.Server{
 		Addr:         cfg.Server.Addr,

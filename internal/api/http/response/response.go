@@ -50,6 +50,12 @@ func statusForCode(code apperror.Code) int {
 		return http.StatusConflict
 	case apperror.CodeInvalidCredential, apperror.CodeUserDisabled:
 		return http.StatusUnprocessableEntity
+	case apperror.CodeBadGateway:
+		return http.StatusBadGateway
+	case apperror.CodeServiceUnavailable:
+		return http.StatusServiceUnavailable
+	case apperror.CodeGatewayTimeout:
+		return http.StatusGatewayTimeout
 	default:
 		return http.StatusInternalServerError
 	}

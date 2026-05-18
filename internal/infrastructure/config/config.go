@@ -19,6 +19,7 @@ type Config struct {
 	JWT       JWTConfig       `mapstructure:"jwt"`
 	Snowflake SnowflakeConfig `mapstructure:"snowflake"`
 	Security  SecurityConfig  `mapstructure:"security"`
+	Plugins   PluginsConfig   `mapstructure:"plugins"`
 	I18N      I18NConfig      `mapstructure:"i18n"`
 	RBAC      RBACConfig      `mapstructure:"rbac"`
 }
@@ -98,6 +99,20 @@ type RBACConfig struct {
 	PolicyPath string `mapstructure:"policy_path"`
 }
 
+type PluginsConfig struct {
+	Enabled              bool          `mapstructure:"enabled"`
+	RegistrationTokens   []string      `mapstructure:"registration_tokens"`
+	AllowedPluginKeys    []string      `mapstructure:"allowed_plugin_keys"`
+	PublicPrefix         string        `mapstructure:"public_prefix"`
+	HeartbeatTTL         time.Duration `mapstructure:"heartbeat_ttl"`
+	RequestTimeout       time.Duration `mapstructure:"request_timeout"`
+	AllowedHosts         []string      `mapstructure:"allowed_hosts"`
+	AllowedCIDRs         []string      `mapstructure:"allowed_cidrs"`
+	AllowLoopback        bool          `mapstructure:"allow_loopback"`
+	AllowPublicRoutes    bool          `mapstructure:"allow_public_routes"`
+	GatewaySigningSecret string        `mapstructure:"gateway_signing_secret"`
+}
+
 func Load(path string) (*Config, error) {
 	v := viper.New()
 	setDefaults(v)
@@ -162,6 +177,9 @@ func (c *Config) Validate() error {
 	if err := c.RBAC.Validate(); err != nil {
 		return err
 	}
+	if err := c.Plugins.Validate(c.App.Env); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -213,6 +231,35 @@ func (c RBACConfig) Validate() error {
 	return nil
 }
 
+func (c PluginsConfig) Validate(env string) error {
+	if !c.Enabled {
+		return nil
+	}
+	if c.PublicPrefix == "" {
+		return fmt.Errorf("plugins.public_prefix is required")
+	}
+	if !strings.HasPrefix(c.PublicPrefix, "/") {
+		return fmt.Errorf("plugins.public_prefix must start with /")
+	}
+	if c.HeartbeatTTL <= 0 {
+		return fmt.Errorf("plugins.heartbeat_ttl must be positive")
+	}
+	if c.RequestTimeout <= 0 {
+		return fmt.Errorf("plugins.request_timeout must be positive")
+	}
+	if env != "" && env != "local" && env != "test" {
+		if len(c.RegistrationTokens) == 0 {
+			return fmt.Errorf("plugins.registration_tokens is required outside local/test")
+		}
+		for _, token := range c.RegistrationTokens {
+			if len(token) < 32 {
+				return fmt.Errorf("plugins.registration_tokens entries must be at least 32 bytes outside local/test")
+			}
+		}
+	}
+	return nil
+}
+
 func setDefaults(v *viper.Viper) {
 	v.SetDefault("app.name", "keiyaku-go")
 	v.SetDefault("app.env", "local")
@@ -245,6 +292,17 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("security.rate_limit.burst", 200)
 	v.SetDefault("security.circuit_breaker.failure_threshold", 5)
 	v.SetDefault("security.circuit_breaker.open_timeout", "5s")
+	v.SetDefault("plugins.enabled", true)
+	v.SetDefault("plugins.registration_tokens", []string{})
+	v.SetDefault("plugins.allowed_plugin_keys", []string{})
+	v.SetDefault("plugins.public_prefix", "/api/v1/extensions")
+	v.SetDefault("plugins.heartbeat_ttl", "30s")
+	v.SetDefault("plugins.request_timeout", "5s")
+	v.SetDefault("plugins.allowed_hosts", []string{})
+	v.SetDefault("plugins.allowed_cidrs", []string{})
+	v.SetDefault("plugins.allow_loopback", false)
+	v.SetDefault("plugins.allow_public_routes", false)
+	v.SetDefault("plugins.gateway_signing_secret", "")
 	v.SetDefault("i18n.default", "en-US")
 	v.SetDefault("i18n.supported", []string{"en-US", "zh-CN"})
 	v.SetDefault("i18n.files", map[string]string{

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/rin721/keiyaku-go/internal/domain/article"
+	domainplugin "github.com/rin721/keiyaku-go/internal/domain/plugin"
 	"github.com/rin721/keiyaku-go/internal/domain/shared"
 	"github.com/rin721/keiyaku-go/internal/domain/user"
 )
@@ -62,4 +63,13 @@ type Cache interface {
 	Get(ctx context.Context, key string) ([]byte, error)
 	Set(ctx context.Context, key string, value []byte, ttl time.Duration) error
 	Delete(ctx context.Context, key string) error
+}
+
+type PluginRegistryRepository interface {
+	UpsertRegistration(ctx context.Context, registration domainplugin.Registration) error
+	TouchInstance(ctx context.Context, pluginKey string, instanceID string, leaseExpiresAt time.Time, now time.Time) (*domainplugin.Instance, error)
+	DisableInstance(ctx context.Context, pluginKey string, instanceID string, now time.Time) error
+	ListPluginServices(ctx context.Context) ([]*domainplugin.Service, error)
+	GetPluginService(ctx context.Context, pluginKey string) (*domainplugin.Service, []*domainplugin.Instance, []*domainplugin.Route, error)
+	FindRoutable(ctx context.Context, pluginKey string, now time.Time) (*domainplugin.Service, []*domainplugin.Instance, []*domainplugin.Route, error)
 }

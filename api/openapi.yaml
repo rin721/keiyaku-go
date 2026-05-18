@@ -396,6 +396,425 @@ paths:
                     format: int32
                   msg:
                     type: string
+  /plugins:
+    get:
+      tags:
+        - "Plugin"
+      summary: "List plugins"
+      description: "List registered remote plugin services."
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/PluginServiceResponse"
+        "401":
+          description: "Unauthorized"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "403":
+          description: "Forbidden"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+  /plugins/registrations:
+    post:
+      tags:
+        - "Plugin"
+      summary: "Register remote plugin"
+      description: "Register a remote HTTP plugin instance and its routes."
+      requestBody:
+        required: true
+        description: "Plugin registration payload"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PluginRegistrationRequest"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/PluginRegistrationResponse"
+        "400":
+          description: "Invalid request"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "401":
+          description: "Invalid plugin registration token"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "403":
+          description: "Plugin key not allowed"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+  /plugins/{plugin_key}:
+    get:
+      tags:
+        - "Plugin"
+      summary: "Get plugin"
+      description: "Get a registered remote plugin service."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "plugin_key"
+          in: path
+          required: true
+          description: "Plugin key"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/PluginDetailResponse"
+        "401":
+          description: "Unauthorized"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "403":
+          description: "Forbidden"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "404":
+          description: "Plugin not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+  /plugins/{plugin_key}/instances/{instance_id}:
+    delete:
+      tags:
+        - "Plugin"
+      summary: "Unregister plugin instance"
+      description: "Disable a registered plugin instance."
+      parameters:
+        - name: "plugin_key"
+          in: path
+          required: true
+          description: "Plugin key"
+          schema:
+            type: string
+        - name: "instance_id"
+          in: path
+          required: true
+          description: "Instance ID"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+                  data:
+                    type: object
+        "401":
+          description: "Invalid plugin registration token"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "404":
+          description: "Plugin instance not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+  /plugins/{plugin_key}/instances/{instance_id}/heartbeat:
+    post:
+      tags:
+        - "Plugin"
+      summary: "Heartbeat plugin instance"
+      description: "Refresh the lease of a registered plugin instance."
+      parameters:
+        - name: "plugin_key"
+          in: path
+          required: true
+          description: "Plugin key"
+          schema:
+            type: string
+        - name: "instance_id"
+          in: path
+          required: true
+          description: "Instance ID"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/PluginHeartbeatResponse"
+        "401":
+          description: "Invalid plugin registration token"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "404":
+          description: "Plugin instance not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
   /users/me:
     get:
       tags:
@@ -585,6 +1004,184 @@ components:
           type: string
         username:
           type: string
+    PluginDetailResponse:
+      type: object
+      properties:
+        instances:
+          type: array
+          items:
+            $ref: "#/components/schemas/PluginInstanceResponse"
+        routes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PluginRouteResponse"
+        service:
+          $ref: "#/components/schemas/PluginServiceResponse"
+    PluginHeartbeatResponse:
+      type: object
+      properties:
+        instance_id:
+          type: string
+        lease_until:
+          type: string
+          format: date-time
+        plugin_key:
+          type: string
+    PluginInstanceResponse:
+      type: object
+      properties:
+        base_url:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        health_path:
+          type: string
+        instance_id:
+          type: string
+        last_error:
+          type: string
+        last_seen_at:
+          type: string
+          format: date-time
+        lease_expires_at:
+          type: string
+          format: date-time
+        manifest_hash:
+          type: string
+        status:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: string
+    PluginRegistrationRequest:
+      type: object
+      required:
+        - base_url
+        - instance_id
+        - name
+        - plugin_key
+        - protocol
+        - routes
+        - schema_version
+        - version
+      properties:
+        base_url:
+          type: string
+        health_path:
+          type: string
+        instance_id:
+          type: string
+        metadata:
+          type: object
+        name:
+          type: string
+        openapi_url:
+          type: string
+        plugin_key:
+          type: string
+        protocol:
+          type: string
+        routes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PluginRouteSpec"
+        schema_version:
+          type: string
+        version:
+          type: string
+    PluginRegistrationResponse:
+      type: object
+      properties:
+        instance_id:
+          type: string
+        lease_until:
+          type: string
+          format: date-time
+        manifest_hash:
+          type: string
+        plugin_key:
+          type: string
+    PluginRouteResponse:
+      type: object
+      properties:
+        auth_policy:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        enabled:
+          type: boolean
+        forward_auth_header:
+          type: boolean
+        match_type:
+          type: string
+        metadata:
+          type: object
+        method:
+          type: string
+        path:
+          type: string
+        timeout_ms:
+          type: integer
+          format: int32
+        updated_at:
+          type: string
+          format: date-time
+        upstream_path:
+          type: string
+    PluginRouteSpec:
+      type: object
+      required:
+        - match_type
+        - method
+        - path
+        - upstream_path
+      properties:
+        auth_policy:
+          type: string
+        forward_auth_header:
+          type: boolean
+        match_type:
+          type: string
+        metadata:
+          type: object
+        method:
+          type: string
+        path:
+          type: string
+        timeout_ms:
+          type: integer
+          format: int32
+        upstream_path:
+          type: string
+    PluginServiceResponse:
+      type: object
+      properties:
+        created_at:
+          type: string
+          format: date-time
+        current_manifest_hash:
+          type: string
+        disabled_at:
+          type: string
+          format: date-time
+          nullable: true
+        metadata:
+          type: object
+        name:
+          type: string
+        plugin_key:
+          type: string
+        protocol:
+          type: string
+        status:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
     RegisterRequest:
       type: object
       required:

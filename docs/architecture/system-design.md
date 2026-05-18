@@ -9,8 +9,8 @@ owners: [tech-lead]
 status: active
 effective_date: 2026-05-15
 version: 1.0
-related_rules: [GOV-P0-001, GOV-P0-002, GOV-P1-001, GOV-P1-002, GOV-P1-006]
-source_of_truth: [docs/adr/20260515-adopt-gin-gorm-clean-architecture.md]
+related_rules: [GOV-P0-001, GOV-P0-002, GOV-P1-001, GOV-P1-002, GOV-P1-003, GOV-P1-006]
+source_of_truth: [docs/adr/20260515-adopt-gin-gorm-clean-architecture.md, docs/adr/20260519-adopt-remote-service-plugin-system.md]
 derived_from: [docs/governance/rules.md, docs/conventions/layering.md, docs/conventions/dependency-injection.md]
 read_when: [boundary_sensitive, governance_change]
 update_when: [default_behavior_changed, convention_changed, adr_accepted]
@@ -65,3 +65,27 @@ flowchart TD
 ```
 
 `cmd/api/main.go` 只负责进程生命周期。依赖装配集中在 `internal/bootstrap`，并通过显式构造函数自下而上创建。Bootstrap 负责把 Viper 配置拆成各外圈 adapter 需要的局部配置，例如传给 HTTP Router 的 `router.Options`，Router 不直接依赖 `internal/infrastructure/config.Config`。
+
+## 远端插件链路
+
+```mermaid
+flowchart LR
+  Plugin["Remote Plugin Service"] --> Register["POST /api/v1/plugins/registrations"]
+  Plugin --> Heartbeat["Heartbeat Lease"]
+  Register --> Registry["Application Plugin Registry"]
+  Heartbeat --> Registry
+  Registry --> MySQL["plugin_services / plugin_instances / plugin_routes"]
+  Client["Client"] --> Gateway["/api/v1/extensions/{plugin_key}/*path"]
+  Gateway --> Resolver["Route Resolver"]
+  Resolver --> MySQL
+  Gateway --> Plugin
+```
+
+插件系统遵循 [ADR 20260519：采用远端服务插件系统](../adr/20260519-adopt-remote-service-plugin-system.md)：
+
+- 插件服务独立部署，主服务只保存插件 manifest、实例租约和路由表。
+- `internal/application/plugin` 负责注册、心跳、注销、路由解析和状态转换。
+- `internal/api/http/handler.PluginHandler` 负责 HTTP 注册入口、管理查询和网关转发。
+- `internal/infrastructure/persistence/mysql` 只实现注册表持久化，不向 Handler 泄露 GORM Model。
+- `pkg/plugin` 是插件服务侧 SDK，可被独立插件服务依赖，不得 import `internal`。
+- 网关默认只透传 TraceID、插件 key 和脱敏用户上下文；插件业务响应原样返回，主服务只包装自身网关错误。

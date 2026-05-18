@@ -52,6 +52,19 @@ security:
     failure_threshold: 5
     open_timeout: 5s
 
+plugins:
+  enabled: true
+  registration_tokens: []
+  allowed_plugin_keys: []
+  public_prefix: "/api/v1/extensions"
+  heartbeat_ttl: 30s
+  request_timeout: 5s
+  allowed_hosts: []
+  allowed_cidrs: []
+  allow_loopback: false
+  allow_public_routes: false
+  gateway_signing_secret: ""
+
 i18n:
   default: en-US
   supported:

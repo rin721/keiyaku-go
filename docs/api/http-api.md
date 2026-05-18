@@ -10,8 +10,8 @@ status: active
 effective_date: 2026-05-19
 version: 1.2
 related_rules: [GOV-P0-001, GOV-P0-002, GOV-P1-001]
-source_of_truth: [docs/adr/20260515-adopt-gin-gorm-clean-architecture.md]
-derived_from: [docs/architecture/system-design.md]
+source_of_truth: [docs/adr/20260515-adopt-gin-gorm-clean-architecture.md, docs/adr/20260519-adopt-remote-service-plugin-system.md]
+derived_from: [docs/architecture/system-design.md, docs/adr/20260519-adopt-remote-service-plugin-system.md]
 read_when: [boundary_sensitive, security_sensitive]
 update_when: [default_behavior_changed, convention_changed, adr_accepted]
 conflict_policy: binding_must_yield_to_ssot
@@ -47,6 +47,21 @@ verification_target: [scripts/check-layering.ps1, scripts/check-governance-map.p
 | POST | `/api/v1/articles` | JWT | 创建文章，可选择立即发布 |
 | GET | `/api/v1/articles/{id}` | No | 获取已发布文章详情 |
 | GET | `/api/v1/articles` | No | 分页获取已发布文章 |
+
+## Plugin
+
+插件注册接口使用插件注册 token，不使用用户 JWT。插件管理接口默认由现有 JWT + Casbin 控制。插件网关根据已注册 route 的 `auth_policy` 决定是否需要用户身份。
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/api/v1/plugins/registrations` | Plugin token | 注册远端插件实例、manifest 与路由 |
+| POST | `/api/v1/plugins/{plugin_key}/instances/{instance_id}/heartbeat` | Plugin token | 刷新插件实例租约 |
+| DELETE | `/api/v1/plugins/{plugin_key}/instances/{instance_id}` | Plugin token | 注销插件实例 |
+| GET | `/api/v1/plugins` | JWT + Casbin | 查询插件服务列表 |
+| GET | `/api/v1/plugins/{plugin_key}` | JWT + Casbin | 查询插件服务、实例和路由详情 |
+| ANY | `/api/v1/extensions/{plugin_key}/*path` | Route policy | 按插件注册路由代理 HTTP 请求 |
+
+插件网关只在主服务自身发生路由不存在、插件不可用、上游连接失败或超时时返回统一响应结构；插件上游业务响应原样透传。
 
 ## OpenAPI Generation
 
