@@ -1,0 +1,46 @@
+{
+  "schema_version": "v2",
+  "plugin_key": "blog",
+  "name": "Blog",
+  "version": "0.1.0",
+  "instance_id": "blog-local",
+  "protocol": "http",
+  "base_url": "http://127.0.0.1:9091",
+  "health_path": "/healthz",
+  "metadata": {
+    "domain": "blog",
+    "service": "blog"
+  },
+  "routes": [
+    {
+      "route_id": "articles-create",
+      "method": "POST",
+      "match_type": "exact",
+      "gateway_path": "/api/v1/extensions/blog/articles",
+      "upstream_path": "/articles",
+      "auth_policy": "rbac",
+      "timeout": "5s",
+      "forward_auth_header": false
+    },
+    {
+      "route_id": "articles-list",
+      "method": "GET",
+      "match_type": "exact",
+      "gateway_path": "/api/v1/extensions/blog/articles",
+      "upstream_path": "/articles",
+      "auth_policy": "rbac",
+      "timeout": "5s",
+      "forward_auth_header": false
+    },
+    {
+      "route_id": "articles-detail",
+      "method": "GET",
+      "match_type": "prefix",
+      "gateway_path": "/api/v1/extensions/blog/articles",
+      "upstream_path": "/articles",
+      "auth_policy": "rbac",
+      "timeout": "5s",
+      "forward_auth_header": false
+    }
+  ]
+}

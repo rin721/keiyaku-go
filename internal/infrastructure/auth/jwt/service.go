@@ -26,25 +26,42 @@ func NewService(cfg config.JWTConfig) *Service {
 	return &Service{cfg: cfg, now: func() time.Time { return time.Now().UTC() }}
 }
 
-func (s *Service) IssueToken(_ context.Context, subject port.TokenUser) (port.TokenPair, error) {
+func (s *Service) IssueToken(ctx context.Context, subject port.TokenUser) (port.TokenPair, error) {
+	return s.IssueTokenWithRefreshID(ctx, subject, "")
+}
+
+func (s *Service) IssueTokenWithRefreshID(_ context.Context, subject port.TokenUser, refreshTokenID string) (port.TokenPair, error) {
 	if s == nil || s.cfg.Secret == "" {
 		return port.TokenPair{}, fmt.Errorf("jwt service is not ready")
 	}
 	now := s.now()
 	accessExpiresAt := now.Add(s.cfg.AccessTokenTTL)
 	refreshExpiresAt := now.Add(s.cfg.RefreshTokenTTL)
-	access, err := s.sign(subject, accessExpiresAt, "access")
+	access, err := s.sign(subject, accessExpiresAt, "access", "")
 	if err != nil {
 		return port.TokenPair{}, err
 	}
-	refresh, err := s.sign(subject, refreshExpiresAt, "refresh")
+	refresh, err := s.sign(subject, refreshExpiresAt, "refresh", refreshTokenID)
 	if err != nil {
 		return port.TokenPair{}, err
 	}
-	return port.TokenPair{AccessToken: access, RefreshToken: refresh, ExpiresAt: accessExpiresAt}, nil
+	return port.TokenPair{
+		AccessToken:      access,
+		RefreshToken:     refresh,
+		ExpiresAt:        accessExpiresAt,
+		RefreshExpiresAt: refreshExpiresAt,
+	}, nil
 }
 
 func (s *Service) ParseAccessToken(_ context.Context, raw string) (port.TokenClaims, error) {
+	return s.parseToken(raw, "access")
+}
+
+func (s *Service) ParseRefreshToken(_ context.Context, raw string) (port.TokenClaims, error) {
+	return s.parseToken(raw, "refresh")
+}
+
+func (s *Service) parseToken(raw string, audience string) (port.TokenClaims, error) {
 	if s == nil || s.cfg.Secret == "" {
 		return port.TokenClaims{}, fmt.Errorf("jwt service is not ready")
 	}
@@ -54,7 +71,7 @@ func (s *Service) ParseAccessToken(_ context.Context, raw string) (port.TokenCla
 			return nil, fmt.Errorf("unexpected jwt method: %s", token.Header["alg"])
 		}
 		return []byte(s.cfg.Secret), nil
-	}, jwtlib.WithIssuer(s.cfg.Issuer), jwtlib.WithAudience("access"))
+	}, jwtlib.WithIssuer(s.cfg.Issuer), jwtlib.WithAudience(audience))
 	if err != nil {
 		return port.TokenClaims{}, fmt.Errorf("parse jwt: %w", err)
 	}
@@ -66,10 +83,11 @@ func (s *Service) ParseAccessToken(_ context.Context, raw string) (port.TokenCla
 		Username:  parsed.Username,
 		Roles:     parsed.Roles,
 		ExpiresAt: parsed.ExpiresAt.Time,
+		TokenID:   parsed.ID,
 	}, nil
 }
 
-func (s *Service) sign(subject port.TokenUser, expiresAt time.Time, audience string) (string, error) {
+func (s *Service) sign(subject port.TokenUser, expiresAt time.Time, audience string, tokenID string) (string, error) {
 	now := s.now()
 	claims := claims{
 		UserID:   subject.ID,
@@ -82,6 +100,7 @@ func (s *Service) sign(subject port.TokenUser, expiresAt time.Time, audience str
 			ExpiresAt: jwtlib.NewNumericDate(expiresAt),
 			IssuedAt:  jwtlib.NewNumericDate(now),
 			NotBefore: jwtlib.NewNumericDate(now),
+			ID:        tokenID,
 		},
 	}
 	token := jwtlib.NewWithClaims(jwtlib.SigningMethodHS256, claims)

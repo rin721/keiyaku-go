@@ -10,17 +10,11 @@ import (
 	"github.com/rin721/keiyaku-go/internal/api/http/handler"
 	httpi18n "github.com/rin721/keiyaku-go/internal/api/http/i18n"
 	httprouter "github.com/rin721/keiyaku-go/internal/api/http/router"
-	apparticle "github.com/rin721/keiyaku-go/internal/application/article"
-	"github.com/rin721/keiyaku-go/internal/application/auth"
 	appplugin "github.com/rin721/keiyaku-go/internal/application/plugin"
 	"github.com/rin721/keiyaku-go/internal/application/port"
-	appuser "github.com/rin721/keiyaku-go/internal/application/user"
-	authcasbin "github.com/rin721/keiyaku-go/internal/infrastructure/auth/casbin"
-	authjwt "github.com/rin721/keiyaku-go/internal/infrastructure/auth/jwt"
-	"github.com/rin721/keiyaku-go/internal/infrastructure/auth/password"
 	rediscache "github.com/rin721/keiyaku-go/internal/infrastructure/cache/redis"
 	"github.com/rin721/keiyaku-go/internal/infrastructure/config"
-	idsnowflake "github.com/rin721/keiyaku-go/internal/infrastructure/id/snowflake"
+	infraiam "github.com/rin721/keiyaku-go/internal/infrastructure/iam"
 	zaplogger "github.com/rin721/keiyaku-go/internal/infrastructure/logger/zap"
 	"github.com/rin721/keiyaku-go/internal/infrastructure/persistence/mysql"
 	infraplugin "github.com/rin721/keiyaku-go/internal/infrastructure/plugin"
@@ -36,8 +30,9 @@ type App struct {
 	DB     *gorm.DB
 	Redis  *redis.Client
 
-	pluginHealthCancel context.CancelFunc
-	syncLogger         func() error
+	pluginHealthCancel      context.CancelFunc
+	pluginMaintenanceCancel context.CancelFunc
+	syncLogger              func() error
 }
 
 func New(ctx context.Context, configPath string) (*App, error) {
@@ -66,47 +61,25 @@ func New(ctx context.Context, configPath string) (*App, error) {
 		return nil, err
 	}
 
-	idGenerator, err := idsnowflake.New(cfg.Snowflake.Node)
-	if err != nil {
-		_ = redisClient.Close()
-		_ = mysql.Close(db)
-		_ = syncLogger()
-		return nil, err
-	}
-	tokenService := authjwt.NewService(cfg.JWT)
-	hasher := password.NewBcryptHasher(cfg.Security.BcryptCost)
-	authorizer, err := authcasbin.NewAuthorizer(cfg.RBAC)
-	if err != nil {
-		_ = redisClient.Close()
-		_ = mysql.Close(db)
-		_ = syncLogger()
-		return nil, err
-	}
-
-	userRepo := mysql.NewUserRepository(db)
-	articleRepo := mysql.NewArticleRepository(db)
+	identityClient := infraiam.NewClient(cfg.IAM)
 	pluginRepo := mysql.NewPluginRegistryRepository(db)
-	authService := auth.NewService(userRepo, idGenerator, hasher, tokenService)
-	userService := appuser.NewService(userRepo)
-	articleService := apparticle.NewService(articleRepo, idGenerator)
 	pluginService, err := appplugin.NewService(pluginRepo, appplugin.Config{
-		Enabled:              cfg.Plugins.Enabled,
-		RegistrationTokens:   cfg.Plugins.RegistrationTokens,
-		AllowedPluginKeys:    cfg.Plugins.AllowedPluginKeys,
-		PublicPrefix:         cfg.Plugins.PublicPrefix,
-		HeartbeatTTL:         cfg.Plugins.HeartbeatTTL,
-		RequestTimeout:       cfg.Plugins.RequestTimeout,
-		HealthCheckInterval:  cfg.Plugins.HealthCheckInterval,
-		HealthCheckTimeout:   cfg.Plugins.HealthCheckTimeout,
-		UnhealthyThreshold:   cfg.Plugins.UnhealthyThreshold,
-		RouteCacheTTL:        cfg.Plugins.RouteCacheTTL,
-		AuditRetentionDays:   cfg.Plugins.AuditRetentionDays,
-		MaxAuditQueryLimit:   cfg.Plugins.MaxAuditQueryLimit,
-		AllowedHosts:         cfg.Plugins.AllowedHosts,
-		AllowedCIDRs:         cfg.Plugins.AllowedCIDRs,
-		AllowLoopback:        cfg.Plugins.AllowLoopback,
-		AllowPublicRoutes:    cfg.Plugins.AllowPublicRoutes,
-		GatewaySigningSecret: cfg.Plugins.GatewaySigningSecret,
+		Enabled:                  cfg.Plugins.Enabled,
+		TrustedPlugins:           appPluginTrust(cfg.Plugins.TrustedPlugins),
+		PublicPrefix:             cfg.Plugins.PublicPrefix,
+		HeartbeatTTL:             cfg.Plugins.HeartbeatTTL,
+		RequestTimeout:           cfg.Plugins.RequestTimeout,
+		MaxRegistrationBodyBytes: cfg.Plugins.MaxRegistrationBodyBytes,
+		MaxGatewayBodyBytes:      cfg.Plugins.MaxGatewayBodyBytes,
+		MaxRouteTimeout:          cfg.Plugins.MaxRouteTimeout,
+		HealthCheckInterval:      cfg.Plugins.HealthCheckInterval,
+		HealthCheckTimeout:       cfg.Plugins.HealthCheckTimeout,
+		UnhealthyThreshold:       cfg.Plugins.UnhealthyThreshold,
+		RouteCacheTTL:            cfg.Plugins.RouteCacheTTL,
+		MaintenanceInterval:      cfg.Plugins.MaintenanceInterval,
+		AuditRetentionDays:       cfg.Plugins.AuditRetentionDays,
+		MaxAuditQueryLimit:       cfg.Plugins.MaxAuditQueryLimit,
+		AllowPublicRoutes:        cfg.Plugins.AllowPublicRoutes,
 	}, appplugin.WithAuditRepository(pluginRepo), appplugin.WithMetrics(metrics.NoopPluginMetrics{}))
 	if err != nil {
 		_ = redisClient.Close()
@@ -116,6 +89,7 @@ func New(ctx context.Context, configPath string) (*App, error) {
 	}
 	pluginProbe := infraplugin.NewHTTPHealthProbe(cfg.Plugins.HealthCheckTimeout)
 	pluginHealthCancel := runPluginHealthChecks(ctx, logger, pluginService, pluginProbe, cfg.Plugins.HealthCheckInterval)
+	pluginMaintenanceCancel := runPluginMaintenance(ctx, logger, pluginService, cfg.Plugins.MaintenanceInterval)
 
 	router := httprouter.New(httprouter.Deps{
 		Options: httprouter.Options{
@@ -128,14 +102,13 @@ func New(ctx context.Context, configPath string) (*App, error) {
 				FailureThreshold: cfg.Security.CircuitBreaker.FailureThreshold,
 				OpenTimeout:      cfg.Security.CircuitBreaker.OpenTimeout,
 			},
+			PluginPublicPrefix: cfg.Plugins.PublicPrefix,
 		},
-		Logger:         logger,
-		Tokens:         tokenService,
-		Authorizer:     authorizer,
-		AuthHandler:    handler.NewAuthHandler(authService),
-		UserHandler:    handler.NewUserHandler(userService),
-		ArticleHandler: handler.NewArticleHandler(articleService),
-		PluginHandler:  handler.NewPluginHandler(pluginService, tokenService, authorizer, handler.WithPluginLogger(logger)),
+		Logger:        logger,
+		Tokens:        identityClient,
+		Authorizer:    identityClient,
+		Readiness:     readinessCheck(db, redisClient, identityClient),
+		PluginHandler: handler.NewPluginHandler(pluginService, identityClient, identityClient, handler.WithPluginLogger(logger), handler.WithPluginHTTPClient(&http.Client{Timeout: cfg.Plugins.RequestTimeout})),
 	})
 	server := &http.Server{
 		Addr:         cfg.Server.Addr,
@@ -144,14 +117,59 @@ func New(ctx context.Context, configPath string) (*App, error) {
 		WriteTimeout: cfg.Server.WriteTimeout,
 	}
 	return &App{
-		Config:             cfg,
-		Logger:             logger,
-		Server:             server,
-		DB:                 db,
-		Redis:              redisClient,
-		pluginHealthCancel: pluginHealthCancel,
-		syncLogger:         syncLogger,
+		Config:                  cfg,
+		Logger:                  logger,
+		Server:                  server,
+		DB:                      db,
+		Redis:                   redisClient,
+		pluginHealthCancel:      pluginHealthCancel,
+		pluginMaintenanceCancel: pluginMaintenanceCancel,
+		syncLogger:              syncLogger,
 	}, nil
+}
+
+func readinessCheck(db *gorm.DB, redisClient *redis.Client, identityClient *infraiam.Client) func(context.Context) error {
+	return func(ctx context.Context) error {
+		if db == nil {
+			return fmt.Errorf("mysql is not ready")
+		}
+		sqlDB, err := db.DB()
+		if err != nil {
+			return fmt.Errorf("mysql handle: %w", err)
+		}
+		if err := sqlDB.PingContext(ctx); err != nil {
+			return fmt.Errorf("mysql ping: %w", err)
+		}
+		if redisClient == nil {
+			return fmt.Errorf("redis is not ready")
+		}
+		if err := redisClient.Ping(ctx).Err(); err != nil {
+			return fmt.Errorf("redis ping: %w", err)
+		}
+		if identityClient != nil {
+			if err := identityClient.Health(ctx); err != nil {
+				return fmt.Errorf("iam health: %w", err)
+			}
+		}
+		return nil
+	}
+}
+
+func appPluginTrust(input map[string]config.TrustedPluginConfig) map[string]appplugin.TrustedPluginConfig {
+	if len(input) == 0 {
+		return nil
+	}
+	output := make(map[string]appplugin.TrustedPluginConfig, len(input))
+	for pluginKey, trust := range input {
+		output[pluginKey] = appplugin.TrustedPluginConfig{
+			RegistrationSecret: trust.RegistrationSecret,
+			GatewaySecret:      trust.GatewaySecret,
+			AllowedHosts:       append([]string(nil), trust.AllowedHosts...),
+			AllowedCIDRs:       append([]string(nil), trust.AllowedCIDRs...),
+			AllowLoopback:      trust.AllowLoopback,
+		}
+	}
+	return output
 }
 
 func (a *App) Shutdown(ctx context.Context) error {
@@ -166,6 +184,9 @@ func (a *App) Shutdown(ctx context.Context) error {
 	}
 	if a.pluginHealthCancel != nil {
 		a.pluginHealthCancel()
+	}
+	if a.pluginMaintenanceCancel != nil {
+		a.pluginMaintenanceCancel()
 	}
 	if a.Redis != nil {
 		if err := a.Redis.Close(); err != nil && shutdownErr == nil {
@@ -188,6 +209,40 @@ func (a *App) ShutdownTimeout() time.Duration {
 		return 10 * time.Second
 	}
 	return a.Config.Server.ShutdownTimeout
+}
+
+func runPluginMaintenance(ctx context.Context, logger *zap.Logger, service *appplugin.Service, interval time.Duration) context.CancelFunc {
+	if service == nil || interval <= 0 {
+		return nil
+	}
+	if logger == nil {
+		logger = zap.NewNop()
+	}
+	maintenanceCtx, cancel := context.WithCancel(ctx)
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-maintenanceCtx.Done():
+				return
+			case <-ticker.C:
+				result, err := service.Maintain(maintenanceCtx)
+				if err != nil {
+					logger.Warn("plugin maintenance failed", zap.Error(err))
+					continue
+				}
+				if result != nil && (result.PrunedSignatureNonces > 0 || result.PrunedAuditEvents > 0 || result.DisabledStaleInstances > 0) {
+					logger.Info("plugin maintenance completed",
+						zap.Int64("pruned_signature_nonces", result.PrunedSignatureNonces),
+						zap.Int64("pruned_audit_events", result.PrunedAuditEvents),
+						zap.Int64("disabled_stale_instances", result.DisabledStaleInstances),
+					)
+				}
+			}
+		}
+	}()
+	return cancel
 }
 
 func runPluginHealthChecks(ctx context.Context, logger *zap.Logger, service *appplugin.Service, probe port.PluginHealthProbe, interval time.Duration) context.CancelFunc {

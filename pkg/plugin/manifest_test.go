@@ -5,21 +5,24 @@ import (
 	"testing"
 )
 
-func TestValidateManifestAcceptsHTTPManifest(t *testing.T) {
+func TestValidateManifestAcceptsV2HTTPManifest(t *testing.T) {
 	manifest := Manifest{
-		PluginKey:  "demo-plugin",
-		Name:       "Demo",
-		Version:    "0.1.0",
-		InstanceID: "demo-plugin-1",
-		Protocol:   ProtocolHTTP,
-		BaseURL:    "http://plugins.internal:9090",
+		SchemaVersion: DefaultSchemaVersion,
+		PluginKey:     "demo-plugin",
+		Name:          "Demo",
+		Version:       "0.1.0",
+		InstanceID:    "demo-plugin-1",
+		Protocol:      ProtocolHTTP,
+		BaseURL:       "http://plugins.internal:9090",
 		Routes: []Route{
 			{
+				RouteID:      "hello",
 				Method:       MethodGet,
 				MatchType:    MatchTypeExact,
-				Path:         "/hello",
+				GatewayPath:  "/api/v1/extensions/demo/hello",
 				UpstreamPath: "/hello",
 				AuthPolicy:   AuthPolicyAuthenticated,
+				Timeout:      "5s",
 			},
 		},
 	}
@@ -29,18 +32,39 @@ func TestValidateManifestAcceptsHTTPManifest(t *testing.T) {
 	}
 }
 
-func TestValidateManifestRejectsUnsafeBaseURL(t *testing.T) {
+func TestValidateManifestRejectsV1Manifest(t *testing.T) {
 	manifest := Manifest{
-		PluginKey:  "demo-plugin",
-		Name:       "Demo",
-		Version:    "0.1.0",
-		InstanceID: "demo-plugin-1",
-		Protocol:   ProtocolHTTP,
-		BaseURL:    "http://user:pass@plugins.internal:9090?token=secret",
+		SchemaVersion: "v1",
+		PluginKey:     "demo-plugin",
+		Name:          "Demo",
+		Version:       "0.1.0",
+		InstanceID:    "demo-plugin-1",
+		Protocol:      ProtocolHTTP,
+		BaseURL:       "http://plugins.internal:9090",
 		Routes: []Route{
-			{Method: MethodGet, MatchType: MatchTypeExact, Path: "/hello", UpstreamPath: "/hello"},
+			{RouteID: "hello", Method: MethodGet, MatchType: MatchTypeExact, GatewayPath: "/api/v1/extensions/demo/hello", UpstreamPath: "/hello", Timeout: "5s"},
 		},
 	}
+
+	err := ValidateManifest(manifest)
+	if err == nil || !strings.Contains(err.Error(), "schema_version") {
+		t.Fatalf("ValidateManifest() error = %v, want schema_version failure", err)
+	}
+}
+
+func TestValidateManifestRejectsMissingRouteID(t *testing.T) {
+	manifest := validManifest()
+	manifest.Routes[0].RouteID = ""
+
+	err := ValidateManifest(manifest)
+	if err == nil || !strings.Contains(err.Error(), "route_id") {
+		t.Fatalf("ValidateManifest() error = %v, want route_id failure", err)
+	}
+}
+
+func TestValidateManifestRejectsUnsafeBaseURL(t *testing.T) {
+	manifest := validManifest()
+	manifest.BaseURL = "http://user:pass@plugins.internal:9090?token=secret"
 
 	err := ValidateManifest(manifest)
 	if err == nil {
@@ -51,19 +75,27 @@ func TestValidateManifestRejectsUnsafeBaseURL(t *testing.T) {
 	}
 }
 
-func TestManifestHashIsStableAcrossRouteOrder(t *testing.T) {
-	manifest := Manifest{
-		PluginKey:  "demo-plugin",
-		Name:       "Demo",
-		Version:    "0.1.0",
-		InstanceID: "demo-plugin-1",
-		Protocol:   ProtocolHTTP,
-		BaseURL:    "http://plugins.internal:9090",
-		Routes: []Route{
-			{Method: MethodPost, MatchType: MatchTypeExact, Path: "/items", UpstreamPath: "/items"},
-			{Method: MethodGet, MatchType: MatchTypePrefix, Path: "/items", UpstreamPath: "/items"},
-		},
+func TestValidateGatewayPathRequiresPublicPrefix(t *testing.T) {
+	if err := ValidateGatewayPath("/api/v1/extensions/blog/articles", "/api/v1/extensions"); err != nil {
+		t.Fatalf("ValidateGatewayPath() error = %v", err)
 	}
+	err := ValidateGatewayPath("/api/v1/users/me", "/api/v1/extensions")
+	if err == nil || !strings.Contains(err.Error(), "public_prefix") {
+		t.Fatalf("ValidateGatewayPath() error = %v, want public_prefix failure", err)
+	}
+}
+
+func TestManifestHashIsStableAcrossRouteOrder(t *testing.T) {
+	manifest := validManifest()
+	manifest.Routes = append(manifest.Routes, Route{
+		RouteID:      "items",
+		Method:       MethodPost,
+		MatchType:    MatchTypeExact,
+		GatewayPath:  "/api/v1/extensions/demo/items",
+		UpstreamPath: "/items",
+		AuthPolicy:   AuthPolicyAuthenticated,
+		Timeout:      "5s",
+	})
 	other := manifest
 	other.Routes = []Route{manifest.Routes[1], manifest.Routes[0]}
 
@@ -77,5 +109,28 @@ func TestManifestHashIsStableAcrossRouteOrder(t *testing.T) {
 	}
 	if left != right {
 		t.Fatalf("hash mismatch: %s != %s", left, right)
+	}
+}
+
+func validManifest() Manifest {
+	return Manifest{
+		SchemaVersion: DefaultSchemaVersion,
+		PluginKey:     "demo-plugin",
+		Name:          "Demo",
+		Version:       "0.1.0",
+		InstanceID:    "demo-plugin-1",
+		Protocol:      ProtocolHTTP,
+		BaseURL:       "http://plugins.internal:9090",
+		Routes: []Route{
+			{
+				RouteID:      "hello",
+				Method:       MethodGet,
+				MatchType:    MatchTypeExact,
+				GatewayPath:  "/api/v1/extensions/demo/hello",
+				UpstreamPath: "/hello",
+				AuthPolicy:   AuthPolicyAuthenticated,
+				Timeout:      "5s",
+			},
+		},
 	}
 }

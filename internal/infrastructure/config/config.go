@@ -17,6 +17,7 @@ type Config struct {
 	MySQL     MySQLConfig     `mapstructure:"mysql"`
 	Redis     RedisConfig     `mapstructure:"redis"`
 	JWT       JWTConfig       `mapstructure:"jwt"`
+	IAM       IAMConfig       `mapstructure:"iam"`
 	Snowflake SnowflakeConfig `mapstructure:"snowflake"`
 	Security  SecurityConfig  `mapstructure:"security"`
 	Plugins   PluginsConfig   `mapstructure:"plugins"`
@@ -72,6 +73,13 @@ type JWTConfig struct {
 	RefreshTokenTTL time.Duration `mapstructure:"refresh_token_ttl"`
 }
 
+type IAMConfig struct {
+	Addr         string        `mapstructure:"addr"`
+	BaseURL      string        `mapstructure:"base_url"`
+	ServiceToken string        `mapstructure:"service_token"`
+	Timeout      time.Duration `mapstructure:"timeout"`
+}
+
 type SnowflakeConfig struct {
 	Node int64 `mapstructure:"node"`
 }
@@ -100,23 +108,30 @@ type RBACConfig struct {
 }
 
 type PluginsConfig struct {
-	Enabled              bool          `mapstructure:"enabled"`
-	RegistrationTokens   []string      `mapstructure:"registration_tokens"`
-	AllowedPluginKeys    []string      `mapstructure:"allowed_plugin_keys"`
-	PublicPrefix         string        `mapstructure:"public_prefix"`
-	HeartbeatTTL         time.Duration `mapstructure:"heartbeat_ttl"`
-	RequestTimeout       time.Duration `mapstructure:"request_timeout"`
-	HealthCheckInterval  time.Duration `mapstructure:"health_check_interval"`
-	HealthCheckTimeout   time.Duration `mapstructure:"health_check_timeout"`
-	UnhealthyThreshold   int           `mapstructure:"unhealthy_threshold"`
-	RouteCacheTTL        time.Duration `mapstructure:"route_cache_ttl"`
-	AuditRetentionDays   int           `mapstructure:"audit_retention_days"`
-	MaxAuditQueryLimit   int           `mapstructure:"max_audit_query_limit"`
-	AllowedHosts         []string      `mapstructure:"allowed_hosts"`
-	AllowedCIDRs         []string      `mapstructure:"allowed_cidrs"`
-	AllowLoopback        bool          `mapstructure:"allow_loopback"`
-	AllowPublicRoutes    bool          `mapstructure:"allow_public_routes"`
-	GatewaySigningSecret string        `mapstructure:"gateway_signing_secret"`
+	Enabled                  bool                           `mapstructure:"enabled"`
+	TrustedPlugins           map[string]TrustedPluginConfig `mapstructure:"trusted_plugins"`
+	PublicPrefix             string                         `mapstructure:"public_prefix"`
+	HeartbeatTTL             time.Duration                  `mapstructure:"heartbeat_ttl"`
+	RequestTimeout           time.Duration                  `mapstructure:"request_timeout"`
+	MaxRegistrationBodyBytes int64                          `mapstructure:"max_registration_body_bytes"`
+	MaxGatewayBodyBytes      int64                          `mapstructure:"max_gateway_body_bytes"`
+	MaxRouteTimeout          time.Duration                  `mapstructure:"max_route_timeout"`
+	HealthCheckInterval      time.Duration                  `mapstructure:"health_check_interval"`
+	HealthCheckTimeout       time.Duration                  `mapstructure:"health_check_timeout"`
+	UnhealthyThreshold       int                            `mapstructure:"unhealthy_threshold"`
+	RouteCacheTTL            time.Duration                  `mapstructure:"route_cache_ttl"`
+	MaintenanceInterval      time.Duration                  `mapstructure:"maintenance_interval"`
+	AuditRetentionDays       int                            `mapstructure:"audit_retention_days"`
+	MaxAuditQueryLimit       int                            `mapstructure:"max_audit_query_limit"`
+	AllowPublicRoutes        bool                           `mapstructure:"allow_public_routes"`
+}
+
+type TrustedPluginConfig struct {
+	RegistrationSecret string   `mapstructure:"registration_secret"`
+	GatewaySecret      string   `mapstructure:"gateway_secret"`
+	AllowedHosts       []string `mapstructure:"allowed_hosts"`
+	AllowedCIDRs       []string `mapstructure:"allowed_cidrs"`
+	AllowLoopback      bool     `mapstructure:"allow_loopback"`
 }
 
 func Load(path string) (*Config, error) {
@@ -174,6 +189,9 @@ func (c *Config) Validate() error {
 	if c.JWT.AccessTokenTTL <= 0 || c.JWT.RefreshTokenTTL <= 0 {
 		return fmt.Errorf("jwt ttl must be positive")
 	}
+	if err := c.IAM.Validate(c.App.Env); err != nil {
+		return err
+	}
 	if c.Security.BcryptCost == 0 {
 		c.Security.BcryptCost = 12
 	}
@@ -183,7 +201,7 @@ func (c *Config) Validate() error {
 	if err := c.RBAC.Validate(); err != nil {
 		return err
 	}
-	if err := c.Plugins.Validate(c.App.Env); err != nil {
+	if err := (&c.Plugins).Validate(c.App.Env); err != nil {
 		return err
 	}
 	return nil
@@ -227,6 +245,22 @@ func (c I18NConfig) Validate() error {
 	return nil
 }
 
+func (c IAMConfig) Validate(env string) error {
+	if c.Timeout <= 0 {
+		return fmt.Errorf("iam.timeout must be positive")
+	}
+	if c.Addr == "" {
+		return fmt.Errorf("iam.addr is required")
+	}
+	if c.BaseURL == "" {
+		return fmt.Errorf("iam.base_url is required")
+	}
+	if env != "" && env != "local" && env != "test" && len(c.ServiceToken) < 32 {
+		return fmt.Errorf("iam.service_token must be at least 32 bytes outside local/test")
+	}
+	return nil
+}
+
 func (c RBACConfig) Validate() error {
 	if c.ModelPath == "" {
 		return fmt.Errorf("rbac.model_path is required")
@@ -237,7 +271,10 @@ func (c RBACConfig) Validate() error {
 	return nil
 }
 
-func (c PluginsConfig) Validate(env string) error {
+func (c *PluginsConfig) Validate(env string) error {
+	if c == nil {
+		return fmt.Errorf("plugins config is required")
+	}
 	if !c.Enabled {
 		return nil
 	}
@@ -253,6 +290,15 @@ func (c PluginsConfig) Validate(env string) error {
 	if c.RequestTimeout <= 0 {
 		return fmt.Errorf("plugins.request_timeout must be positive")
 	}
+	if c.MaxRegistrationBodyBytes <= 0 {
+		return fmt.Errorf("plugins.max_registration_body_bytes must be positive")
+	}
+	if c.MaxGatewayBodyBytes <= 0 {
+		return fmt.Errorf("plugins.max_gateway_body_bytes must be positive")
+	}
+	if c.MaxRouteTimeout <= 0 {
+		c.MaxRouteTimeout = c.RequestTimeout
+	}
 	if c.HealthCheckInterval < 0 {
 		return fmt.Errorf("plugins.health_check_interval must not be negative")
 	}
@@ -265,6 +311,9 @@ func (c PluginsConfig) Validate(env string) error {
 	if c.RouteCacheTTL < 0 {
 		return fmt.Errorf("plugins.route_cache_ttl must not be negative")
 	}
+	if c.MaintenanceInterval < 0 {
+		return fmt.Errorf("plugins.maintenance_interval must not be negative")
+	}
 	if c.AuditRetentionDays <= 0 {
 		return fmt.Errorf("plugins.audit_retention_days must be positive")
 	}
@@ -272,12 +321,15 @@ func (c PluginsConfig) Validate(env string) error {
 		return fmt.Errorf("plugins.max_audit_query_limit must be positive")
 	}
 	if env != "" && env != "local" && env != "test" {
-		if len(c.RegistrationTokens) == 0 {
-			return fmt.Errorf("plugins.registration_tokens is required outside local/test")
+		if len(c.TrustedPlugins) == 0 {
+			return fmt.Errorf("plugins.trusted_plugins is required outside local/test")
 		}
-		for _, token := range c.RegistrationTokens {
-			if len(token) < 32 {
-				return fmt.Errorf("plugins.registration_tokens entries must be at least 32 bytes outside local/test")
+		for pluginKey, trust := range c.TrustedPlugins {
+			if len(trust.RegistrationSecret) < 32 {
+				return fmt.Errorf("plugins.trusted_plugins.%s.registration_secret must be at least 32 bytes outside local/test", pluginKey)
+			}
+			if len(trust.GatewaySecret) < 32 {
+				return fmt.Errorf("plugins.trusted_plugins.%s.gateway_secret must be at least 32 bytes outside local/test", pluginKey)
 			}
 		}
 	}
@@ -310,6 +362,10 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("jwt.issuer", "keiyaku-go")
 	v.SetDefault("jwt.access_token_ttl", "15m")
 	v.SetDefault("jwt.refresh_token_ttl", "168h")
+	v.SetDefault("iam.addr", ":8081")
+	v.SetDefault("iam.base_url", "http://127.0.0.1:8081")
+	v.SetDefault("iam.service_token", "")
+	v.SetDefault("iam.timeout", "3s")
 	v.SetDefault("snowflake.node", 1)
 	v.SetDefault("security.bcrypt_cost", 12)
 	v.SetDefault("security.rate_limit.requests_per_second", 100)
@@ -317,22 +373,21 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("security.circuit_breaker.failure_threshold", 5)
 	v.SetDefault("security.circuit_breaker.open_timeout", "5s")
 	v.SetDefault("plugins.enabled", true)
-	v.SetDefault("plugins.registration_tokens", []string{})
-	v.SetDefault("plugins.allowed_plugin_keys", []string{})
+	v.SetDefault("plugins.trusted_plugins", map[string]TrustedPluginConfig{})
 	v.SetDefault("plugins.public_prefix", "/api/v1/extensions")
 	v.SetDefault("plugins.heartbeat_ttl", "30s")
 	v.SetDefault("plugins.request_timeout", "5s")
+	v.SetDefault("plugins.max_registration_body_bytes", 1048576)
+	v.SetDefault("plugins.max_gateway_body_bytes", 10485760)
+	v.SetDefault("plugins.max_route_timeout", "0s")
 	v.SetDefault("plugins.health_check_interval", "15s")
 	v.SetDefault("plugins.health_check_timeout", "2s")
 	v.SetDefault("plugins.unhealthy_threshold", 3)
 	v.SetDefault("plugins.route_cache_ttl", "5s")
+	v.SetDefault("plugins.maintenance_interval", "1m")
 	v.SetDefault("plugins.audit_retention_days", 30)
 	v.SetDefault("plugins.max_audit_query_limit", 200)
-	v.SetDefault("plugins.allowed_hosts", []string{})
-	v.SetDefault("plugins.allowed_cidrs", []string{})
-	v.SetDefault("plugins.allow_loopback", false)
 	v.SetDefault("plugins.allow_public_routes", false)
-	v.SetDefault("plugins.gateway_signing_secret", "")
 	v.SetDefault("i18n.default", "en-US")
 	v.SetDefault("i18n.supported", []string{"en-US", "zh-CN"})
 	v.SetDefault("i18n.files", map[string]string{

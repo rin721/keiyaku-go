@@ -5,6 +5,7 @@
 "resource not found": "resource not found"
 "resource conflict": "resource conflict"
 "too many requests": "too many requests"
+"request body too large": "request body too large"
 "invalid username or password": "invalid username or password"
 "user disabled": "user disabled"
 "internal server error": "internal server error"

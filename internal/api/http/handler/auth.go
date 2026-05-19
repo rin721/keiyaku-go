@@ -16,18 +16,7 @@ func NewAuthHandler(service *auth.Service) *AuthHandler {
 	return &AuthHandler{service: service}
 }
 
-// Register handles user registration.
-// @Summary Register user
-// @Description Register a user and return access and refresh tokens.
-// @Tags Auth
-// @Accept json
-// @Produce json
-// @Param request body dto.RegisterRequest true "Register payload"
-// @Success 200 {object} dto.AuthResponse "OK"
-// @Failure 400 {object} response.Body "Invalid request"
-// @Failure 409 {object} response.Body "Conflict"
-// @Failure 500 {object} response.Body "Internal server error"
-// @Router /auth/register [post]
+// Register handles user registration for the IAM service.
 func (h *AuthHandler) Register(c *gin.Context) {
 	if h == nil || h.service == nil {
 		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessageAuthHandlerNotReady))
@@ -56,19 +45,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	})
 }
 
-// Login handles user login.
-// @Summary Login user
-// @Description Authenticate a user and return access and refresh tokens.
-// @Tags Auth
-// @Accept json
-// @Produce json
-// @Param request body dto.LoginRequest true "Login payload"
-// @Success 200 {object} dto.AuthResponse "OK"
-// @Failure 400 {object} response.Body "Invalid request"
-// @Failure 401 {object} response.Body "Unauthorized"
-// @Failure 422 {object} response.Body "Invalid credential"
-// @Failure 500 {object} response.Body "Internal server error"
-// @Router /auth/login [post]
+// Login handles user login for the IAM service.
 func (h *AuthHandler) Login(c *gin.Context) {
 	if h == nil || h.service == nil {
 		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessageAuthHandlerNotReady))

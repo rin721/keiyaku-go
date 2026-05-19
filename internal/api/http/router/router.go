@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -13,13 +14,15 @@ import (
 	"github.com/rin721/keiyaku-go/internal/api/http/response"
 	"github.com/rin721/keiyaku-go/internal/application/apperror"
 	"github.com/rin721/keiyaku-go/internal/application/port"
+	pkgplugin "github.com/rin721/keiyaku-go/pkg/plugin"
 	"go.uber.org/zap"
 )
 
 type Options struct {
-	RateLimit      RateLimitOptions
-	CircuitBreaker CircuitBreakerOptions
-	APIDocs        APIDocsOptions
+	RateLimit          RateLimitOptions
+	CircuitBreaker     CircuitBreakerOptions
+	APIDocs            APIDocsOptions
+	PluginPublicPrefix string
 }
 
 type RateLimitOptions struct {
@@ -45,11 +48,9 @@ type Deps struct {
 	Logger     *zap.Logger
 	Tokens     port.TokenIssuer
 	Authorizer port.Authorizer
+	Readiness  func(context.Context) error
 
-	AuthHandler    *handler.AuthHandler
-	UserHandler    *handler.UserHandler
-	ArticleHandler *handler.ArticleHandler
-	PluginHandler  *handler.PluginHandler
+	PluginHandler *handler.PluginHandler
 }
 
 func New(deps Deps) *gin.Engine {
@@ -68,6 +69,15 @@ func New(deps Deps) *gin.Engine {
 	engine.GET("/healthz", func(c *gin.Context) {
 		response.OK(c, gin.H{"status": "ok"})
 	})
+	engine.GET("/readyz", func(c *gin.Context) {
+		if deps.Readiness != nil {
+			if err := deps.Readiness(c.Request.Context()); err != nil {
+				response.Error(c, apperror.Wrap(apperror.CodeServiceUnavailable, apperror.MessageServiceUnavailable, err))
+				return
+			}
+		}
+		response.OK(c, gin.H{"status": "ready"})
+	})
 	apidocs.Inject(engine, apidocs.Options{
 		Disabled: options.APIDocs.Disabled,
 		Path:     options.APIDocs.Path,
@@ -76,30 +86,29 @@ func New(deps Deps) *gin.Engine {
 		Spec:     apispec.OpenAPIYAML(),
 	})
 
+	if deps.PluginHandler != nil {
+		registerPluginGateway(engine, options.PluginPublicPrefix, deps.PluginHandler)
+	}
+
 	v1 := engine.Group("/api/v1")
 	{
-		v1.POST("/auth/register", deps.AuthHandler.Register)
-		v1.POST("/auth/login", deps.AuthHandler.Login)
-		v1.GET("/articles", deps.ArticleHandler.List)
-		v1.GET("/articles/:id", deps.ArticleHandler.Get)
 		if deps.PluginHandler != nil {
 			v1.POST("/plugins/registrations", deps.PluginHandler.Register)
 			v1.POST("/plugins/:plugin_key/instances/:instance_id/heartbeat", deps.PluginHandler.Heartbeat)
 			v1.DELETE("/plugins/:plugin_key/instances/:instance_id", deps.PluginHandler.Unregister)
-			v1.Any("/extensions/:plugin_key/*proxy_path", deps.PluginHandler.Gateway)
 		}
 
 		protected := v1.Group("")
 		protected.Use(middleware.Auth(deps.Tokens), middleware.Casbin(deps.Authorizer))
-		protected.GET("/users/me", deps.UserHandler.Me)
-		protected.POST("/articles", deps.ArticleHandler.Create)
 		if deps.PluginHandler != nil {
 			protected.GET("/plugins", deps.PluginHandler.List)
 			protected.GET("/plugins/:plugin_key", deps.PluginHandler.Get)
+			protected.GET("/plugins/:plugin_key/diagnostics", deps.PluginHandler.Diagnostics)
 			protected.GET("/plugins/:plugin_key/instances", deps.PluginHandler.ListInstances)
 			protected.POST("/plugins/:plugin_key/disable", deps.PluginHandler.Disable)
 			protected.POST("/plugins/:plugin_key/enable", deps.PluginHandler.Enable)
 			protected.POST("/plugins/:plugin_key/instances/:instance_id/disable", deps.PluginHandler.DisableInstance)
+			protected.POST("/plugins/:plugin_key/instances/:instance_id/enable", deps.PluginHandler.EnableInstance)
 			protected.GET("/plugins/:plugin_key/audit-events", deps.PluginHandler.ListAuditEvents)
 		}
 	}
@@ -108,6 +117,15 @@ func New(deps Deps) *gin.Engine {
 		response.JSON(c, http.StatusNotFound, apperror.CodeNotFound, apperror.MessageRouteNotFound, nil)
 	})
 	return engine
+}
+
+func registerPluginGateway(engine *gin.Engine, publicPrefix string, handler *handler.PluginHandler) {
+	prefix := pkgplugin.NormalizePublicPrefix(publicPrefix)
+	if prefix == "/" {
+		engine.Any("/*proxy_path", handler.Gateway)
+		return
+	}
+	engine.Any(prefix+"/*proxy_path", handler.Gateway)
 }
 
 func normalizeOptions(options Options) Options {
@@ -126,5 +144,6 @@ func normalizeOptions(options Options) Options {
 	if options.CircuitBreaker.OpenTimeout <= 0 {
 		options.CircuitBreaker.OpenTimeout = 5 * time.Second
 	}
+	options.PluginPublicPrefix = pkgplugin.NormalizePublicPrefix(options.PluginPublicPrefix)
 	return options
 }

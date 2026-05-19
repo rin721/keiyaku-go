@@ -40,6 +40,8 @@ func statusForCode(code apperror.Code) int {
 		return http.StatusOK
 	case apperror.CodeInvalidArgument, apperror.CodeTooManyRequests:
 		return http.StatusBadRequest
+	case apperror.CodePayloadTooLarge:
+		return http.StatusRequestEntityTooLarge
 	case apperror.CodeUnauthorized:
 		return http.StatusUnauthorized
 	case apperror.CodeForbidden:

@@ -8,14 +8,14 @@ authority_level: binding
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-19
-version: 1.1
+version: 2.0
 related_rules: [GOV-P0-001, GOV-P0-002, GOV-P0-004, GOV-P1-001, GOV-P1-002, GOV-P1-003, GOV-P1-004, GOV-P1-006]
-source_of_truth: [docs/adr/20260519-adopt-remote-service-plugin-system.md]
-derived_from: [docs/architecture/system-design.md, docs/api/http-api.md, docs/architecture/database-schema.md]
+source_of_truth: [docs/adr/20260519-adopt-remote-service-plugin-system.md, docs/adr/20260519-adopt-plugin-v2-breaking-contract.md, docs/adr/20260519-split-blog-plugin-and-iam-service.md]
+derived_from: [docs/architecture/system-design.md, docs/api/http-api.md, docs/architecture/database-schema.md, docs/adr/20260519-adopt-plugin-v2-breaking-contract.md, docs/adr/20260519-split-blog-plugin-and-iam-service.md]
 read_when: [boundary_sensitive, security_sensitive, migration_sensitive, async_sensitive]
 update_when: [default_behavior_changed, convention_changed, adr_accepted, security_policy_changed, migration_policy_changed]
 conflict_policy: binding_must_yield_to_accepted_adr
-rollback_target: [docs/adr/20260519-adopt-remote-service-plugin-system.md]
+rollback_target: [docs/adr/20260519-adopt-remote-service-plugin-system.md, docs/adr/20260519-adopt-plugin-v2-breaking-contract.md]
 verification_target: [scripts/check-layering.ps1, scripts/check-governance-map.ps1, scripts/check-governance-sync.ps1]
 ---
 
@@ -28,6 +28,8 @@ verification_target: [scripts/check-layering.ps1, scripts/check-governance-map.p
 - 插件作为独立服务部署在独立服务器，不加载进主服务进程。
 - 主服务统一提供注册、心跳、健康检查、审计、路由解析、鉴权上下文和 HTTP 网关。
 - 当前版本实际支持 HTTP 插件协议；代码保留 `protocol` 扩展点，非 HTTP 注册直接拒绝。
+- 当前插件契约为 v2，插件显式声明完整 `gateway_path`，不再由 `plugin_key` 派生外部路径。
+- 注册、心跳、注销和网关转发使用 per-plugin HMAC，不再使用全局注册 token。
 - 插件注册表持久化到 MySQL，主服务重启后仍可查询插件状态。
 - 保持 Clean Architecture 分层和手动装配，不引入运行时反射型 DI 容器。
 
@@ -37,7 +39,19 @@ verification_target: [scripts/check-layering.ps1, scripts/check-governance-map.p
 - 不提供第三方不可信插件市场、代码沙箱或插件权限隔离运行时。
 - 当前版本不支持 gRPC、WebSocket、SSE、事件订阅和异步消息插件。
 - 当前版本不做同一 `plugin_key` 下的多版本灰度路由。
-- 当前版本不升级到 per-plugin secret；注册仍使用主服务静态 Bearer token。
+- 当前版本不升级到 mTLS；插件身份使用 per-plugin HMAC secret。
+
+## 内置 Blog 插件
+
+`plugins/blog` 是当前仓库内置的远端业务插件实现，使用 `plugin_key=blog` 注册 Article 路由。Blog 插件独立持有数据库、迁移和配置，主服务只保存它的注册表、实例状态、路由和审计摘要。主服务不读写 `blog_*` 业务表，也不向 Blog 插件透传原始 `Authorization`。
+
+当前 Blog 插件路由：
+
+| Method | Gateway path | Upstream path | Auth |
+| --- | --- | --- | --- |
+| `POST` | `/api/v1/extensions/blog/articles` | `/articles` | `rbac` |
+| `GET` | `/api/v1/extensions/blog/articles` | `/articles` | `rbac` |
+| `GET` | `/api/v1/extensions/blog/articles/{id}` | `/articles/{id}` | `rbac` |
 
 ## 核心对象
 
@@ -75,25 +89,26 @@ flowchart LR
 
 ## 注册与路由
 
-注册入口使用静态 Bearer token。token 只能证明调用方具备注册权限，插件身份还必须通过 `plugins.allowed_plugin_keys` 白名单约束。
+注册、心跳和注销使用 per-plugin registration secret HMAC。插件身份由 `X-Keiyaku-Plugin-Key` 与 `plugins.trusted_plugins.<plugin_key>` 配置共同确定，签名通过后才处理 manifest。
 
 插件实例通过 `POST /api/v1/plugins/{plugin_key}/instances/{instance_id}/heartbeat` 刷新租约。主服务保存 `last_seen_at` 和 `lease_expires_at`，注销接口只禁用实例，不删除历史服务记录。
 
-网关入口是：
+manifest v2 的每条 route 必须声明完整网关路径：
 
 ```text
-/api/v1/extensions/{plugin_key}/*path
+gateway_path: /api/v1/extensions/blog/articles
 ```
 
 路由匹配顺序：
 
-1. `plugin_key`
-2. active route
-3. HTTP method 精确匹配优先于 `ANY`
-4. `exact` 优先于 `prefix`
-5. 最长 path 优先
+1. active route。
+2. HTTP method 精确匹配优先于 `ANY`。
+3. `exact` 优先于 `prefix`。
+4. 最长 `gateway_path` 优先。
 
-`prefix` 必须按路径段匹配，`/foo` 不匹配 `/foobar`。路由只允许挂在 `/api/v1/extensions/{plugin_key}` 下，插件不能覆盖主服务内置路径。
+`prefix` 必须按路径段匹配，`/foo` 不匹配 `/foobar`。`gateway_path` 必须位于规范化后的 `plugins.public_prefix` 下，且不能等于 `public_prefix` 本身。
+
+注册时会检测其他 active 插件的当前 manifest route。不同插件不得同时声明相同的 `method + match_type + gateway_path`，冲突时注册请求返回 `409`，避免网关路径所有权不确定。
 
 ## 可路由条件
 
@@ -109,7 +124,7 @@ flowchart LR
 
 ## 健康检查
 
-主服务后台任务按 `plugins.health_check_interval` 扫描 active 服务下的 active 实例，并请求：
+主服务后台任务按 `plugins.health_check_interval` 扫描 active 服务下当前 manifest 且租约未过期的 active 实例，并请求：
 
 ```text
 {base_url}{health_path}
@@ -152,6 +167,8 @@ flowchart LR
 | `POST` | `/api/v1/plugins/{plugin_key}/disable` | 禁用插件服务 |
 | `POST` | `/api/v1/plugins/{plugin_key}/enable` | 启用插件服务 |
 | `POST` | `/api/v1/plugins/{plugin_key}/instances/{instance_id}/disable` | 禁用插件实例 |
+| `POST` | `/api/v1/plugins/{plugin_key}/instances/{instance_id}/enable` | 启用插件实例 |
+| `GET` | `/api/v1/plugins/{plugin_key}/diagnostics` | 查询路由匹配和实例可路由诊断 |
 | `GET` | `/api/v1/plugins/{plugin_key}/audit-events` | 查询插件审计事件 |
 
 建议 Casbin 策略保留或覆盖：
@@ -187,14 +204,17 @@ p, admin, /api/v1/plugins*, (GET|POST|DELETE)
 - `X-Forwarded-Proto`
 - `X-Forwarded-Method`
 
-主服务会移除 hop-by-hop headers、`Cookie`，默认移除 `Authorization`。
+主服务会移除 hop-by-hop headers、`Cookie`，默认移除 `Authorization`。入站请求中的 `X-Keiyaku-*` 与 `X-Forwarded-*` 也会被丢弃，只能由网关重建，避免客户端伪造插件身份、用户上下文或转发来源。
 
-如果配置了 `plugins.gateway_signing_secret`，主服务会追加：
+主服务使用该插件的 `gateway_secret` 追加：
 
 - `X-Keiyaku-Timestamp`
+- `X-Keiyaku-Nonce`
 - `X-Keiyaku-Signature`
 
-插件服务可用相同 secret 验证请求确实来自主服务。
+签名 canonical 为 `method + "\n" + path + "\n" + timestamp + "\n" + nonce + "\n" + sha256(body)`。插件服务必须用相同 canonical 验证请求确实来自主服务。
+
+注册请求体由 `plugins.max_registration_body_bytes` 限制，网关业务请求体由 `plugins.max_gateway_body_bytes` 限制。route `timeout` 不得超过 `plugins.max_route_timeout`；网关 HTTP client 使用 `plugins.request_timeout` 作为连接与整体请求超时兜底。
 
 ## 审计与观测
 
@@ -215,7 +235,8 @@ p, admin, /api/v1/plugins*, (GET|POST|DELETE)
 
 - `plugin_key`
 - `instance_id`
-- `route_path`
+- `route_id`
+- `gateway_path`
 - `upstream_status`
 - `duration_ms`
 - `gateway_error`
@@ -223,10 +244,12 @@ p, admin, /api/v1/plugins*, (GET|POST|DELETE)
 
 metrics 通过 `PluginMetrics` port 记录，当前默认实现为 noop，后续接入 Prometheus 时不改变 application 接口。
 
+主服务还会按 `plugins.maintenance_interval` 执行插件维护任务，清理过期 `plugin_signature_nonces`、超过 `plugins.audit_retention_days` 的审计事件，并把长期未续约的 active 实例标记为 disabled。
+
 ## 安全边界
 
-- `plugins.registration_tokens` 生产环境必填，每个 token 至少 32 字节。
-- `plugins.allowed_plugin_keys` 默认必填，未列入白名单的插件不能注册。
+- `plugins.trusted_plugins` 生产环境必填。
+- 每个插件的 `registration_secret` 与 `gateway_secret` 生产环境至少 32 字节。
 - `base_url` 只允许 `http` 或 `https`。
 - `base_url` 不允许 userinfo、query、fragment。
 - host 必须命中 `allowed_hosts` 或 `allowed_cidrs`。
@@ -238,22 +261,27 @@ metrics 通过 `PluginMetrics` port 记录，当前默认实现为 noop，后续
 ```yaml
 plugins:
   enabled: true
-  registration_tokens: []
-  allowed_plugin_keys: []
   public_prefix: "/api/v1/extensions"
   heartbeat_ttl: 30s
   request_timeout: 5s
+  max_registration_body_bytes: 1048576
+  max_gateway_body_bytes: 10485760
+  max_route_timeout: 5s
   health_check_interval: 15s
   health_check_timeout: 2s
   unhealthy_threshold: 3
   route_cache_ttl: 5s
+  maintenance_interval: 1m
   audit_retention_days: 30
   max_audit_query_limit: 200
-  allowed_hosts: []
-  allowed_cidrs: []
-  allow_loopback: false
   allow_public_routes: false
-  gateway_signing_secret: ""
+  trusted_plugins:
+    blog:
+      registration_secret: ""
+      gateway_secret: ""
+      allowed_hosts: []
+      allowed_cidrs: []
+      allow_loopback: false
 ```
 
 ## 错误映射
@@ -273,15 +301,15 @@ plugins:
 - 关闭 `plugins.enabled` 可停止注册和网关，不影响主业务接口。
 - 设置 `plugins.health_check_interval: 0s` 可停止后台健康检查，已存在健康状态仍会被网关使用。
 - 设置 `plugins.route_cache_ttl: 0s` 可关闭路由缓存。
+- 设置 `plugins.maintenance_interval: 0s` 可停止插件维护清理任务。
 - 表结构保留插件历史状态和审计事件，回滚功能开关时不需要删除注册记录。
 - 插件服务下线前应调用注销接口；异常退出时依赖租约过期自动摘除。
 
 ## 后续扩展点
 
-- per-plugin secret 或 HMAC 注册身份。
 - mTLS。
 - gRPC 插件协议。
 - 事件订阅与异步插件。
 - 跨主服务实例的负载状态同步。
 - 同一 `plugin_key` 下的版本灰度路由。
-- 审计留存清理任务与告警指标。
+- 告警指标。

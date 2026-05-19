@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestLoadResolvesI18NAndRBACPathsRelativeToConfigFile(t *testing.T) {
@@ -72,6 +73,27 @@ func TestI18NConfigValidateRequiresDefaultSupportedFile(t *testing.T) {
 func TestRBACConfigValidateRequiresPaths(t *testing.T) {
 	if err := (RBACConfig{ModelPath: "rbac/model.conf"}).Validate(); err == nil {
 		t.Fatal("RBACConfig.Validate() error is nil")
+	}
+}
+
+func TestPluginsConfigValidateDefaultsMaxRouteTimeout(t *testing.T) {
+	config := PluginsConfig{
+		Enabled:                  true,
+		PublicPrefix:             "/api/v1/extensions",
+		HeartbeatTTL:             30 * time.Second,
+		RequestTimeout:           5 * time.Second,
+		MaxRegistrationBodyBytes: 1,
+		MaxGatewayBodyBytes:      1,
+		HealthCheckTimeout:       2 * time.Second,
+		UnhealthyThreshold:       1,
+		AuditRetentionDays:       30,
+		MaxAuditQueryLimit:       100,
+	}
+	if err := (&config).Validate("local"); err != nil {
+		t.Fatalf("PluginsConfig.Validate() error = %v", err)
+	}
+	if config.MaxRouteTimeout != config.RequestTimeout {
+		t.Fatalf("max route timeout = %s, want request timeout %s", config.MaxRouteTimeout, config.RequestTimeout)
 	}
 }
 

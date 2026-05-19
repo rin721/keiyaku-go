@@ -57,12 +57,13 @@ type PluginRouteModel struct {
 	ID                int64     `gorm:"column:id;primaryKey;autoIncrement"`
 	PluginKey         string    `gorm:"column:plugin_key"`
 	ManifestHash      string    `gorm:"column:manifest_hash"`
+	RouteID           string    `gorm:"column:route_id"`
 	Method            string    `gorm:"column:method"`
 	MatchType         string    `gorm:"column:match_type"`
-	Path              string    `gorm:"column:path"`
+	GatewayPath       string    `gorm:"column:gateway_path"`
 	UpstreamPath      string    `gorm:"column:upstream_path"`
 	AuthPolicy        string    `gorm:"column:auth_policy"`
-	TimeoutMS         int       `gorm:"column:timeout_ms"`
+	Timeout           string    `gorm:"column:timeout"`
 	ForwardAuthHeader bool      `gorm:"column:forward_auth_header"`
 	Enabled           bool      `gorm:"column:enabled"`
 	MetadataJSON      string    `gorm:"column:metadata_json"`
@@ -72,6 +73,18 @@ type PluginRouteModel struct {
 
 func (PluginRouteModel) TableName() string {
 	return "plugin_routes"
+}
+
+type PluginSignatureNonceModel struct {
+	ID        int64     `gorm:"column:id;primaryKey;autoIncrement"`
+	PluginKey string    `gorm:"column:plugin_key"`
+	Nonce     string    `gorm:"column:nonce"`
+	ExpiresAt time.Time `gorm:"column:expires_at"`
+	CreatedAt time.Time `gorm:"column:created_at"`
+}
+
+func (PluginSignatureNonceModel) TableName() string {
+	return "plugin_signature_nonces"
 }
 
 type PluginAuditEventModel struct {
@@ -200,6 +213,39 @@ func (r *PluginRegistryRepository) UpsertRegistration(ctx context.Context, regis
 	})
 }
 
+func (r *PluginRegistryRepository) FindRouteConflict(ctx context.Context, pluginKey string, routes []domainplugin.Route) (*domainplugin.RouteConflict, error) {
+	if r == nil || r.db == nil {
+		return nil, fmt.Errorf("plugin registry repository is not ready")
+	}
+	for i := range routes {
+		route := routes[i]
+		var model PluginRouteModel
+		err := r.db.WithContext(ctx).
+			Table("plugin_routes AS r").
+			Select("r.*").
+			Joins("JOIN plugin_services AS s ON s.plugin_key = r.plugin_key AND s.current_manifest_hash = r.manifest_hash").
+			Where("s.status = ? AND r.enabled = ? AND r.plugin_key <> ? AND r.method = ? AND r.match_type = ? AND r.gateway_path = ?",
+				string(domainplugin.ServiceStatusActive), true, pluginKey, string(route.Method), string(route.MatchType), route.GatewayPath).
+			Order("r.plugin_key ASC, r.route_id ASC").
+			First(&model).Error
+		switch {
+		case err == nil:
+			return &domainplugin.RouteConflict{
+				PluginKey:   model.PluginKey,
+				RouteID:     model.RouteID,
+				Method:      domainplugin.Method(model.Method),
+				MatchType:   domainplugin.MatchType(model.MatchType),
+				GatewayPath: model.GatewayPath,
+			}, nil
+		case IsNotFound(err):
+			continue
+		default:
+			return nil, fmt.Errorf("find plugin route conflict: %w", err)
+		}
+	}
+	return nil, nil
+}
+
 func (r *PluginRegistryRepository) TouchInstance(ctx context.Context, pluginKey string, instanceID string, leaseExpiresAt time.Time, now time.Time) (*domainplugin.Instance, error) {
 	if r == nil || r.db == nil {
 		return nil, fmt.Errorf("plugin registry repository is not ready")
@@ -312,13 +358,12 @@ func (r *PluginRegistryRepository) ListHealthCheckTargets(ctx context.Context, n
 	if r == nil || r.db == nil {
 		return nil, fmt.Errorf("plugin registry repository is not ready")
 	}
-	_ = now
 	var models []PluginInstanceModel
 	if err := r.db.WithContext(ctx).
 		Table("plugin_instances AS i").
 		Select("i.*").
 		Joins("JOIN plugin_services AS s ON s.plugin_key = i.plugin_key AND s.current_manifest_hash = i.manifest_hash").
-		Where("s.status = ? AND i.status = ?", string(domainplugin.ServiceStatusActive), string(domainplugin.InstanceStatusActive)).
+		Where("s.status = ? AND i.status = ? AND i.lease_expires_at >= ?", string(domainplugin.ServiceStatusActive), string(domainplugin.InstanceStatusActive), now).
 		Order("i.plugin_key ASC, i.instance_id ASC").
 		Scan(&models).Error; err != nil {
 		return nil, fmt.Errorf("list plugin health check targets: %w", err)
@@ -381,39 +426,113 @@ func (r *PluginRegistryRepository) UpdateInstanceHealth(ctx context.Context, plu
 	return pluginInstanceFromModel(&model), nil
 }
 
-func (r *PluginRegistryRepository) FindRoutable(ctx context.Context, pluginKey string, now time.Time) (*domainplugin.Service, []*domainplugin.Instance, []*domainplugin.Route, error) {
+func (r *PluginRegistryRepository) UseSignatureNonce(ctx context.Context, pluginKey string, nonce string, expiresAt time.Time, now time.Time) error {
+	if r == nil || r.db == nil {
+		return fmt.Errorf("plugin registry repository is not ready")
+	}
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("expires_at < ?", now).Delete(&PluginSignatureNonceModel{}).Error; err != nil {
+			return fmt.Errorf("prune plugin signature nonces: %w", err)
+		}
+		model := &PluginSignatureNonceModel{PluginKey: pluginKey, Nonce: nonce, ExpiresAt: expiresAt, CreatedAt: now}
+		if err := tx.Create(model).Error; err != nil {
+			if isDuplicate(err) {
+				return derrors.ErrConflict
+			}
+			return fmt.Errorf("record plugin signature nonce: %w", err)
+		}
+		return nil
+	})
+}
+
+func (r *PluginRegistryRepository) PruneSignatureNonces(ctx context.Context, now time.Time) (int64, error) {
+	if r == nil || r.db == nil {
+		return 0, fmt.Errorf("plugin registry repository is not ready")
+	}
+	result := r.db.WithContext(ctx).Where("expires_at < ?", now).Delete(&PluginSignatureNonceModel{})
+	if result.Error != nil {
+		return 0, fmt.Errorf("prune plugin signature nonces: %w", result.Error)
+	}
+	return result.RowsAffected, nil
+}
+
+func (r *PluginRegistryRepository) PrunePluginAuditEvents(ctx context.Context, before time.Time) (int64, error) {
+	if r == nil || r.db == nil {
+		return 0, fmt.Errorf("plugin audit repository is not ready")
+	}
+	result := r.db.WithContext(ctx).Where("created_at < ?", before).Delete(&PluginAuditEventModel{})
+	if result.Error != nil {
+		return 0, fmt.Errorf("prune plugin audit events: %w", result.Error)
+	}
+	return result.RowsAffected, nil
+}
+
+func (r *PluginRegistryRepository) DisableStalePluginInstances(ctx context.Context, staleBefore time.Time, now time.Time) (int64, error) {
+	if r == nil || r.db == nil {
+		return 0, fmt.Errorf("plugin registry repository is not ready")
+	}
+	result := r.db.WithContext(ctx).Model(&PluginInstanceModel{}).
+		Where("status = ? AND lease_expires_at < ?", string(domainplugin.InstanceStatusActive), staleBefore).
+		Updates(map[string]interface{}{"status": string(domainplugin.InstanceStatusDisabled), "updated_at": now})
+	if result.Error != nil {
+		return 0, fmt.Errorf("disable stale plugin instances: %w", result.Error)
+	}
+	return result.RowsAffected, nil
+}
+
+func (r *PluginRegistryRepository) FindRoutable(ctx context.Context, now time.Time) ([]*domainplugin.Service, []*domainplugin.Instance, []*domainplugin.Route, error) {
 	if r == nil || r.db == nil {
 		return nil, nil, nil, fmt.Errorf("plugin registry repository is not ready")
 	}
-	service, err := r.findService(ctx, pluginKey)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	if service.Status != domainplugin.ServiceStatusActive {
-		return service, nil, nil, nil
+	var serviceModels []PluginServiceModel
+	if err := r.db.WithContext(ctx).
+		Where("status = ?", string(domainplugin.ServiceStatusActive)).
+		Order("plugin_key ASC").
+		Find(&serviceModels).Error; err != nil {
+		return nil, nil, nil, fmt.Errorf("find routable plugin services: %w", err)
 	}
 	var instanceModels []PluginInstanceModel
 	if err := r.db.WithContext(ctx).
-		Where("plugin_key = ? AND manifest_hash = ? AND status = ? AND health_status IN ? AND lease_expires_at >= ?",
-			pluginKey,
-			service.CurrentManifestHash,
-			string(domainplugin.InstanceStatusActive),
-			[]string{string(domainplugin.HealthStatusUnknown), string(domainplugin.HealthStatusHealthy)},
-			now,
-		).
-		Order("instance_id ASC").
+		Table("plugin_instances AS i").
+		Select("i.*").
+		Joins("JOIN plugin_services AS s ON s.plugin_key = i.plugin_key AND s.current_manifest_hash = i.manifest_hash").
+		Where("s.status = ? AND i.status = ? AND i.health_status IN ? AND i.lease_expires_at >= ?",
+			string(domainplugin.ServiceStatusActive), string(domainplugin.InstanceStatusActive), []string{string(domainplugin.HealthStatusUnknown), string(domainplugin.HealthStatusHealthy)}, now).
+		Order("i.plugin_key ASC, i.instance_id ASC").
 		Find(&instanceModels).Error; err != nil {
 		return nil, nil, nil, fmt.Errorf("find routable plugin instances: %w", err)
+	}
+	var routeModels []PluginRouteModel
+	if err := r.db.WithContext(ctx).
+		Table("plugin_routes AS r").
+		Select("r.*").
+		Joins("JOIN plugin_services AS s ON s.plugin_key = r.plugin_key AND s.current_manifest_hash = r.manifest_hash").
+		Where("s.status = ? AND r.enabled = ?", string(domainplugin.ServiceStatusActive), true).
+		Order("r.gateway_path DESC").
+		Find(&routeModels).Error; err != nil {
+		return nil, nil, nil, fmt.Errorf("find routable plugin routes: %w", err)
+	}
+	services := make([]*domainplugin.Service, 0, len(serviceModels))
+	for i := range serviceModels {
+		service, err := pluginServiceFromModel(&serviceModels[i])
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		services = append(services, service)
 	}
 	instances := make([]*domainplugin.Instance, 0, len(instanceModels))
 	for i := range instanceModels {
 		instances = append(instances, pluginInstanceFromModel(&instanceModels[i]))
 	}
-	routes, err := r.findRoutes(ctx, pluginKey, service.CurrentManifestHash)
-	if err != nil {
-		return nil, nil, nil, err
+	routes := make([]*domainplugin.Route, 0, len(routeModels))
+	for i := range routeModels {
+		route, err := pluginRouteFromModel(&routeModels[i])
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		routes = append(routes, route)
 	}
-	return service, instances, routes, nil
+	return services, instances, routes, nil
 }
 
 func (r *PluginRegistryRepository) findService(ctx context.Context, pluginKey string) (*domainplugin.Service, error) {
@@ -447,7 +566,7 @@ func (r *PluginRegistryRepository) findRoutes(ctx context.Context, pluginKey str
 	var models []PluginRouteModel
 	if err := r.db.WithContext(ctx).
 		Where("plugin_key = ? AND manifest_hash = ? AND enabled = ?", pluginKey, manifestHash, true).
-		Order("path DESC").
+		Order("gateway_path DESC").
 		Find(&models).Error; err != nil {
 		return nil, fmt.Errorf("find plugin routes: %w", err)
 	}
@@ -545,12 +664,13 @@ func pluginRouteToModel(route *domainplugin.Route) *PluginRouteModel {
 		ID:                route.ID,
 		PluginKey:         route.PluginKey,
 		ManifestHash:      route.ManifestHash,
+		RouteID:           route.RouteID,
 		Method:            string(route.Method),
 		MatchType:         string(route.MatchType),
-		Path:              route.Path,
+		GatewayPath:       route.GatewayPath,
 		UpstreamPath:      route.UpstreamPath,
 		AuthPolicy:        string(route.AuthPolicy),
-		TimeoutMS:         int(route.Timeout / time.Millisecond),
+		Timeout:           route.Timeout.String(),
 		ForwardAuthHeader: route.ForwardAuthHeader,
 		Enabled:           route.Enabled,
 		MetadataJSON:      marshalStringMap(route.Metadata),
@@ -568,12 +688,13 @@ func pluginRouteFromModel(model *PluginRouteModel) (*domainplugin.Route, error) 
 		ID:                model.ID,
 		PluginKey:         model.PluginKey,
 		ManifestHash:      model.ManifestHash,
+		RouteID:           model.RouteID,
 		Method:            domainplugin.Method(model.Method),
 		MatchType:         domainplugin.MatchType(model.MatchType),
-		Path:              model.Path,
+		GatewayPath:       model.GatewayPath,
 		UpstreamPath:      model.UpstreamPath,
 		AuthPolicy:        domainplugin.AuthPolicy(model.AuthPolicy),
-		Timeout:           time.Duration(model.TimeoutMS) * time.Millisecond,
+		Timeout:           parsePluginRouteTimeout(model.Timeout),
 		ForwardAuthHeader: model.ForwardAuthHeader,
 		Enabled:           model.Enabled,
 		Metadata:          metadata,
@@ -640,4 +761,12 @@ func truncateString(value string, limit int) string {
 		return value
 	}
 	return value[:limit]
+}
+
+func parsePluginRouteTimeout(raw string) time.Duration {
+	timeout, err := time.ParseDuration(raw)
+	if err != nil || timeout <= 0 {
+		return 5 * time.Second
+	}
+	return timeout
 }

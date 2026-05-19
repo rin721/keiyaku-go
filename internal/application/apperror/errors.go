@@ -20,6 +20,7 @@ const (
 	CodeNotFound        Code = 10004
 	CodeConflict        Code = 10005
 	CodeTooManyRequests Code = 10006
+	CodePayloadTooLarge Code = 10007
 )
 
 const (
@@ -43,6 +44,7 @@ const (
 	MessageNotFound            = "resource not found"
 	MessageConflict            = "resource conflict"
 	MessageTooManyRequests     = "too many requests"
+	MessageRequestBodyTooLarge = "request body too large"
 	MessageInvalidCredential   = "invalid username or password"
 	MessageUserDisabled        = "user disabled"
 	MessageInternal            = "internal server error"
@@ -88,9 +90,12 @@ const (
 	MessageListArticlesFailed      = "failed to list articles"
 
 	MessagePluginRegistrationDisabled = "plugin registration is disabled"
-	MessageInvalidPluginToken         = "invalid plugin registration token"
+	MessageInvalidPluginToken         = "invalid plugin registration credential"
+	MessageInvalidPluginSignature     = "invalid plugin signature"
 	MessageInvalidPluginManifest      = "invalid plugin manifest"
 	MessagePluginKeyNotAllowed        = "plugin key is not allowed"
+	MessagePluginKeyNotTrusted        = "plugin key is not trusted"
+	MessagePluginNonceReused          = "plugin signature nonce has already been used"
 	MessagePluginRouteNotFound        = "plugin route not found"
 	MessagePluginUnavailable          = "plugin is unavailable"
 	MessagePluginUpstreamFailed       = "plugin upstream failed"
@@ -105,6 +110,7 @@ var defaultMessages = map[Code]string{
 	CodeNotFound:           MessageNotFound,
 	CodeConflict:           MessageConflict,
 	CodeTooManyRequests:    MessageTooManyRequests,
+	CodePayloadTooLarge:    MessageRequestBodyTooLarge,
 	CodeInvalidCredential:  MessageInvalidCredential,
 	CodeUserDisabled:       MessageUserDisabled,
 	CodeInternal:           MessageInternal,

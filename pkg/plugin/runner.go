@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -14,6 +15,15 @@ type HeartbeatRunner struct {
 }
 
 func (r HeartbeatRunner) Run(ctx context.Context) error {
+	if r.Client == nil {
+		return fmt.Errorf("plugin heartbeat client is required")
+	}
+	if !ValidPluginKey(r.PluginKey) {
+		return validationError("plugin_key must match ^[a-z][a-z0-9-]{2,63}$", ErrInvalidManifest)
+	}
+	if !ValidPluginKey(r.InstanceID) {
+		return validationError("instance_id must match ^[a-z][a-z0-9-]{2,63}$", ErrInvalidManifest)
+	}
 	interval := r.Interval
 	if interval <= 0 {
 		interval = 10 * time.Second

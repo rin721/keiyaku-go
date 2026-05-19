@@ -1,4 +1,5 @@
 p, admin, /api/v1/*, (GET|POST|PUT|PATCH|DELETE)
 p, author, /api/v1/users/me, GET
-p, author, /api/v1/articles, POST
+p, author, /api/v1/extensions/blog/articles, (GET|POST)
+p, author, /api/v1/extensions/blog/articles/:id, GET
 g, admin, author

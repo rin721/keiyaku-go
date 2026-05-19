@@ -14,8 +14,10 @@ const (
 )
 
 var (
-	ErrInvalidManifest = errors.New("invalid plugin manifest")
-	ErrUnexpectedReply = errors.New("unexpected plugin registry response")
+	ErrInvalidManifest  = errors.New("invalid plugin manifest")
+	ErrInvalidSignature = errors.New("invalid plugin signature")
+	ErrUnexpectedReply  = errors.New("unexpected plugin registry response")
+	ErrBodyTooLarge     = errors.New("plugin request body exceeds limit")
 )
 
 type Error struct {

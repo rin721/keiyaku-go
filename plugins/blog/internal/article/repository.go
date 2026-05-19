@@ -1,14 +1,13 @@
-package mysql
+package article
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
-	domainarticle "github.com/rin721/keiyaku-go/internal/domain/article"
-	derrors "github.com/rin721/keiyaku-go/internal/domain/errors"
-	"github.com/rin721/keiyaku-go/internal/domain/shared"
+	mysqlDriver "github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
 )
 
@@ -28,67 +27,98 @@ type ArticleModel struct {
 }
 
 func (ArticleModel) TableName() string {
-	return "articles"
+	return "blog_articles"
 }
 
-type ArticleRepository struct {
+type RevisionModel struct {
+	ArticleID int64     `gorm:"column:article_id;primaryKey"`
+	Version   int       `gorm:"column:version;primaryKey"`
+	Title     string    `gorm:"column:title"`
+	Summary   string    `gorm:"column:summary"`
+	Content   string    `gorm:"column:content"`
+	CreatedAt time.Time `gorm:"column:created_at"`
+}
+
+func (RevisionModel) TableName() string {
+	return "blog_article_revisions"
+}
+
+type MySQLRepository struct {
 	db *gorm.DB
 }
 
-func NewArticleRepository(db *gorm.DB) *ArticleRepository {
-	return &ArticleRepository{db: db}
+func NewMySQLRepository(db *gorm.DB) *MySQLRepository {
+	return &MySQLRepository{db: db}
 }
 
-func (r *ArticleRepository) Create(ctx context.Context, entity *domainarticle.Article) error {
+func (r *MySQLRepository) Create(ctx context.Context, entity *Article, revision Revision) error {
 	if r == nil || r.db == nil {
 		return fmt.Errorf("article repository is not ready")
 	}
-	model, err := articleToModel(entity)
+	articleModel, err := articleToModel(entity)
 	if err != nil {
 		return err
 	}
-	if err := r.db.WithContext(ctx).Create(model).Error; err != nil {
+	revisionModel := RevisionModel{
+		ArticleID: revision.ArticleID,
+		Version:   revision.Version,
+		Title:     revision.Title,
+		Summary:   revision.Summary,
+		Content:   revision.Content,
+		CreatedAt: revision.CreatedAt,
+	}
+	err = r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(articleModel).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&revisionModel).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		if isDuplicate(err) {
-			return derrors.ErrConflict
+			return ErrConflict
 		}
 		return fmt.Errorf("create article: %w", err)
 	}
 	return nil
 }
 
-func (r *ArticleRepository) FindPublishedByID(ctx context.Context, id int64) (*domainarticle.Article, error) {
+func (r *MySQLRepository) FindPublishedByID(ctx context.Context, id int64) (*Article, error) {
 	if r == nil || r.db == nil {
 		return nil, fmt.Errorf("article repository is not ready")
 	}
 	var model ArticleModel
 	if err := r.db.WithContext(ctx).
-		Where("id = ? AND status = ?", id, string(domainarticle.StatusPublished)).
+		Where("id = ? AND status = ?", id, string(StatusPublished)).
 		First(&model).Error; err != nil {
-		if IsNotFound(err) {
-			return nil, derrors.ErrNotFound
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("find article by id: %w", err)
 	}
 	return articleFromModel(&model)
 }
 
-func (r *ArticleRepository) ListPublished(ctx context.Context, pagination shared.Pagination) ([]*domainarticle.Article, int64, error) {
+func (r *MySQLRepository) ListPublished(ctx context.Context, pagination Pagination) ([]*Article, int64, error) {
 	if r == nil || r.db == nil {
 		return nil, 0, fmt.Errorf("article repository is not ready")
 	}
-	query := r.db.WithContext(ctx).Model(&ArticleModel{}).Where("status = ?", string(domainarticle.StatusPublished))
+	query := r.db.WithContext(ctx).Model(&ArticleModel{}).Where("status = ?", string(StatusPublished))
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("count published articles: %w", err)
 	}
 	var models []ArticleModel
-	if err := query.Order("published_at DESC, id DESC").
+	if err := query.Select("id", "author_id", "category_id", "title", "slug", "summary", "status", "tags_json", "published_at", "created_at", "updated_at").
+		Order("published_at DESC, id DESC").
 		Offset(pagination.Offset()).
 		Limit(pagination.PageSize).
 		Find(&models).Error; err != nil {
 		return nil, 0, fmt.Errorf("list published articles: %w", err)
 	}
-	items := make([]*domainarticle.Article, 0, len(models))
+	items := make([]*Article, 0, len(models))
 	for i := range models {
 		item, err := articleFromModel(&models[i])
 		if err != nil {
@@ -99,9 +129,9 @@ func (r *ArticleRepository) ListPublished(ctx context.Context, pagination shared
 	return items, total, nil
 }
 
-func articleToModel(entity *domainarticle.Article) (*ArticleModel, error) {
+func articleToModel(entity *Article) (*ArticleModel, error) {
 	if entity == nil {
-		return nil, derrors.ErrInvalidArgument
+		return nil, ErrInvalidArgument
 	}
 	tags, err := json.Marshal(entity.Tags)
 	if err != nil {
@@ -123,9 +153,9 @@ func articleToModel(entity *domainarticle.Article) (*ArticleModel, error) {
 	}, nil
 }
 
-func articleFromModel(model *ArticleModel) (*domainarticle.Article, error) {
+func articleFromModel(model *ArticleModel) (*Article, error) {
 	if model == nil {
-		return nil, derrors.ErrNotFound
+		return nil, ErrNotFound
 	}
 	var tags []string
 	if model.TagsJSON != "" {
@@ -133,7 +163,7 @@ func articleFromModel(model *ArticleModel) (*domainarticle.Article, error) {
 			return nil, fmt.Errorf("unmarshal article tags: %w", err)
 		}
 	}
-	return &domainarticle.Article{
+	return &Article{
 		ID:          model.ID,
 		AuthorID:    model.AuthorID,
 		CategoryID:  model.CategoryID,
@@ -141,10 +171,15 @@ func articleFromModel(model *ArticleModel) (*domainarticle.Article, error) {
 		Slug:        model.Slug,
 		Summary:     model.Summary,
 		Content:     model.Content,
-		Status:      domainarticle.Status(model.Status),
+		Status:      Status(model.Status),
 		Tags:        tags,
 		PublishedAt: model.PublishedAt,
 		CreatedAt:   model.CreatedAt,
 		UpdatedAt:   model.UpdatedAt,
 	}, nil
+}
+
+func isDuplicate(err error) bool {
+	var mysqlErr *mysqlDriver.MySQLError
+	return errors.As(err, &mysqlErr) && mysqlErr.Number == 1062
 }

@@ -1,21 +1,15 @@
 # pkg/plugin
 
-`pkg/plugin` provides the remote plugin service contract and client helpers for Keiyaku-Go. It is intended for independently deployed plugin services and does not import any `internal` package.
+`pkg/plugin` provides the v2 remote HTTP plugin contract, HMAC helpers, registry client, and heartbeat runner. It does not import any `internal` package.
 
 ## What It Does
 
-- Defines the plugin manifest, route declaration, protocol, match type, and auth policy types.
-- Validates manifests before registration.
-- Computes a stable manifest hash.
-- Registers, heartbeats, and unregisters plugin instances against the host service.
+- Defines manifest v2 and route declarations.
+- Validates manifests and computes stable hashes.
+- Signs and verifies control-plane and gateway HMAC requests.
+- Reads bounded request bodies and verifies signed HTTP requests while restoring `req.Body`.
+- Registers, heartbeats, and unregisters plugin instances.
 - Provides a heartbeat runner for long-running plugin processes.
-
-## What It Does Not Do
-
-- It does not load Go dynamic plugins.
-- It does not provide a runtime DI container.
-- It does not implement plugin business logic or persistence.
-- It does not bypass host-side route, token, or allow-list validation.
 
 ## Minimal Example
 
@@ -31,18 +25,50 @@ manifest := plugin.Manifest{
 	HealthPath:    "/healthz",
 	Routes: []plugin.Route{
 		{
+			RouteID:      "hello",
 			Method:       plugin.MethodGet,
 			MatchType:    plugin.MatchTypeExact,
-			Path:         "/hello",
+			GatewayPath:  "/api/v1/extensions/demo-plugin/hello",
 			UpstreamPath: "/hello",
 			AuthPolicy:   plugin.AuthPolicyAuthenticated,
-			TimeoutMS:    5000,
+			Timeout:      "5s",
 		},
 	},
 }
 
-client := plugin.NewClient("http://127.0.0.1:8080", os.Getenv("KEIYAKU_PLUGIN_TOKEN"))
+client := plugin.NewClient(
+	"http://127.0.0.1:8080",
+	manifest.PluginKey,
+	os.Getenv("KEIYAKU_PLUGIN_REGISTRATION_SECRET"),
+)
 result, err := client.Register(context.Background(), manifest)
+```
+
+## Gateway Signature Verification
+
+```go
+parts := plugin.SignatureFromHeader(req.Header)
+err := plugin.Verify(
+	req.Method,
+	req.URL.EscapedPath(),
+	body,
+	parts,
+	os.Getenv("KEIYAKU_PLUGIN_GATEWAY_SECRET"),
+	time.Now().UTC(),
+	plugin.DefaultSignatureSkew,
+)
+```
+
+For HTTP handlers, prefer the bounded helper:
+
+```go
+body, parts, err := plugin.VerifySignedRequest(
+	req,
+	os.Getenv("KEIYAKU_PLUGIN_GATEWAY_SECRET"),
+	10<<20,
+	time.Now().UTC(),
+	plugin.DefaultSignatureSkew,
+)
 ```
 
 ## Heartbeat

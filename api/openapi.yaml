@@ -6,396 +6,6 @@ info:
 servers:
   - url: "/api/v1"
 paths:
-  /articles:
-    get:
-      tags:
-        - "Article"
-      summary: "List published articles"
-      description: "List published articles with pagination."
-      parameters:
-        - name: "page"
-          in: query
-          required: false
-          description: "Page number"
-          schema:
-            type: integer
-            format: int32
-        - name: "page_size"
-          in: query
-          required: false
-          description: "Page size"
-          schema:
-            type: integer
-            format: int32
-      responses:
-        "200":
-          description: "OK"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-                  data:
-                    $ref: "#/components/schemas/ArticleListResponse"
-        "500":
-          description: "Internal server error"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-    post:
-      tags:
-        - "Article"
-      summary: "Create article"
-      description: "Create an article for the authenticated user."
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        description: "Article payload"
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateArticleRequest"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-                  data:
-                    $ref: "#/components/schemas/ArticleResponse"
-        "400":
-          description: "Invalid request"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-        "401":
-          description: "Unauthorized"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-        "403":
-          description: "Forbidden"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-        "500":
-          description: "Internal server error"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-  /articles/{id}:
-    get:
-      tags:
-        - "Article"
-      summary: "Get published article"
-      description: "Get a published article by ID."
-      parameters:
-        - name: "id"
-          in: path
-          required: true
-          description: "Article ID"
-          schema:
-            type: integer
-            format: int64
-      responses:
-        "200":
-          description: "OK"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-                  data:
-                    $ref: "#/components/schemas/ArticleResponse"
-        "400":
-          description: "Invalid article ID"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-        "404":
-          description: "Article not found"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-        "500":
-          description: "Internal server error"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-  /auth/login:
-    post:
-      tags:
-        - "Auth"
-      summary: "Login user"
-      description: "Authenticate a user and return access and refresh tokens."
-      requestBody:
-        required: true
-        description: "Login payload"
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/LoginRequest"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-                  data:
-                    $ref: "#/components/schemas/AuthResponse"
-        "400":
-          description: "Invalid request"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-        "401":
-          description: "Unauthorized"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-        "422":
-          description: "Invalid credential"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-        "500":
-          description: "Internal server error"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-  /auth/register:
-    post:
-      tags:
-        - "Auth"
-      summary: "Register user"
-      description: "Register a user and return access and refresh tokens."
-      requestBody:
-        required: true
-        description: "Register payload"
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RegisterRequest"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-                  data:
-                    $ref: "#/components/schemas/AuthResponse"
-        "400":
-          description: "Invalid request"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-        "409":
-          description: "Conflict"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-        "500":
-          description: "Internal server error"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
   /plugins:
     get:
       tags:
@@ -514,7 +124,7 @@ paths:
                   msg:
                     type: string
         "401":
-          description: "Invalid plugin registration token"
+          description: "Invalid plugin signature"
           content:
             application/json:
               schema:
@@ -691,6 +301,126 @@ paths:
                     type: string
                   data:
                     $ref: "#/components/schemas/PluginAuditEventResponse"
+        "400":
+          description: "Invalid request"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "401":
+          description: "Unauthorized"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "403":
+          description: "Forbidden"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "404":
+          description: "Plugin not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+  /plugins/{plugin_key}/diagnostics:
+    get:
+      tags:
+        - "Plugin"
+      summary: "Diagnose plugin routability"
+      description: "Return route matching and instance routability diagnostics for one plugin."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "plugin_key"
+          in: path
+          required: true
+          description: "Plugin key"
+          schema:
+            type: string
+        - name: "method"
+          in: query
+          required: false
+          description: "HTTP method to match"
+          schema:
+            type: string
+        - name: "path"
+          in: query
+          required: false
+          description: "Gateway path to match"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/PluginDiagnosticsResponse"
         "400":
           description: "Invalid request"
           content:
@@ -1083,7 +813,7 @@ paths:
                   data:
                     type: object
         "401":
-          description: "Invalid plugin registration token"
+          description: "Invalid plugin signature"
           content:
             application/json:
               schema:
@@ -1226,12 +956,14 @@ paths:
                     format: int32
                   msg:
                     type: string
-  /plugins/{plugin_key}/instances/{instance_id}/heartbeat:
+  /plugins/{plugin_key}/instances/{instance_id}/enable:
     post:
       tags:
         - "Plugin"
-      summary: "Heartbeat plugin instance"
-      description: "Refresh the lease of a registered plugin instance."
+      summary: "Enable plugin instance"
+      description: "Enable one registered plugin instance after an administrative disable."
+      security:
+        - bearerAuth: []
       parameters:
         - name: "plugin_key"
           in: path
@@ -1262,9 +994,24 @@ paths:
                   msg:
                     type: string
                   data:
-                    $ref: "#/components/schemas/PluginHeartbeatResponse"
+                    type: object
         "401":
-          description: "Invalid plugin registration token"
+          description: "Unauthorized"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "403":
+          description: "Forbidden"
           content:
             application/json:
               schema:
@@ -1308,14 +1055,25 @@ paths:
                     format: int32
                   msg:
                     type: string
-  /users/me:
-    get:
+  /plugins/{plugin_key}/instances/{instance_id}/heartbeat:
+    post:
       tags:
-        - "User"
-      summary: "Current user profile"
-      description: "Get the authenticated user's profile."
-      security:
-        - bearerAuth: []
+        - "Plugin"
+      summary: "Heartbeat plugin instance"
+      description: "Refresh the lease of a registered plugin instance."
+      parameters:
+        - name: "plugin_key"
+          in: path
+          required: true
+          description: "Plugin key"
+          schema:
+            type: string
+        - name: "instance_id"
+          in: path
+          required: true
+          description: "Instance ID"
+          schema:
+            type: string
       responses:
         "200":
           description: "OK"
@@ -1333,24 +1091,9 @@ paths:
                   msg:
                     type: string
                   data:
-                    $ref: "#/components/schemas/UserResponse"
+                    $ref: "#/components/schemas/PluginHeartbeatResponse"
         "401":
-          description: "Unauthorized"
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - code
-                  - msg
-                properties:
-                  code:
-                    type: integer
-                    format: int32
-                  msg:
-                    type: string
-        "403":
-          description: "Forbidden"
+          description: "Invalid plugin signature"
           content:
             application/json:
               schema:
@@ -1365,7 +1108,7 @@ paths:
                   msg:
                     type: string
         "404":
-          description: "User not found"
+          description: "Plugin instance not found"
           content:
             application/json:
               schema:
@@ -1396,58 +1139,6 @@ paths:
                     type: string
 components:
   schemas:
-    ArticleListResponse:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/ArticleResponse"
-        page:
-          type: integer
-          format: int32
-        size:
-          type: integer
-          format: int32
-        total:
-          type: integer
-          format: int64
-    ArticleResponse:
-      type: object
-      properties:
-        author_id:
-          type: integer
-          format: int64
-        category_id:
-          type: integer
-          format: int64
-        content:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-        id:
-          type: integer
-          format: int64
-        published_at:
-          type: string
-          format: date-time
-          nullable: true
-        slug:
-          type: string
-        status:
-          type: string
-        summary:
-          type: string
-        tags:
-          type: array
-          items:
-            type: string
-        title:
-          type: string
-        updated_at:
-          type: string
-          format: date-time
     AuthResponse:
       type: object
       properties:
@@ -1460,33 +1151,6 @@ components:
           type: string
         user:
           $ref: "#/components/schemas/UserResponse"
-    CreateArticleRequest:
-      type: object
-      required:
-        - content
-        - slug
-        - title
-      properties:
-        category_id:
-          type: integer
-          format: int64
-        content:
-          type: string
-        publish:
-          type: boolean
-        slug:
-          type: string
-          maxLength: 180
-        summary:
-          type: string
-          maxLength: 512
-        tags:
-          type: array
-          items:
-            type: string
-        title:
-          type: string
-          maxLength: 160
     LoginRequest:
       type: object
       required:
@@ -1529,6 +1193,27 @@ components:
             $ref: "#/components/schemas/PluginRouteResponse"
         service:
           $ref: "#/components/schemas/PluginServiceResponse"
+    PluginDiagnosticsResponse:
+      type: object
+      properties:
+        checked_at:
+          type: string
+          format: date-time
+        instances:
+          type: array
+          items:
+            $ref: "#/components/schemas/PluginInstanceDiagnosticResponse"
+        matched_route:
+          $ref: "#/components/schemas/PluginRouteResponse"
+        routable_instances:
+          type: integer
+          format: int32
+        route_matched:
+          type: boolean
+        route_suffix:
+          type: string
+        service:
+          $ref: "#/components/schemas/PluginServiceResponse"
     PluginHeartbeatResponse:
       type: object
       properties:
@@ -1539,6 +1224,17 @@ components:
           format: date-time
         plugin_key:
           type: string
+    PluginInstanceDiagnosticResponse:
+      type: object
+      properties:
+        instance:
+          $ref: "#/components/schemas/PluginInstanceResponse"
+        reasons:
+          type: array
+          items:
+            type: string
+        routable:
+          type: boolean
     PluginInstanceResponse:
       type: object
       properties:
@@ -1641,17 +1337,18 @@ components:
           type: boolean
         forward_auth_header:
           type: boolean
+        gateway_path:
+          type: string
         match_type:
           type: string
         metadata:
           type: object
         method:
           type: string
-        path:
+        route_id:
           type: string
-        timeout_ms:
-          type: integer
-          format: int32
+        timeout:
+          type: string
         updated_at:
           type: string
           format: date-time
@@ -1660,26 +1357,29 @@ components:
     PluginRouteSpec:
       type: object
       required:
+        - gateway_path
         - match_type
         - method
-        - path
+        - route_id
+        - timeout
         - upstream_path
       properties:
         auth_policy:
           type: string
         forward_auth_header:
           type: boolean
+        gateway_path:
+          type: string
         match_type:
           type: string
         metadata:
           type: object
         method:
           type: string
-        path:
+        route_id:
           type: string
-        timeout_ms:
-          type: integer
-          format: int32
+        timeout:
+          type: string
         upstream_path:
           type: string
     PluginServiceResponse:

@@ -1,11 +1,17 @@
 package article
 
 import (
+	"errors"
 	"strings"
 	"time"
 	"unicode/utf8"
+)
 
-	derrors "github.com/rin721/keiyaku-go/internal/domain/errors"
+var (
+	ErrInvalidArgument = errors.New("invalid argument")
+	ErrNotFound        = errors.New("resource not found")
+	ErrConflict        = errors.New("resource conflict")
+	ErrMissingUser     = errors.New("missing authenticated user")
 )
 
 type Status string
@@ -31,13 +37,22 @@ type Article struct {
 	UpdatedAt   time.Time
 }
 
+type Revision struct {
+	ArticleID int64
+	Version   int
+	Title     string
+	Summary   string
+	Content   string
+	CreatedAt time.Time
+}
+
 func New(id, authorID, categoryID int64, title, slug, summary, content string, tags []string, now time.Time) (*Article, error) {
 	title = strings.TrimSpace(title)
 	slug = strings.TrimSpace(slug)
 	summary = strings.TrimSpace(summary)
 	content = strings.TrimSpace(content)
 	if id <= 0 || authorID <= 0 || !validTitle(title) || !validSlug(slug) || content == "" {
-		return nil, derrors.ErrInvalidArgument
+		return nil, ErrInvalidArgument
 	}
 	if now.IsZero() {
 		now = time.Now().UTC()
@@ -59,13 +74,13 @@ func New(id, authorID, categoryID int64, title, slug, summary, content string, t
 
 func (a *Article) Publish(now time.Time) error {
 	if a == nil {
-		return derrors.ErrNotFound
+		return ErrNotFound
 	}
 	if a.Status == StatusArchived {
-		return derrors.ErrConflict
+		return ErrConflict
 	}
 	if !validTitle(a.Title) || strings.TrimSpace(a.Content) == "" {
-		return derrors.ErrInvalidArgument
+		return ErrInvalidArgument
 	}
 	if now.IsZero() {
 		now = time.Now().UTC()
@@ -74,6 +89,20 @@ func (a *Article) Publish(now time.Time) error {
 	a.PublishedAt = &now
 	a.UpdatedAt = now
 	return nil
+}
+
+func (a *Article) FirstRevision() Revision {
+	if a == nil {
+		return Revision{}
+	}
+	return Revision{
+		ArticleID: a.ID,
+		Version:   1,
+		Title:     a.Title,
+		Summary:   a.Summary,
+		Content:   a.Content,
+		CreatedAt: a.CreatedAt,
+	}
 }
 
 func validTitle(title string) bool {

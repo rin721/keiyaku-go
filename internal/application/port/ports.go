@@ -4,9 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/rin721/keiyaku-go/internal/domain/article"
 	domainplugin "github.com/rin721/keiyaku-go/internal/domain/plugin"
-	"github.com/rin721/keiyaku-go/internal/domain/shared"
 	"github.com/rin721/keiyaku-go/internal/domain/user"
 )
 
@@ -26,9 +24,10 @@ type TokenUser struct {
 }
 
 type TokenPair struct {
-	AccessToken  string
-	RefreshToken string
-	ExpiresAt    time.Time
+	AccessToken      string
+	RefreshToken     string
+	ExpiresAt        time.Time
+	RefreshExpiresAt time.Time
 }
 
 type TokenClaims struct {
@@ -36,6 +35,7 @@ type TokenClaims struct {
 	Username  string
 	Roles     []string
 	ExpiresAt time.Time
+	TokenID   string
 }
 
 type TokenIssuer interface {
@@ -53,12 +53,6 @@ type UserRepository interface {
 	FindByUsername(ctx context.Context, username string) (*user.User, error)
 }
 
-type ArticleRepository interface {
-	Create(ctx context.Context, entity *article.Article) error
-	FindPublishedByID(ctx context.Context, id int64) (*article.Article, error)
-	ListPublished(ctx context.Context, pagination shared.Pagination) ([]*article.Article, int64, error)
-}
-
 type Cache interface {
 	Get(ctx context.Context, key string) ([]byte, error)
 	Set(ctx context.Context, key string, value []byte, ttl time.Duration) error
@@ -67,6 +61,7 @@ type Cache interface {
 
 type PluginRegistryRepository interface {
 	UpsertRegistration(ctx context.Context, registration domainplugin.Registration) error
+	FindRouteConflict(ctx context.Context, pluginKey string, routes []domainplugin.Route) (*domainplugin.RouteConflict, error)
 	TouchInstance(ctx context.Context, pluginKey string, instanceID string, leaseExpiresAt time.Time, now time.Time) (*domainplugin.Instance, error)
 	DisableInstance(ctx context.Context, pluginKey string, instanceID string, now time.Time) error
 	SetServiceStatus(ctx context.Context, pluginKey string, status domainplugin.ServiceStatus, now time.Time) error
@@ -75,8 +70,12 @@ type PluginRegistryRepository interface {
 	ListPluginInstances(ctx context.Context, pluginKey string) ([]*domainplugin.Instance, error)
 	ListHealthCheckTargets(ctx context.Context, now time.Time) ([]*domainplugin.Instance, error)
 	GetPluginService(ctx context.Context, pluginKey string) (*domainplugin.Service, []*domainplugin.Instance, []*domainplugin.Route, error)
-	FindRoutable(ctx context.Context, pluginKey string, now time.Time) (*domainplugin.Service, []*domainplugin.Instance, []*domainplugin.Route, error)
+	FindRoutable(ctx context.Context, now time.Time) ([]*domainplugin.Service, []*domainplugin.Instance, []*domainplugin.Route, error)
 	UpdateInstanceHealth(ctx context.Context, pluginKey string, instanceID string, healthStatus domainplugin.HealthStatus, consecutiveFailures int, lastError string, checkedAt time.Time) (*domainplugin.Instance, error)
+	UseSignatureNonce(ctx context.Context, pluginKey string, nonce string, expiresAt time.Time, now time.Time) error
+	PruneSignatureNonces(ctx context.Context, now time.Time) (int64, error)
+	PrunePluginAuditEvents(ctx context.Context, before time.Time) (int64, error)
+	DisableStalePluginInstances(ctx context.Context, staleBefore time.Time, now time.Time) (int64, error)
 }
 
 type PluginAuditRepository interface {

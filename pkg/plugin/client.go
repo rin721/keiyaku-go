@@ -12,19 +12,28 @@ import (
 )
 
 type Client struct {
-	BaseURL    string
-	Token      string
-	HTTPClient *http.Client
-	Timeout    time.Duration
+	BaseURL            string
+	PluginKey          string
+	RegistrationSecret string
+	HTTPClient         *http.Client
+	Timeout            time.Duration
 }
 
-func NewClient(baseURL string, token string) *Client {
-	return &Client{BaseURL: strings.TrimRight(baseURL, "/"), Token: token, Timeout: 5 * time.Second}
+func NewClient(baseURL string, pluginKey string, registrationSecret string) *Client {
+	return &Client{
+		BaseURL:            strings.TrimRight(baseURL, "/"),
+		PluginKey:          strings.TrimSpace(pluginKey),
+		RegistrationSecret: registrationSecret,
+		Timeout:            5 * time.Second,
+	}
 }
 
 func (c *Client) Register(ctx context.Context, manifest Manifest) (RegisterResponse, error) {
 	manifest = NormalizeManifest(manifest)
 	if err := ValidateManifest(manifest); err != nil {
+		return RegisterResponse{}, err
+	}
+	if err := c.validateIdentity(manifest.PluginKey); err != nil {
 		return RegisterResponse{}, err
 	}
 	var response RegisterResponse
@@ -35,15 +44,27 @@ func (c *Client) Register(ctx context.Context, manifest Manifest) (RegisterRespo
 }
 
 func (c *Client) Heartbeat(ctx context.Context, pluginKey string, instanceID string) (HeartbeatResponse, error) {
+	if err := c.validateIdentity(pluginKey); err != nil {
+		return HeartbeatResponse{}, err
+	}
+	if !ValidPluginKey(instanceID) {
+		return HeartbeatResponse{}, validationError("instance_id must match ^[a-z][a-z0-9-]{2,63}$", ErrInvalidManifest)
+	}
 	var response HeartbeatResponse
 	path := fmt.Sprintf("/api/v1/plugins/%s/instances/%s/heartbeat", pluginKey, instanceID)
-	if err := c.doJSON(ctx, http.MethodPost, path, map[string]string{}, &response); err != nil {
+	if err := c.doJSON(ctx, http.MethodPost, path, nil, &response); err != nil {
 		return HeartbeatResponse{}, err
 	}
 	return response, nil
 }
 
 func (c *Client) Unregister(ctx context.Context, pluginKey string, instanceID string) error {
+	if err := c.validateIdentity(pluginKey); err != nil {
+		return err
+	}
+	if !ValidPluginKey(instanceID) {
+		return validationError("instance_id must match ^[a-z][a-z0-9-]{2,63}$", ErrInvalidManifest)
+	}
 	path := fmt.Sprintf("/api/v1/plugins/%s/instances/%s", pluginKey, instanceID)
 	return c.doJSON(ctx, http.MethodDelete, path, nil, nil)
 }
@@ -56,26 +77,26 @@ func (c *Client) doJSON(ctx context.Context, method string, path string, body in
 	if baseURL == "" {
 		return httpError(method, "base URL is required", nil)
 	}
-	var reader io.Reader
+	var bodyBytes []byte
 	if body != nil {
 		content, err := json.Marshal(body)
 		if err != nil {
 			return httpError(method, "encode request", err)
 		}
-		reader = bytes.NewReader(content)
+		bodyBytes = content
 	}
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	req, err := http.NewRequestWithContext(ctx, method, baseURL+path, reader)
+	req, err := http.NewRequestWithContext(ctx, method, baseURL+path, bytes.NewReader(bodyBytes))
 	if err != nil {
 		return httpError(method, "build request", err)
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	if c.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.Token)
+	if err := SignRequest(req, c.PluginKey, c.RegistrationSecret, bodyBytes, time.Time{}, ""); err != nil {
+		return httpError(method, "sign request", err)
 	}
 	client := c.HTTPClient
 	if client == nil {
@@ -99,6 +120,22 @@ func (c *Client) doJSON(ctx context.Context, method string, path string, body in
 	}
 	if err := decodeRegistryResponse(resp.Body, out); err != nil {
 		return httpError(method, "decode response", err)
+	}
+	return nil
+}
+
+func (c *Client) validateIdentity(pluginKey string) error {
+	if c == nil {
+		return httpError("client", "client is nil", nil)
+	}
+	if !ValidPluginKey(pluginKey) {
+		return validationError("plugin_key must match ^[a-z][a-z0-9-]{2,63}$", ErrInvalidManifest)
+	}
+	if c.PluginKey != pluginKey {
+		return validationError("client plugin key does not match request plugin key", ErrInvalidManifest)
+	}
+	if strings.TrimSpace(c.RegistrationSecret) == "" {
+		return validationError("registration secret is required", ErrInvalidManifest)
 	}
 	return nil
 }

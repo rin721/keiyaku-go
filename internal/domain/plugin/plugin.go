@@ -113,9 +113,10 @@ type Route struct {
 	ID                int64
 	PluginKey         string
 	ManifestHash      string
+	RouteID           string
 	Method            Method
 	MatchType         MatchType
-	Path              string
+	GatewayPath       string
 	UpstreamPath      string
 	AuthPolicy        AuthPolicy
 	Timeout           time.Duration
@@ -124,6 +125,14 @@ type Route struct {
 	Metadata          map[string]string
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
+}
+
+type RouteConflict struct {
+	PluginKey   string
+	RouteID     string
+	Method      Method
+	MatchType   MatchType
+	GatewayPath string
 }
 
 type Registration struct {
@@ -152,7 +161,8 @@ type AuditEvent struct {
 type GatewayMetric struct {
 	PluginKey      string
 	InstanceID     string
-	RoutePath      string
+	RouteID        string
+	GatewayPath    string
 	UpstreamStatus int
 	Duration       time.Duration
 	GatewayError   string
@@ -201,12 +211,12 @@ func (r Route) Matches(method string, path string) (string, bool) {
 	}
 	switch r.MatchType {
 	case MatchTypeExact:
-		if path == r.Path {
+		if path == r.GatewayPath {
 			return "", true
 		}
 	case MatchTypePrefix:
-		if segmentPrefix(path, r.Path) {
-			return strings.TrimPrefix(path, r.Path), true
+		if segmentPrefix(path, r.GatewayPath) {
+			return strings.TrimPrefix(path, r.GatewayPath), true
 		}
 	}
 	return "", false

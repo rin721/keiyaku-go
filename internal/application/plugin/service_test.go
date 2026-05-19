@@ -8,6 +8,7 @@ import (
 
 	derrors "github.com/rin721/keiyaku-go/internal/domain/errors"
 	domainplugin "github.com/rin721/keiyaku-go/internal/domain/plugin"
+	pkgplugin "github.com/rin721/keiyaku-go/pkg/plugin"
 )
 
 func TestRegisterRejectsDisallowedPluginKey(t *testing.T) {
@@ -35,6 +36,30 @@ func TestRegisterStoresManifestRoutes(t *testing.T) {
 	}
 }
 
+func TestRegisterRejectsGatewayPathOutsidePublicPrefix(t *testing.T) {
+	service := newTestService(t)
+	cmd := validRegisterCommand("demo-plugin")
+	cmd.Routes[0].GatewayPath = "/api/v1/users/me"
+
+	_, err := service.Register(context.Background(), cmd)
+	if err == nil {
+		t.Fatal("Register() error is nil")
+	}
+}
+
+func TestRegisterRejectsReusedSignatureNonce(t *testing.T) {
+	service := newTestService(t)
+	cmd := validRegisterCommand("demo-plugin")
+	if _, err := service.Register(context.Background(), cmd); err != nil {
+		t.Fatalf("Register() first error = %v", err)
+	}
+	cmd.InstanceID = "demo-plugin-2"
+	_, err := service.Register(context.Background(), cmd)
+	if err == nil {
+		t.Fatal("Register() second error is nil")
+	}
+}
+
 func TestResolveRoutePrefersExactMethodAndSegmentPrefix(t *testing.T) {
 	repo := newMemoryRepo()
 	service := newTestServiceWithRepo(t, repo)
@@ -42,15 +67,15 @@ func TestResolveRoutePrefersExactMethodAndSegmentPrefix(t *testing.T) {
 		t.Fatalf("Register() error = %v", err)
 	}
 
-	resolved, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{PluginKey: "demo-plugin", Method: "GET", Path: "/items/42"})
+	resolved, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo/items/42"})
 	if err != nil {
 		t.Fatalf("ResolveRoute() error = %v", err)
 	}
-	if resolved.Route.Path != "/items" || resolved.Suffix != "/42" {
-		t.Fatalf("resolved route path=%q suffix=%q", resolved.Route.Path, resolved.Suffix)
+	if resolved.Route.GatewayPath != "/api/v1/extensions/demo/items" || resolved.Suffix != "/42" {
+		t.Fatalf("resolved route path=%q suffix=%q", resolved.Route.GatewayPath, resolved.Suffix)
 	}
 
-	_, err = service.ResolveRoute(context.Background(), ResolveRouteQuery{PluginKey: "demo-plugin", Method: "GET", Path: "/items-extra"})
+	_, err = service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo/items-extra"})
 	if err == nil {
 		t.Fatal("ResolveRoute() for non-segment prefix error is nil")
 	}
@@ -64,7 +89,7 @@ func TestResolveRouteSkipsExpiredInstances(t *testing.T) {
 	}
 	repo.instances["demo-plugin"][0].LeaseExpiresAt = time.Now().UTC().Add(-time.Second)
 
-	_, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{PluginKey: "demo-plugin", Method: "GET", Path: "/hello"})
+	_, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo/hello"})
 	if err == nil {
 		t.Fatal("ResolveRoute() error is nil")
 	}
@@ -78,7 +103,7 @@ func TestResolveRouteSkipsUnhealthyInstances(t *testing.T) {
 	}
 	repo.instances["demo-plugin"][0].HealthStatus = domainplugin.HealthStatusUnhealthy
 
-	_, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{PluginKey: "demo-plugin", Method: "GET", Path: "/hello"})
+	_, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo/hello"})
 	if err == nil {
 		t.Fatal("ResolveRoute() error is nil")
 	}
@@ -88,14 +113,12 @@ func TestHealthCheckMarksUnhealthyAfterThreshold(t *testing.T) {
 	repo := newMemoryRepo()
 	service, err := NewService(repo, Config{
 		Enabled:             true,
-		RegistrationTokens:  []string{"01234567890123456789012345678901"},
-		AllowedPluginKeys:   []string{"demo-plugin"},
+		TrustedPlugins:      testTrustedPlugins(),
 		HeartbeatTTL:        time.Minute,
 		RequestTimeout:      time.Second,
 		HealthCheckInterval: time.Second,
 		UnhealthyThreshold:  2,
 		MaxAuditQueryLimit:  20,
-		AllowedHosts:        []string{"plugins.internal"},
 	}, WithAuditRepository(repo))
 	if err != nil {
 		t.Fatalf("NewService() error = %v", err)
@@ -122,13 +145,11 @@ func TestHealthCheckMarksUnhealthyAfterThreshold(t *testing.T) {
 func TestRouteCacheInvalidatesOnDisableService(t *testing.T) {
 	repo := newMemoryRepo()
 	service, err := NewService(repo, Config{
-		Enabled:            true,
-		RegistrationTokens: []string{"01234567890123456789012345678901"},
-		AllowedPluginKeys:  []string{"demo-plugin"},
-		HeartbeatTTL:       time.Minute,
-		RequestTimeout:     time.Second,
-		RouteCacheTTL:      time.Minute,
-		AllowedHosts:       []string{"plugins.internal"},
+		Enabled:        true,
+		TrustedPlugins: testTrustedPlugins(),
+		HeartbeatTTL:   time.Minute,
+		RequestTimeout: time.Second,
+		RouteCacheTTL:  time.Minute,
 	}, WithAuditRepository(repo))
 	if err != nil {
 		t.Fatalf("NewService() error = %v", err)
@@ -136,13 +157,13 @@ func TestRouteCacheInvalidatesOnDisableService(t *testing.T) {
 	if _, err := service.Register(context.Background(), validRegisterCommand("demo-plugin")); err != nil {
 		t.Fatalf("Register() error = %v", err)
 	}
-	if _, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{PluginKey: "demo-plugin", Method: "GET", Path: "/hello"}); err != nil {
+	if _, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo/hello"}); err != nil {
 		t.Fatalf("ResolveRoute() before disable error = %v", err)
 	}
 	if err := service.DisableService(context.Background(), "demo-plugin"); err != nil {
 		t.Fatalf("DisableService() error = %v", err)
 	}
-	if _, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{PluginKey: "demo-plugin", Method: "GET", Path: "/hello"}); err == nil {
+	if _, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo/hello"}); err == nil {
 		t.Fatal("ResolveRoute() after disable error is nil")
 	}
 }
@@ -150,12 +171,10 @@ func TestRouteCacheInvalidatesOnDisableService(t *testing.T) {
 func TestRegisterRecordsAuditEvents(t *testing.T) {
 	repo := newMemoryRepo()
 	service, err := NewService(repo, Config{
-		Enabled:            true,
-		RegistrationTokens: []string{"01234567890123456789012345678901"},
-		AllowedPluginKeys:  []string{"demo-plugin"},
-		HeartbeatTTL:       time.Minute,
-		RequestTimeout:     time.Second,
-		AllowedHosts:       []string{"plugins.internal"},
+		Enabled:        true,
+		TrustedPlugins: testTrustedPlugins(),
+		HeartbeatTTL:   time.Minute,
+		RequestTimeout: time.Second,
 	}, WithAuditRepository(repo))
 	if err != nil {
 		t.Fatalf("NewService() error = %v", err)
@@ -172,6 +191,111 @@ func TestRegisterRecordsAuditEvents(t *testing.T) {
 	}
 }
 
+func TestRegisterRejectsCrossPluginRouteConflict(t *testing.T) {
+	repo := newMemoryRepo()
+	service, err := NewService(repo, Config{
+		Enabled: true,
+		TrustedPlugins: map[string]TrustedPluginConfig{
+			"demo-plugin":  testTrustedPlugins()["demo-plugin"],
+			"other-plugin": testTrustedPlugins()["demo-plugin"],
+		},
+		HeartbeatTTL:   time.Minute,
+		RequestTimeout: time.Second,
+	})
+	if err != nil {
+		t.Fatalf("NewService() error = %v", err)
+	}
+	if _, err := service.Register(context.Background(), validRegisterCommand("demo-plugin")); err != nil {
+		t.Fatalf("Register() first error = %v", err)
+	}
+	_, err = service.Register(context.Background(), validRegisterCommand("other-plugin"))
+	if err == nil {
+		t.Fatal("Register() conflicting route error is nil")
+	}
+}
+
+func TestRegisterRejectsRouteTimeoutAboveMax(t *testing.T) {
+	repo := newMemoryRepo()
+	service, err := NewService(repo, Config{
+		Enabled:         true,
+		TrustedPlugins:  testTrustedPlugins(),
+		HeartbeatTTL:    time.Minute,
+		RequestTimeout:  time.Second,
+		MaxRouteTimeout: time.Second,
+	})
+	if err != nil {
+		t.Fatalf("NewService() error = %v", err)
+	}
+	cmd := validRegisterCommand("demo-plugin")
+	cmd.Routes[0].Timeout = "2s"
+	if _, err := service.Register(context.Background(), cmd); err == nil {
+		t.Fatal("Register() timeout error is nil")
+	}
+}
+
+func TestHealthCheckSkipsExpiredLease(t *testing.T) {
+	repo := newMemoryRepo()
+	service := newTestServiceWithRepo(t, repo)
+	if _, err := service.Register(context.Background(), validRegisterCommand("demo-plugin")); err != nil {
+		t.Fatalf("Register() error = %v", err)
+	}
+	repo.instances["demo-plugin"][0].LeaseExpiresAt = time.Now().UTC().Add(-time.Minute)
+
+	if err := service.CheckHealth(context.Background(), fakeHealthProbe{err: errors.New("probe failed")}); err != nil {
+		t.Fatalf("CheckHealth() error = %v", err)
+	}
+	if got := repo.instances["demo-plugin"][0].ConsecutiveFailures; got != 0 {
+		t.Fatalf("consecutive failures = %d, want 0", got)
+	}
+}
+
+func TestDiagnoseReturnsRoutabilityReasons(t *testing.T) {
+	repo := newMemoryRepo()
+	service := newTestServiceWithRepo(t, repo)
+	if _, err := service.Register(context.Background(), validRegisterCommand("demo-plugin")); err != nil {
+		t.Fatalf("Register() error = %v", err)
+	}
+	repo.instances["demo-plugin"][0].HealthStatus = domainplugin.HealthStatusUnhealthy
+
+	diagnostics, err := service.Diagnose(context.Background(), "demo-plugin", ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo/hello"})
+	if err != nil {
+		t.Fatalf("Diagnose() error = %v", err)
+	}
+	if !diagnostics.RouteMatched || diagnostics.MatchedRoute == nil {
+		t.Fatal("Diagnose() did not match route")
+	}
+	if diagnostics.RoutableInstances != 0 || len(diagnostics.InstanceDiagnostics) != 1 {
+		t.Fatalf("diagnostics routable=%d instances=%d", diagnostics.RoutableInstances, len(diagnostics.InstanceDiagnostics))
+	}
+	if got := diagnostics.InstanceDiagnostics[0].Reasons; len(got) == 0 || got[0] != "health_unhealthy" {
+		t.Fatalf("diagnostic reasons = %#v, want health_unhealthy", got)
+	}
+}
+
+func TestMaintainPrunesAndDisablesStaleInstances(t *testing.T) {
+	repo := newMemoryRepo()
+	service := newTestServiceWithRepo(t, repo)
+	if _, err := service.Register(context.Background(), validRegisterCommand("demo-plugin")); err != nil {
+		t.Fatalf("Register() error = %v", err)
+	}
+	now := time.Date(2026, 5, 19, 12, 0, 0, 0, time.UTC)
+	service.now = func() time.Time { return now }
+	repo.nonces["demo-plugin:old"] = now.Add(-time.Minute)
+	repo.audits["demo-plugin"] = append(repo.audits["demo-plugin"], &domainplugin.AuditEvent{PluginKey: "demo-plugin", CreatedAt: now.AddDate(0, 0, -40)})
+	repo.instances["demo-plugin"][0].LeaseExpiresAt = now.Add(-2 * time.Minute)
+
+	result, err := service.Maintain(context.Background())
+	if err != nil {
+		t.Fatalf("Maintain() error = %v", err)
+	}
+	if result.PrunedSignatureNonces == 0 || result.PrunedAuditEvents == 0 || result.DisabledStaleInstances == 0 {
+		t.Fatalf("maintenance result = %#v, want all counters > 0", result)
+	}
+	if got := repo.instances["demo-plugin"][0].Status; got != domainplugin.InstanceStatusDisabled {
+		t.Fatalf("stale instance status = %q, want disabled", got)
+	}
+}
+
 func newTestService(t *testing.T) *Service {
 	t.Helper()
 	return newTestServiceWithRepo(t, newMemoryRepo())
@@ -180,12 +304,10 @@ func newTestService(t *testing.T) *Service {
 func newTestServiceWithRepo(t *testing.T, repo *memoryRepo) *Service {
 	t.Helper()
 	service, err := NewService(repo, Config{
-		Enabled:            true,
-		RegistrationTokens: []string{"01234567890123456789012345678901"},
-		AllowedPluginKeys:  []string{"demo-plugin"},
-		HeartbeatTTL:       time.Minute,
-		RequestTimeout:     time.Second,
-		AllowedHosts:       []string{"plugins.internal"},
+		Enabled:        true,
+		TrustedPlugins: testTrustedPlugins(),
+		HeartbeatTTL:   time.Minute,
+		RequestTimeout: time.Second,
 	})
 	if err != nil {
 		t.Fatalf("NewService() error = %v", err)
@@ -195,8 +317,8 @@ func newTestServiceWithRepo(t *testing.T, repo *memoryRepo) *Service {
 
 func validRegisterCommand(pluginKey string) RegisterCommand {
 	return RegisterCommand{
-		Token:         "01234567890123456789012345678901",
-		SchemaVersion: "v1",
+		Signature:     testSignature(pluginKey, "POST", "/api/v1/plugins/registrations", nil),
+		SchemaVersion: "v2",
 		PluginKey:     pluginKey,
 		Name:          "Demo",
 		Version:       "0.1.0",
@@ -205,9 +327,33 @@ func validRegisterCommand(pluginKey string) RegisterCommand {
 		BaseURL:       "http://plugins.internal:9090",
 		HealthPath:    "/healthz",
 		Routes: []RouteCommand{
-			{Method: "GET", MatchType: "exact", Path: "/hello", UpstreamPath: "/hello", AuthPolicy: "authenticated"},
-			{Method: "GET", MatchType: "prefix", Path: "/items", UpstreamPath: "/api/items", AuthPolicy: "authenticated"},
+			{RouteID: "hello", Method: "GET", MatchType: "exact", GatewayPath: "/api/v1/extensions/demo/hello", UpstreamPath: "/hello", AuthPolicy: "authenticated", Timeout: "1s"},
+			{RouteID: "items", Method: "GET", MatchType: "prefix", GatewayPath: "/api/v1/extensions/demo/items", UpstreamPath: "/api/items", AuthPolicy: "authenticated", Timeout: "1s"},
 		},
+	}
+}
+
+func testTrustedPlugins() map[string]TrustedPluginConfig {
+	return map[string]TrustedPluginConfig{
+		"demo-plugin": {
+			RegistrationSecret: "01234567890123456789012345678901",
+			GatewaySecret:      "abcdefghijklmnopqrstuvwxyz123456",
+			AllowedHosts:       []string{"plugins.internal"},
+		},
+	}
+}
+
+func testSignature(pluginKey string, method string, path string, body []byte) SignatureCommand {
+	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
+	nonce := pluginKey + "-nonce-" + method + "-" + path
+	return SignatureCommand{
+		PluginKey: pluginKey,
+		Method:    method,
+		Path:      path,
+		Timestamp: timestamp,
+		Nonce:     nonce,
+		Signature: pkgplugin.Sign(method, path, timestamp, nonce, pkgplugin.BodySHA256(body), "01234567890123456789012345678901"),
+		Body:      body,
 	}
 }
 
@@ -216,6 +362,7 @@ type memoryRepo struct {
 	instances map[string][]*domainplugin.Instance
 	routes    map[string][]*domainplugin.Route
 	audits    map[string][]*domainplugin.AuditEvent
+	nonces    map[string]time.Time
 }
 
 func newMemoryRepo() *memoryRepo {
@@ -224,6 +371,7 @@ func newMemoryRepo() *memoryRepo {
 		instances: map[string][]*domainplugin.Instance{},
 		routes:    map[string][]*domainplugin.Route{},
 		audits:    map[string][]*domainplugin.AuditEvent{},
+		nonces:    map[string]time.Time{},
 	}
 }
 
@@ -239,6 +387,32 @@ func (r *memoryRepo) UpsertRegistration(ctx context.Context, registration domain
 		r.routes[service.PluginKey] = append(r.routes[service.PluginKey], &route)
 	}
 	return nil
+}
+
+func (r *memoryRepo) FindRouteConflict(ctx context.Context, pluginKey string, routes []domainplugin.Route) (*domainplugin.RouteConflict, error) {
+	_ = ctx
+	for _, route := range routes {
+		for otherPluginKey, service := range r.services {
+			if otherPluginKey == pluginKey || service == nil || service.Status != domainplugin.ServiceStatusActive {
+				continue
+			}
+			for _, existing := range r.routes[otherPluginKey] {
+				if existing == nil || !existing.Enabled || existing.ManifestHash != service.CurrentManifestHash {
+					continue
+				}
+				if existing.Method == route.Method && existing.MatchType == route.MatchType && existing.GatewayPath == route.GatewayPath {
+					return &domainplugin.RouteConflict{
+						PluginKey:   existing.PluginKey,
+						RouteID:     existing.RouteID,
+						Method:      existing.Method,
+						MatchType:   existing.MatchType,
+						GatewayPath: existing.GatewayPath,
+					}, nil
+				}
+			}
+		}
+	}
+	return nil, nil
 }
 
 func (r *memoryRepo) RecordPluginAudit(ctx context.Context, event domainplugin.AuditEvent) error {
@@ -340,7 +514,7 @@ func (r *memoryRepo) ListHealthCheckTargets(ctx context.Context, now time.Time) 
 			continue
 		}
 		for _, instance := range r.instances[pluginKey] {
-			if instance.Status == domainplugin.InstanceStatusActive && instance.ManifestHash == service.CurrentManifestHash {
+			if instance.Status == domainplugin.InstanceStatusActive && instance.ManifestHash == service.CurrentManifestHash && !instance.LeaseExpiresAt.Before(now) {
 				instances = append(instances, instance)
 			}
 		}
@@ -357,19 +531,24 @@ func (r *memoryRepo) GetPluginService(ctx context.Context, pluginKey string) (*d
 	return service, r.instances[pluginKey], r.routes[pluginKey], nil
 }
 
-func (r *memoryRepo) FindRoutable(ctx context.Context, pluginKey string, now time.Time) (*domainplugin.Service, []*domainplugin.Instance, []*domainplugin.Route, error) {
+func (r *memoryRepo) FindRoutable(ctx context.Context, now time.Time) ([]*domainplugin.Service, []*domainplugin.Instance, []*domainplugin.Route, error) {
 	_ = ctx
-	service := r.services[pluginKey]
-	if service == nil {
-		return nil, nil, nil, derrors.ErrNotFound
-	}
+	var services []*domainplugin.Service
 	var instances []*domainplugin.Instance
-	for _, instance := range r.instances[pluginKey] {
-		if instance.Routable(now, service.CurrentManifestHash) {
-			instances = append(instances, instance)
+	var routes []*domainplugin.Route
+	for pluginKey, service := range r.services {
+		if service == nil || service.Status != domainplugin.ServiceStatusActive {
+			continue
 		}
+		services = append(services, service)
+		for _, instance := range r.instances[pluginKey] {
+			if instance.Routable(now, service.CurrentManifestHash) {
+				instances = append(instances, instance)
+			}
+		}
+		routes = append(routes, r.routes[pluginKey]...)
 	}
-	return service, instances, r.routes[pluginKey], nil
+	return services, instances, routes, nil
 }
 
 func (r *memoryRepo) UpdateInstanceHealth(ctx context.Context, pluginKey string, instanceID string, healthStatus domainplugin.HealthStatus, consecutiveFailures int, lastError string, checkedAt time.Time) (*domainplugin.Instance, error) {
@@ -389,6 +568,62 @@ func (r *memoryRepo) UpdateInstanceHealth(ctx context.Context, pluginKey string,
 		}
 	}
 	return nil, derrors.ErrNotFound
+}
+
+func (r *memoryRepo) UseSignatureNonce(ctx context.Context, pluginKey string, nonce string, expiresAt time.Time, now time.Time) error {
+	_ = ctx
+	_ = expiresAt
+	_ = now
+	key := pluginKey + ":" + nonce
+	if _, ok := r.nonces[key]; ok {
+		return derrors.ErrConflict
+	}
+	r.nonces[key] = expiresAt
+	return nil
+}
+
+func (r *memoryRepo) PruneSignatureNonces(ctx context.Context, now time.Time) (int64, error) {
+	_ = ctx
+	var count int64
+	for key, expiresAt := range r.nonces {
+		if expiresAt.Before(now) {
+			delete(r.nonces, key)
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (r *memoryRepo) PrunePluginAuditEvents(ctx context.Context, before time.Time) (int64, error) {
+	_ = ctx
+	var count int64
+	for pluginKey, events := range r.audits {
+		kept := events[:0]
+		for _, event := range events {
+			if event.CreatedAt.Before(before) {
+				count++
+				continue
+			}
+			kept = append(kept, event)
+		}
+		r.audits[pluginKey] = kept
+	}
+	return count, nil
+}
+
+func (r *memoryRepo) DisableStalePluginInstances(ctx context.Context, staleBefore time.Time, now time.Time) (int64, error) {
+	_ = ctx
+	var count int64
+	for _, instances := range r.instances {
+		for _, instance := range instances {
+			if instance.Status == domainplugin.InstanceStatusActive && instance.LeaseExpiresAt.Before(staleBefore) {
+				instance.Status = domainplugin.InstanceStatusDisabled
+				instance.UpdatedAt = now
+				count++
+			}
+		}
+	}
+	return count, nil
 }
 
 type fakeHealthProbe struct {

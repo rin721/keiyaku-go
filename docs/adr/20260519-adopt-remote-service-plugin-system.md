@@ -48,6 +48,8 @@ change_reason: introduce remote service plugin extension model
 
 该决策不建立第三方不可信插件市场，不提供代码沙箱，不支持首版 gRPC、WebSocket、SSE、事件订阅或 mTLS。
 
+后续 [ADR 20260519：插件系统 v2 破坏式契约](20260519-adopt-plugin-v2-breaking-contract.md) 已将首版全局静态注册 token 与派生式 `/extensions/{plugin_key}` 路径升级为 per-plugin HMAC 与显式 `gateway_path`。本 ADR 仍裁决“远端 HTTP 服务插件”模型；v2 契约细节以后续 ADR 为准。
+
 ## 后果评估
 
 正面收益：

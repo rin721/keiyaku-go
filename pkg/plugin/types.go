@@ -3,7 +3,7 @@ package plugin
 import "time"
 
 const (
-	DefaultSchemaVersion = "v1"
+	DefaultSchemaVersion = "v2"
 	DefaultProtocol      = ProtocolHTTP
 )
 
@@ -42,27 +42,27 @@ const (
 )
 
 type Manifest struct {
-	SchemaVersion     string            `json:"schema_version"`
-	PluginKey         string            `json:"plugin_key"`
-	Name              string            `json:"name"`
-	Version           string            `json:"version"`
-	InstanceID        string            `json:"instance_id"`
-	Protocol          Protocol          `json:"protocol"`
-	BaseURL           string            `json:"base_url"`
-	HealthPath        string            `json:"health_path"`
-	OpenAPIURL        string            `json:"openapi_url,omitempty"`
-	Routes            []Route           `json:"routes"`
-	Metadata          map[string]string `json:"metadata,omitempty"`
-	RegistrationToken string            `json:"-"`
+	SchemaVersion string            `json:"schema_version"`
+	PluginKey     string            `json:"plugin_key"`
+	Name          string            `json:"name"`
+	Version       string            `json:"version"`
+	InstanceID    string            `json:"instance_id"`
+	Protocol      Protocol          `json:"protocol"`
+	BaseURL       string            `json:"base_url"`
+	HealthPath    string            `json:"health_path"`
+	OpenAPIURL    string            `json:"openapi_url,omitempty"`
+	Routes        []Route           `json:"routes"`
+	Metadata      map[string]string `json:"metadata,omitempty"`
 }
 
 type Route struct {
+	RouteID           string            `json:"route_id"`
 	Method            Method            `json:"method"`
 	MatchType         MatchType         `json:"match_type"`
-	Path              string            `json:"path"`
+	GatewayPath       string            `json:"gateway_path"`
 	UpstreamPath      string            `json:"upstream_path"`
 	AuthPolicy        AuthPolicy        `json:"auth_policy"`
-	TimeoutMS         int               `json:"timeout_ms"`
+	Timeout           string            `json:"timeout"`
 	ForwardAuthHeader bool              `json:"forward_auth_header"`
 	Metadata          map[string]string `json:"metadata,omitempty"`
 }

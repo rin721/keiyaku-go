@@ -29,10 +29,10 @@ const (
 	flagName       cmdcli.FlagName = "name"
 	flagManifest   cmdcli.FlagName = "manifest"
 	flagHost       cmdcli.FlagName = "host"
-	flagToken      cmdcli.FlagName = "token"
+	flagSecret     cmdcli.FlagName = "registration-secret"
 	flagInstanceID cmdcli.FlagName = "instance-id"
 
-	envPluginToken cmdcli.EnvName = "KEIYAKU_PLUGIN_TOKEN"
+	envRegistrationSecret cmdcli.EnvName = "KEIYAKU_PLUGIN_REGISTRATION_SECRET"
 )
 
 func main() {
@@ -42,7 +42,7 @@ func main() {
 func newAppSpec() cmdcli.AppSpec {
 	commonClientFlags := []cmdcli.Flag{
 		cmdcli.StringFlag(cmdcli.StringFlagSpec{Name: flagHost, Usage: "Keiyaku-Go host base URL", Default: "http://127.0.0.1:8080"}),
-		cmdcli.StringFlag(cmdcli.StringFlagSpec{Name: flagToken, Usage: "Plugin registration token", EnvVars: []cmdcli.EnvName{envPluginToken}}),
+		cmdcli.StringFlag(cmdcli.StringFlagSpec{Name: flagSecret, Usage: "Plugin registration secret", EnvVars: []cmdcli.EnvName{envRegistrationSecret}}),
 	}
 	return cmdcli.AppSpec{
 		Name:                   appName,
@@ -166,7 +166,7 @@ func runRegister(ctx context.Context, cliCtx *cmdcli.Context) error {
 	if err != nil {
 		return err
 	}
-	client, err := newClient(cliCtx)
+	client, err := newClient(cliCtx, manifest.PluginKey)
 	if err != nil {
 		return err
 	}
@@ -179,11 +179,12 @@ func runRegister(ctx context.Context, cliCtx *cmdcli.Context) error {
 }
 
 func runHeartbeat(ctx context.Context, cliCtx *cmdcli.Context) error {
-	client, err := newClient(cliCtx)
+	pluginKey := requireString(cliCtx, flagPluginKey)
+	client, err := newClient(cliCtx, pluginKey)
 	if err != nil {
 		return err
 	}
-	result, err := client.Heartbeat(ctx, requireString(cliCtx, flagPluginKey), requireString(cliCtx, flagInstanceID))
+	result, err := client.Heartbeat(ctx, pluginKey, requireString(cliCtx, flagInstanceID))
 	if err != nil {
 		return cmdcli.WrapRuntimeError(cmdcli.OperationAction, "heartbeat plugin", err)
 	}
@@ -192,11 +193,12 @@ func runHeartbeat(ctx context.Context, cliCtx *cmdcli.Context) error {
 }
 
 func runUnregister(ctx context.Context, cliCtx *cmdcli.Context) error {
-	client, err := newClient(cliCtx)
+	pluginKey := requireString(cliCtx, flagPluginKey)
+	client, err := newClient(cliCtx, pluginKey)
 	if err != nil {
 		return err
 	}
-	if err := client.Unregister(ctx, requireString(cliCtx, flagPluginKey), requireString(cliCtx, flagInstanceID)); err != nil {
+	if err := client.Unregister(ctx, pluginKey, requireString(cliCtx, flagInstanceID)); err != nil {
 		return cmdcli.WrapRuntimeError(cmdcli.OperationAction, "unregister plugin", err)
 	}
 	cliCtx.UI().Success("Plugin instance unregistered")
@@ -209,18 +211,20 @@ func readManifest(path string) (pluginsdk.Manifest, error) {
 		return pluginsdk.Manifest{}, cmdcli.WrapRuntimeError(cmdcli.OperationAction, "read plugin manifest", err)
 	}
 	var manifest pluginsdk.Manifest
-	if err := json.Unmarshal(content, &manifest); err != nil {
+	decoder := json.NewDecoder(strings.NewReader(string(content)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&manifest); err != nil {
 		return pluginsdk.Manifest{}, cmdcli.WrapRuntimeError(cmdcli.OperationAction, "decode plugin manifest", err)
 	}
 	return pluginsdk.NormalizeManifest(manifest), nil
 }
 
-func newClient(cliCtx *cmdcli.Context) (*pluginsdk.Client, error) {
-	token := strings.TrimSpace(cliCtx.String(flagToken))
-	if token == "" {
-		return nil, cmdcli.UsageError("--%s 或 %s 是必填项", flagToken, envPluginToken)
+func newClient(cliCtx *cmdcli.Context, pluginKey string) (*pluginsdk.Client, error) {
+	secret := strings.TrimSpace(cliCtx.String(flagSecret))
+	if secret == "" {
+		return nil, cmdcli.UsageError("--%s 或 %s 是必填项", flagSecret, envRegistrationSecret)
 	}
-	return pluginsdk.NewClient(strings.TrimSpace(cliCtx.String(flagHost)), token), nil
+	return pluginsdk.NewClient(strings.TrimSpace(cliCtx.String(flagHost)), pluginKey, secret), nil
 }
 
 func requireString(cliCtx *cmdcli.Context, flag cmdcli.FlagName) string {
@@ -254,9 +258,11 @@ func scaffoldMain(module string, key string, name string) string {
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	pluginsdk "github.com/rin721/keiyaku-go/pkg/plugin"
@@ -265,11 +271,18 @@ import (
 func main() {
 	addr := env("PLUGIN_ADDR", ":9090")
 	host := env("KEIYAKU_HOST", "http://127.0.0.1:8080")
-	token := os.Getenv("KEIYAKU_PLUGIN_TOKEN")
+	registrationSecret := os.Getenv("KEIYAKU_PLUGIN_REGISTRATION_SECRET")
+	gatewaySecret := os.Getenv("KEIYAKU_PLUGIN_GATEWAY_SECRET")
 	baseURL := env("PLUGIN_BASE_URL", "http://127.0.0.1"+addr)
+	if strings.TrimSpace(registrationSecret) == "" {
+		log.Fatal("KEIYAKU_PLUGIN_REGISTRATION_SECRET is required")
+	}
+	if strings.TrimSpace(gatewaySecret) == "" {
+		log.Fatal("KEIYAKU_PLUGIN_GATEWAY_SECRET is required")
+	}
 
 	manifest := manifest(baseURL)
-	client := pluginsdk.NewClient(host, token)
+	client := pluginsdk.NewClient(host, manifest.PluginKey, registrationSecret)
 	ctx := context.Background()
 	if _, err := client.Register(ctx, manifest); err != nil {
 		log.Printf("register plugin: %%v", err)
@@ -290,6 +303,9 @@ func main() {
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 	mux.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
+		if !verifyGateway(w, r, gatewaySecret) {
+			return
+		}
 		_ = json.NewEncoder(w).Encode(map[string]string{
 			"plugin": r.Header.Get("X-Keiyaku-Plugin-Key"),
 			"trace_id": r.Header.Get("X-Trace-ID"),
@@ -298,6 +314,21 @@ func main() {
 	})
 	log.Printf("plugin listening on %%s", addr)
 	log.Fatal(http.ListenAndServe(addr, mux))
+}
+
+func verifyGateway(w http.ResponseWriter, r *http.Request, secret string) bool {
+	if _, _, err := pluginsdk.VerifySignedRequest(r, secret, 10<<20, time.Now().UTC(), pluginsdk.DefaultSignatureSkew); err != nil {
+		status := http.StatusUnauthorized
+		msg := "invalid gateway signature"
+		if errors.Is(err, pluginsdk.ErrBodyTooLarge) {
+			status = http.StatusRequestEntityTooLarge
+			msg = "request body too large"
+		}
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
+		return false
+	}
+	return true
 }
 
 func manifest(baseURL string) pluginsdk.Manifest {
@@ -312,12 +343,13 @@ func manifest(baseURL string) pluginsdk.Manifest {
 		HealthPath: "/healthz",
 		Routes: []pluginsdk.Route{
 			{
+				RouteID: "hello",
 				Method: pluginsdk.MethodGet,
 				MatchType: pluginsdk.MatchTypeExact,
-				Path: "/hello",
+				GatewayPath: "/api/v1/extensions/%s/hello",
 				UpstreamPath: "/hello",
 				AuthPolicy: pluginsdk.AuthPolicyAuthenticated,
-				TimeoutMS: 5000,
+				Timeout: "5s",
 			},
 		},
 	}
@@ -329,12 +361,12 @@ func env(key string, fallback string) string {
 	}
 	return fallback
 }
-`, name, key, name, key)
+`, name, key, name, key, key)
 }
 
 func scaffoldManifest(key string, name string) string {
 	return fmt.Sprintf(`{
-  "schema_version": "v1",
+  "schema_version": "v2",
   "plugin_key": "%s",
   "name": "%s",
   "version": "0.1.0",
@@ -344,15 +376,16 @@ func scaffoldManifest(key string, name string) string {
   "health_path": "/healthz",
   "routes": [
     {
+      "route_id": "hello",
       "method": "GET",
       "match_type": "exact",
-      "path": "/hello",
+      "gateway_path": "/api/v1/extensions/%s/hello",
       "upstream_path": "/hello",
       "auth_policy": "authenticated",
-      "timeout_ms": 5000,
+      "timeout": "5s",
       "forward_auth_header": false
     }
   ]
 }
-`, key, name, key)
+`, key, name, key, key)
 }

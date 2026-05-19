@@ -24,9 +24,9 @@ func TestAuthorizerLoadsConfigFiles(t *testing.T) {
 		action string
 		want   bool
 	}{
-		{name: "admin can delete", role: "admin", object: "/api/v1/articles/1", action: "DELETE", want: true},
-		{name: "author can create article", role: "author", object: "/api/v1/articles", action: "POST", want: true},
-		{name: "author cannot delete", role: "author", object: "/api/v1/articles/1", action: "DELETE", want: false},
+		{name: "admin can delete", role: "admin", object: "/api/v1/extensions/blog/articles/1", action: "DELETE", want: true},
+		{name: "author can create blog article", role: "author", object: "/api/v1/extensions/blog/articles", action: "POST", want: true},
+		{name: "author cannot delete blog article", role: "author", object: "/api/v1/extensions/blog/articles/1", action: "DELETE", want: false},
 	}
 
 	for _, tt := range tests {

@@ -1,10 +1,9 @@
 package handler
 
 import (
+	"bytes"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"net"
@@ -21,6 +20,7 @@ import (
 	"github.com/rin721/keiyaku-go/internal/application/port"
 	domainplugin "github.com/rin721/keiyaku-go/internal/domain/plugin"
 	"github.com/rin721/keiyaku-go/internal/observability/trace"
+	pkgplugin "github.com/rin721/keiyaku-go/pkg/plugin"
 	"go.uber.org/zap"
 )
 
@@ -70,7 +70,7 @@ func NewPluginHandler(service *appplugin.Service, tokens port.TokenIssuer, autho
 // @Param request body dto.PluginRegistrationRequest true "Plugin registration payload"
 // @Success 200 {object} dto.PluginRegistrationResponse "OK"
 // @Failure 400 {object} response.Body "Invalid request"
-// @Failure 401 {object} response.Body "Invalid plugin registration token"
+// @Failure 401 {object} response.Body "Invalid plugin signature"
 // @Failure 403 {object} response.Body "Plugin key not allowed"
 // @Failure 500 {object} response.Body "Internal server error"
 // @Router /plugins/registrations [post]
@@ -80,11 +80,18 @@ func (h *PluginHandler) Register(c *gin.Context) {
 		return
 	}
 	var req dto.PluginRegistrationRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	body, signature, err := h.signedBody(c)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
 		response.Error(c, apperror.Wrap(apperror.CodeInvalidArgument, apperror.MessageInvalidRequestBody, err))
 		return
 	}
-	result, err := h.service.Register(c.Request.Context(), req.ToCommand(bearerToken(c)))
+	result, err := h.service.Register(c.Request.Context(), req.ToCommand(signature))
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -100,7 +107,7 @@ func (h *PluginHandler) Register(c *gin.Context) {
 // @Param plugin_key path string true "Plugin key"
 // @Param instance_id path string true "Instance ID"
 // @Success 200 {object} dto.PluginHeartbeatResponse "OK"
-// @Failure 401 {object} response.Body "Invalid plugin registration token"
+// @Failure 401 {object} response.Body "Invalid plugin signature"
 // @Failure 404 {object} response.Body "Plugin instance not found"
 // @Failure 500 {object} response.Body "Internal server error"
 // @Router /plugins/{plugin_key}/instances/{instance_id}/heartbeat [post]
@@ -109,7 +116,8 @@ func (h *PluginHandler) Heartbeat(c *gin.Context) {
 		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessagePluginHandlerNotReady))
 		return
 	}
-	result, err := h.service.Heartbeat(c.Request.Context(), bearerToken(c), c.Param("plugin_key"), c.Param("instance_id"))
+	signature := h.signature(c, nil)
+	result, err := h.service.Heartbeat(c.Request.Context(), signature, c.Param("plugin_key"), c.Param("instance_id"))
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -125,7 +133,7 @@ func (h *PluginHandler) Heartbeat(c *gin.Context) {
 // @Param plugin_key path string true "Plugin key"
 // @Param instance_id path string true "Instance ID"
 // @Success 200 {object} response.Body "OK"
-// @Failure 401 {object} response.Body "Invalid plugin registration token"
+// @Failure 401 {object} response.Body "Invalid plugin signature"
 // @Failure 404 {object} response.Body "Plugin instance not found"
 // @Failure 500 {object} response.Body "Internal server error"
 // @Router /plugins/{plugin_key}/instances/{instance_id} [delete]
@@ -134,7 +142,8 @@ func (h *PluginHandler) Unregister(c *gin.Context) {
 		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessagePluginHandlerNotReady))
 		return
 	}
-	if err := h.service.Unregister(c.Request.Context(), bearerToken(c), c.Param("plugin_key"), c.Param("instance_id")); err != nil {
+	signature := h.signature(c, nil)
+	if err := h.service.Unregister(c.Request.Context(), signature, c.Param("plugin_key"), c.Param("instance_id")); err != nil {
 		response.Error(c, err)
 		return
 	}
@@ -308,6 +317,64 @@ func (h *PluginHandler) DisableInstance(c *gin.Context) {
 	response.NoContent(c)
 }
 
+// EnableInstance enables one plugin instance.
+// @Summary Enable plugin instance
+// @Description Enable one registered plugin instance after an administrative disable.
+// @Tags Plugin
+// @Produce json
+// @Security bearerAuth
+// @Param plugin_key path string true "Plugin key"
+// @Param instance_id path string true "Instance ID"
+// @Success 200 {object} response.Body "OK"
+// @Failure 401 {object} response.Body "Unauthorized"
+// @Failure 403 {object} response.Body "Forbidden"
+// @Failure 404 {object} response.Body "Plugin instance not found"
+// @Failure 500 {object} response.Body "Internal server error"
+// @Router /plugins/{plugin_key}/instances/{instance_id}/enable [post]
+func (h *PluginHandler) EnableInstance(c *gin.Context) {
+	if h == nil || h.service == nil {
+		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessagePluginHandlerNotReady))
+		return
+	}
+	if err := h.service.EnableInstance(c.Request.Context(), c.Param("plugin_key"), c.Param("instance_id")); err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.NoContent(c)
+}
+
+// Diagnostics returns plugin routability diagnostics.
+// @Summary Diagnose plugin routability
+// @Description Return route matching and instance routability diagnostics for one plugin.
+// @Tags Plugin
+// @Produce json
+// @Security bearerAuth
+// @Param plugin_key path string true "Plugin key"
+// @Param method query string false "HTTP method to match"
+// @Param path query string false "Gateway path to match"
+// @Success 200 {object} dto.PluginDiagnosticsResponse "OK"
+// @Failure 400 {object} response.Body "Invalid request"
+// @Failure 401 {object} response.Body "Unauthorized"
+// @Failure 403 {object} response.Body "Forbidden"
+// @Failure 404 {object} response.Body "Plugin not found"
+// @Failure 500 {object} response.Body "Internal server error"
+// @Router /plugins/{plugin_key}/diagnostics [get]
+func (h *PluginHandler) Diagnostics(c *gin.Context) {
+	if h == nil || h.service == nil {
+		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessagePluginHandlerNotReady))
+		return
+	}
+	result, err := h.service.Diagnose(c.Request.Context(), c.Param("plugin_key"), appplugin.ResolveRouteQuery{
+		Method: c.Query("method"),
+		Path:   c.Query("path"),
+	})
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.OK(c, dto.NewPluginDiagnosticsResponse(result))
+}
+
 // ListAuditEvents returns plugin audit events.
 // @Summary List plugin audit events
 // @Description List recent audit events for a registered remote plugin service.
@@ -345,19 +412,39 @@ func (h *PluginHandler) ListAuditEvents(c *gin.Context) {
 	response.OK(c, items)
 }
 
+func (h *PluginHandler) signedBody(c *gin.Context) ([]byte, appplugin.SignatureCommand, error) {
+	body, err := pkgplugin.ReadLimitedBody(c.Request.Body, h.service.MaxRegistrationBodyBytes())
+	if err != nil {
+		return nil, appplugin.SignatureCommand{}, bodyReadError(err)
+	}
+	c.Request.Body = io.NopCloser(bytes.NewReader(body))
+	return body, h.signature(c, body), nil
+}
+
+func (h *PluginHandler) signature(c *gin.Context, body []byte) appplugin.SignatureCommand {
+	parts := pkgplugin.SignatureFromHeader(c.Request.Header)
+	return appplugin.SignatureCommand{
+		PluginKey: parts.PluginKey,
+		Method:    c.Request.Method,
+		Path:      c.Request.URL.EscapedPath(),
+		Timestamp: parts.Timestamp,
+		Nonce:     parts.Nonce,
+		Signature: parts.Signature,
+		Body:      body,
+	}
+}
+
 func (h *PluginHandler) Gateway(c *gin.Context) {
 	if h == nil || h.service == nil {
 		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessagePluginHandlerNotReady))
 		return
 	}
 	start := time.Now()
-	pluginKey := c.Param("plugin_key")
 	traceID := trace.IDFromContext(c.Request.Context())
 	if traceID == "" {
 		traceID = trace.NewID()
 	}
 	var metric domainplugin.GatewayMetric
-	metric.PluginKey = pluginKey
 	metric.TraceID = traceID
 	defer func() {
 		metric.Duration = time.Since(start)
@@ -368,22 +455,19 @@ func (h *PluginHandler) Gateway(c *gin.Context) {
 		h.service.RecordGatewayRequest(c.Request.Context(), metric)
 		h.service.RecordGatewayFailure(c.Request.Context(), metric)
 	}()
-	proxyPath := c.Param("proxy_path")
-	if proxyPath == "" {
-		proxyPath = "/"
-	}
 	resolved, err := h.service.ResolveRoute(c.Request.Context(), appplugin.ResolveRouteQuery{
-		PluginKey: pluginKey,
-		Method:    c.Request.Method,
-		Path:      proxyPath,
+		Method: c.Request.Method,
+		Path:   c.Request.URL.Path,
 	})
 	if err != nil {
 		metric.GatewayError = gatewayErrorName(err)
 		response.Error(c, err)
 		return
 	}
+	metric.PluginKey = resolved.Service.PluginKey
 	metric.InstanceID = resolved.Instance.InstanceID
-	metric.RoutePath = resolved.Route.Path
+	metric.RouteID = resolved.Route.RouteID
+	metric.GatewayPath = resolved.Route.GatewayPath
 	claims, ok, err := h.authorizeGateway(c, resolved.Route)
 	if err != nil {
 		metric.GatewayError = "auth"
@@ -454,13 +538,15 @@ func (h *PluginHandler) parseClaims(c *gin.Context) (port.TokenClaims, error) {
 }
 
 func (h *PluginHandler) forward(c *gin.Context, upstreamURL string, resolved *domainplugin.ResolvedRoute, claims port.TokenClaims, hasClaims bool, traceID string) string {
-	timeout := resolved.Route.Timeout
-	if timeout <= 0 {
-		timeout = 5 * time.Second
-	}
+	timeout := h.service.EffectiveRouteTimeout(resolved.Route.Timeout)
 	ctx, cancel := context.WithTimeout(c.Request.Context(), timeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, c.Request.Method, upstreamURL, c.Request.Body)
+	body, err := pkgplugin.ReadLimitedBody(c.Request.Body, h.service.MaxGatewayBodyBytes())
+	if err != nil {
+		response.Error(c, bodyReadError(err))
+		return "upstream_request"
+	}
+	req, err := http.NewRequestWithContext(ctx, c.Request.Method, upstreamURL, bytes.NewReader(body))
 	if err != nil {
 		response.Error(c, apperror.Wrap(apperror.CodeBadGateway, apperror.MessagePluginUpstreamFailed, err))
 		return "upstream_request"
@@ -479,8 +565,11 @@ func (h *PluginHandler) forward(c *gin.Context, upstreamURL string, resolved *do
 		req.Header.Set("X-Keiyaku-Username", claims.Username)
 		req.Header.Set("X-Keiyaku-User-Roles", strings.Join(claims.Roles, ","))
 	}
-	if secret := h.service.GatewaySigningSecret(); secret != "" {
-		addGatewaySignature(req, secret, traceID)
+	if secret := h.service.GatewaySigningSecret(resolved.Service.PluginKey); secret != "" {
+		if err := pkgplugin.SignRequest(req, resolved.Service.PluginKey, secret, body, time.Time{}, ""); err != nil {
+			response.Error(c, apperror.Wrap(apperror.CodeBadGateway, apperror.MessagePluginUpstreamFailed, err))
+			return "upstream_request"
+		}
 	}
 	client := h.client
 	if client == nil {
@@ -526,6 +615,13 @@ func parseOptionalPositiveInt(raw string) (int, error) {
 	return value, nil
 }
 
+func bodyReadError(err error) error {
+	if errors.Is(err, pkgplugin.ErrBodyTooLarge) {
+		return apperror.Wrap(apperror.CodePayloadTooLarge, apperror.MessageRequestBodyTooLarge, err)
+	}
+	return apperror.Wrap(apperror.CodeInvalidArgument, apperror.MessageInvalidRequestBody, err)
+}
+
 func gatewayErrorName(err error) string {
 	appErr := apperror.From(err)
 	switch appErr.Code {
@@ -546,7 +642,8 @@ func (h *PluginHandler) logGateway(metric domainplugin.GatewayMetric) {
 	logger.Info("plugin gateway request",
 		zap.String("plugin_key", metric.PluginKey),
 		zap.String("instance_id", metric.InstanceID),
-		zap.String("route_path", metric.RoutePath),
+		zap.String("route_id", metric.RouteID),
+		zap.String("gateway_path", metric.GatewayPath),
 		zap.Int("upstream_status", metric.UpstreamStatus),
 		zap.Int64("duration_ms", metric.Duration.Milliseconds()),
 		zap.String("gateway_error", metric.GatewayError),
@@ -581,6 +678,9 @@ func skipRequestHeader(key string, forwardAuth bool) bool {
 	if hopByHopHeader(key) {
 		return true
 	}
+	if strings.HasPrefix(lower, "x-keiyaku-") || strings.HasPrefix(lower, "x-forwarded-") {
+		return true
+	}
 	switch lower {
 	case "host", "cookie":
 		return true
@@ -605,20 +705,6 @@ func forwardedProto(req *http.Request) string {
 		return "https"
 	}
 	return "http"
-}
-
-func addGatewaySignature(req *http.Request, secret string, traceID string) {
-	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
-	req.Header.Set("X-Keiyaku-Timestamp", timestamp)
-	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write([]byte(req.Method))
-	mac.Write([]byte("\n"))
-	mac.Write([]byte(req.URL.Path))
-	mac.Write([]byte("\n"))
-	mac.Write([]byte(traceID))
-	mac.Write([]byte("\n"))
-	mac.Write([]byte(timestamp))
-	req.Header.Set("X-Keiyaku-Signature", hex.EncodeToString(mac.Sum(nil)))
 }
 
 func hasRole(claims port.TokenClaims, role string) bool {

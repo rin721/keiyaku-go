@@ -92,3 +92,15 @@ func TestNewCanDisableAPIDocs(t *testing.T) {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusNotFound)
 	}
 }
+
+func TestNewDoesNotRegisterLegacyArticleRoutes(t *testing.T) {
+	engine := New(Deps{})
+	for _, target := range []string{"/api/v1/articles", "/api/v1/articles/1"} {
+		recorder := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, target, nil)
+		engine.ServeHTTP(recorder, req)
+		if recorder.Code != http.StatusNotFound {
+			t.Fatalf("%s status = %d, want %d", target, recorder.Code, http.StatusNotFound)
+		}
+	}
+}

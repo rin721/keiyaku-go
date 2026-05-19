@@ -22,12 +22,13 @@ type PluginRegistrationRequest struct {
 }
 
 type PluginRouteSpec struct {
+	RouteID           string            `json:"route_id" binding:"required"`
 	Method            string            `json:"method" binding:"required"`
 	MatchType         string            `json:"match_type" binding:"required"`
-	Path              string            `json:"path" binding:"required"`
+	GatewayPath       string            `json:"gateway_path" binding:"required"`
 	UpstreamPath      string            `json:"upstream_path" binding:"required"`
 	AuthPolicy        string            `json:"auth_policy"`
-	TimeoutMS         int               `json:"timeout_ms"`
+	Timeout           string            `json:"timeout" binding:"required"`
 	ForwardAuthHeader bool              `json:"forward_auth_header"`
 	Metadata          map[string]string `json:"metadata,omitempty"`
 }
@@ -76,12 +77,13 @@ type PluginInstanceResponse struct {
 }
 
 type PluginRouteResponse struct {
+	RouteID           string            `json:"route_id"`
 	Method            string            `json:"method"`
 	MatchType         string            `json:"match_type"`
-	Path              string            `json:"path"`
+	GatewayPath       string            `json:"gateway_path"`
 	UpstreamPath      string            `json:"upstream_path"`
 	AuthPolicy        string            `json:"auth_policy"`
-	TimeoutMS         int               `json:"timeout_ms"`
+	Timeout           string            `json:"timeout"`
 	ForwardAuthHeader bool              `json:"forward_auth_header"`
 	Enabled           bool              `json:"enabled"`
 	Metadata          map[string]string `json:"metadata,omitempty"`
@@ -105,9 +107,25 @@ type PluginAuditEventResponse struct {
 	CreatedAt  time.Time         `json:"created_at"`
 }
 
-func (r PluginRegistrationRequest) ToCommand(token string) appplugin.RegisterCommand {
+type PluginDiagnosticsResponse struct {
+	Service           PluginServiceResponse              `json:"service"`
+	MatchedRoute      *PluginRouteResponse               `json:"matched_route,omitempty"`
+	RouteMatched      bool                               `json:"route_matched"`
+	RouteSuffix       string                             `json:"route_suffix,omitempty"`
+	CheckedAt         time.Time                          `json:"checked_at"`
+	RoutableInstances int                                `json:"routable_instances"`
+	Instances         []PluginInstanceDiagnosticResponse `json:"instances"`
+}
+
+type PluginInstanceDiagnosticResponse struct {
+	Instance PluginInstanceResponse `json:"instance"`
+	Routable bool                   `json:"routable"`
+	Reasons  []string               `json:"reasons,omitempty"`
+}
+
+func (r PluginRegistrationRequest) ToCommand(signature appplugin.SignatureCommand) appplugin.RegisterCommand {
 	cmd := appplugin.RegisterCommand{
-		Token:         token,
+		Signature:     signature,
 		SchemaVersion: r.SchemaVersion,
 		PluginKey:     r.PluginKey,
 		Name:          r.Name,
@@ -121,12 +139,13 @@ func (r PluginRegistrationRequest) ToCommand(token string) appplugin.RegisterCom
 	}
 	for _, route := range r.Routes {
 		cmd.Routes = append(cmd.Routes, appplugin.RouteCommand{
+			RouteID:           route.RouteID,
 			Method:            route.Method,
 			MatchType:         route.MatchType,
-			Path:              route.Path,
+			GatewayPath:       route.GatewayPath,
 			UpstreamPath:      route.UpstreamPath,
 			AuthPolicy:        route.AuthPolicy,
-			TimeoutMS:         route.TimeoutMS,
+			Timeout:           route.Timeout,
 			ForwardAuthHeader: route.ForwardAuthHeader,
 			Metadata:          route.Metadata,
 		})
@@ -202,12 +221,13 @@ func NewPluginRouteResponse(route *domainplugin.Route) PluginRouteResponse {
 		return PluginRouteResponse{}
 	}
 	return PluginRouteResponse{
+		RouteID:           route.RouteID,
 		Method:            string(route.Method),
 		MatchType:         string(route.MatchType),
-		Path:              route.Path,
+		GatewayPath:       route.GatewayPath,
 		UpstreamPath:      route.UpstreamPath,
 		AuthPolicy:        string(route.AuthPolicy),
-		TimeoutMS:         int(route.Timeout / time.Millisecond),
+		Timeout:           route.Timeout.String(),
 		ForwardAuthHeader: route.ForwardAuthHeader,
 		Enabled:           route.Enabled,
 		Metadata:          route.Metadata,
@@ -229,4 +249,30 @@ func NewPluginAuditEventResponse(event *domainplugin.AuditEvent) PluginAuditEven
 		Metadata:   event.Metadata,
 		CreatedAt:  event.CreatedAt,
 	}
+}
+
+func NewPluginDiagnosticsResponse(result *appplugin.PluginDiagnostics) PluginDiagnosticsResponse {
+	if result == nil {
+		return PluginDiagnosticsResponse{}
+	}
+	response := PluginDiagnosticsResponse{
+		Service:           NewPluginServiceResponse(result.Service),
+		RouteMatched:      result.RouteMatched,
+		RouteSuffix:       result.RouteSuffix,
+		CheckedAt:         result.CheckedAt,
+		RoutableInstances: result.RoutableInstances,
+		Instances:         make([]PluginInstanceDiagnosticResponse, 0, len(result.InstanceDiagnostics)),
+	}
+	if result.MatchedRoute != nil {
+		route := NewPluginRouteResponse(result.MatchedRoute)
+		response.MatchedRoute = &route
+	}
+	for _, item := range result.InstanceDiagnostics {
+		response.Instances = append(response.Instances, PluginInstanceDiagnosticResponse{
+			Instance: NewPluginInstanceResponse(item.Instance),
+			Routable: item.Routable,
+			Reasons:  append([]string(nil), item.Reasons...),
+		})
+	}
+	return response
 }
