@@ -8,7 +8,7 @@ authority_level: binding
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-19
-version: 1.2
+version: 1.3
 related_rules: [GOV-P0-001, GOV-P0-002, GOV-P1-001]
 source_of_truth: [docs/adr/20260515-adopt-gin-gorm-clean-architecture.md, docs/adr/20260519-adopt-remote-service-plugin-system.md]
 derived_from: [docs/architecture/system-design.md, docs/adr/20260519-adopt-remote-service-plugin-system.md]
@@ -21,11 +21,13 @@ verification_target: [scripts/check-layering.ps1, scripts/check-governance-map.p
 
 # HTTP API 契约
 
-业务接口使用 `/api/v1` 前缀，响应体统一为：
+业务接口使用 `/api/v1` 前缀，主服务自有错误响应体统一为：
 
 ```json
 {"code":0,"msg":"ok","data":{}}
 ```
+
+插件网关代理到上游插件后的业务响应原样透传；只有主服务自身发现路由不存在、插件不可用、上游连接失败或超时时，才返回统一响应结构。
 
 ## Auth
 
@@ -59,9 +61,14 @@ verification_target: [scripts/check-layering.ps1, scripts/check-governance-map.p
 | DELETE | `/api/v1/plugins/{plugin_key}/instances/{instance_id}` | Plugin token | 注销插件实例 |
 | GET | `/api/v1/plugins` | JWT + Casbin | 查询插件服务列表 |
 | GET | `/api/v1/plugins/{plugin_key}` | JWT + Casbin | 查询插件服务、实例和路由详情 |
+| GET | `/api/v1/plugins/{plugin_key}/instances` | JWT + Casbin | 查询插件实例健康、租约和管理状态 |
+| POST | `/api/v1/plugins/{plugin_key}/disable` | JWT + Casbin | 禁用插件服务 |
+| POST | `/api/v1/plugins/{plugin_key}/enable` | JWT + Casbin | 启用插件服务 |
+| POST | `/api/v1/plugins/{plugin_key}/instances/{instance_id}/disable` | JWT + Casbin | 禁用插件实例 |
+| GET | `/api/v1/plugins/{plugin_key}/audit-events` | JWT + Casbin | 查询插件审计事件，支持 `limit` |
 | ANY | `/api/v1/extensions/{plugin_key}/*path` | Route policy | 按插件注册路由代理 HTTP 请求 |
 
-插件网关只在主服务自身发生路由不存在、插件不可用、上游连接失败或超时时返回统一响应结构；插件上游业务响应原样透传。
+插件实例响应包含 `health_status`、`last_checked_at`、`consecutive_failures` 和 `last_error_at`。`health_status=unknown` 或 `healthy` 可路由，`unhealthy` 不可路由。
 
 ## OpenAPI Generation
 

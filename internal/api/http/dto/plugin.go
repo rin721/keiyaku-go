@@ -58,17 +58,21 @@ type PluginServiceResponse struct {
 }
 
 type PluginInstanceResponse struct {
-	InstanceID     string    `json:"instance_id"`
-	Version        string    `json:"version"`
-	BaseURL        string    `json:"base_url"`
-	HealthPath     string    `json:"health_path"`
-	ManifestHash   string    `json:"manifest_hash"`
-	Status         string    `json:"status"`
-	LastSeenAt     time.Time `json:"last_seen_at"`
-	LeaseExpiresAt time.Time `json:"lease_expires_at"`
-	LastError      string    `json:"last_error,omitempty"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	InstanceID          string     `json:"instance_id"`
+	Version             string     `json:"version"`
+	BaseURL             string     `json:"base_url"`
+	HealthPath          string     `json:"health_path"`
+	ManifestHash        string     `json:"manifest_hash"`
+	Status              string     `json:"status"`
+	HealthStatus        string     `json:"health_status"`
+	LastSeenAt          time.Time  `json:"last_seen_at"`
+	LeaseExpiresAt      time.Time  `json:"lease_expires_at"`
+	LastCheckedAt       *time.Time `json:"last_checked_at,omitempty"`
+	ConsecutiveFailures int        `json:"consecutive_failures"`
+	LastError           string     `json:"last_error,omitempty"`
+	LastErrorAt         *time.Time `json:"last_error_at,omitempty"`
+	CreatedAt           time.Time  `json:"created_at"`
+	UpdatedAt           time.Time  `json:"updated_at"`
 }
 
 type PluginRouteResponse struct {
@@ -89,6 +93,16 @@ type PluginDetailResponse struct {
 	Service   PluginServiceResponse    `json:"service"`
 	Instances []PluginInstanceResponse `json:"instances"`
 	Routes    []PluginRouteResponse    `json:"routes"`
+}
+
+type PluginAuditEventResponse struct {
+	ID         int64             `json:"id"`
+	PluginKey  string            `json:"plugin_key"`
+	InstanceID string            `json:"instance_id,omitempty"`
+	Action     string            `json:"action"`
+	Message    string            `json:"message"`
+	Metadata   map[string]string `json:"metadata,omitempty"`
+	CreatedAt  time.Time         `json:"created_at"`
 }
 
 func (r PluginRegistrationRequest) ToCommand(token string) appplugin.RegisterCommand {
@@ -165,17 +179,21 @@ func NewPluginInstanceResponse(instance *domainplugin.Instance) PluginInstanceRe
 		return PluginInstanceResponse{}
 	}
 	return PluginInstanceResponse{
-		InstanceID:     instance.InstanceID,
-		Version:        instance.Version,
-		BaseURL:        instance.BaseURL,
-		HealthPath:     instance.HealthPath,
-		ManifestHash:   instance.ManifestHash,
-		Status:         string(instance.Status),
-		LastSeenAt:     instance.LastSeenAt,
-		LeaseExpiresAt: instance.LeaseExpiresAt,
-		LastError:      instance.LastError,
-		CreatedAt:      instance.CreatedAt,
-		UpdatedAt:      instance.UpdatedAt,
+		InstanceID:          instance.InstanceID,
+		Version:             instance.Version,
+		BaseURL:             instance.BaseURL,
+		HealthPath:          instance.HealthPath,
+		ManifestHash:        instance.ManifestHash,
+		Status:              string(instance.Status),
+		HealthStatus:        string(instance.HealthStatus.Normalize()),
+		LastSeenAt:          instance.LastSeenAt,
+		LeaseExpiresAt:      instance.LeaseExpiresAt,
+		LastCheckedAt:       instance.LastCheckedAt,
+		ConsecutiveFailures: instance.ConsecutiveFailures,
+		LastError:           instance.LastError,
+		LastErrorAt:         instance.LastErrorAt,
+		CreatedAt:           instance.CreatedAt,
+		UpdatedAt:           instance.UpdatedAt,
 	}
 }
 
@@ -195,5 +213,20 @@ func NewPluginRouteResponse(route *domainplugin.Route) PluginRouteResponse {
 		Metadata:          route.Metadata,
 		CreatedAt:         route.CreatedAt,
 		UpdatedAt:         route.UpdatedAt,
+	}
+}
+
+func NewPluginAuditEventResponse(event *domainplugin.AuditEvent) PluginAuditEventResponse {
+	if event == nil {
+		return PluginAuditEventResponse{}
+	}
+	return PluginAuditEventResponse{
+		ID:         event.ID,
+		PluginKey:  event.PluginKey,
+		InstanceID: event.InstanceID,
+		Action:     string(event.Action),
+		Message:    event.Message,
+		Metadata:   event.Metadata,
+		CreatedAt:  event.CreatedAt,
 	}
 }

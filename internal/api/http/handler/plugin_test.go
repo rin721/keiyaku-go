@@ -150,6 +150,34 @@ func (r *handlerMemoryRepo) DisableInstance(ctx context.Context, pluginKey strin
 	return derrors.ErrNotFound
 }
 
+func (r *handlerMemoryRepo) SetServiceStatus(ctx context.Context, pluginKey string, status domainplugin.ServiceStatus, now time.Time) error {
+	_ = ctx
+	service := r.services[pluginKey]
+	if service == nil {
+		return derrors.ErrNotFound
+	}
+	service.Status = status
+	service.UpdatedAt = now
+	if status == domainplugin.ServiceStatusDisabled {
+		service.DisabledAt = &now
+	} else {
+		service.DisabledAt = nil
+	}
+	return nil
+}
+
+func (r *handlerMemoryRepo) SetInstanceStatus(ctx context.Context, pluginKey string, instanceID string, status domainplugin.InstanceStatus, now time.Time) error {
+	_ = ctx
+	for _, instance := range r.instances[pluginKey] {
+		if instance.InstanceID == instanceID {
+			instance.Status = status
+			instance.UpdatedAt = now
+			return nil
+		}
+	}
+	return derrors.ErrNotFound
+}
+
 func (r *handlerMemoryRepo) ListPluginServices(ctx context.Context) ([]*domainplugin.Service, error) {
 	_ = ctx
 	var services []*domainplugin.Service
@@ -157,6 +185,28 @@ func (r *handlerMemoryRepo) ListPluginServices(ctx context.Context) ([]*domainpl
 		services = append(services, service)
 	}
 	return services, nil
+}
+
+func (r *handlerMemoryRepo) ListPluginInstances(ctx context.Context, pluginKey string) ([]*domainplugin.Instance, error) {
+	_ = ctx
+	return r.instances[pluginKey], nil
+}
+
+func (r *handlerMemoryRepo) ListHealthCheckTargets(ctx context.Context, now time.Time) ([]*domainplugin.Instance, error) {
+	_ = ctx
+	_ = now
+	var instances []*domainplugin.Instance
+	for pluginKey, service := range r.services {
+		if service.Status != domainplugin.ServiceStatusActive {
+			continue
+		}
+		for _, instance := range r.instances[pluginKey] {
+			if instance.Status == domainplugin.InstanceStatusActive && instance.ManifestHash == service.CurrentManifestHash {
+				instances = append(instances, instance)
+			}
+		}
+	}
+	return instances, nil
 }
 
 func (r *handlerMemoryRepo) GetPluginService(ctx context.Context, pluginKey string) (*domainplugin.Service, []*domainplugin.Instance, []*domainplugin.Route, error) {
@@ -181,4 +231,23 @@ func (r *handlerMemoryRepo) FindRoutable(ctx context.Context, pluginKey string, 
 		}
 	}
 	return service, instances, r.routes[pluginKey], nil
+}
+
+func (r *handlerMemoryRepo) UpdateInstanceHealth(ctx context.Context, pluginKey string, instanceID string, healthStatus domainplugin.HealthStatus, consecutiveFailures int, lastError string, checkedAt time.Time) (*domainplugin.Instance, error) {
+	_ = ctx
+	for _, instance := range r.instances[pluginKey] {
+		if instance.InstanceID == instanceID {
+			instance.HealthStatus = healthStatus.Normalize()
+			instance.ConsecutiveFailures = consecutiveFailures
+			instance.LastError = lastError
+			instance.LastCheckedAt = &checkedAt
+			if lastError == "" {
+				instance.LastErrorAt = nil
+			} else {
+				instance.LastErrorAt = &checkedAt
+			}
+			return instance, nil
+		}
+	}
+	return nil, derrors.ErrNotFound
 }

@@ -30,19 +30,23 @@ func (PluginServiceModel) TableName() string {
 }
 
 type PluginInstanceModel struct {
-	ID             int64     `gorm:"column:id;primaryKey;autoIncrement"`
-	PluginKey      string    `gorm:"column:plugin_key"`
-	InstanceID     string    `gorm:"column:instance_id"`
-	Version        string    `gorm:"column:version"`
-	BaseURL        string    `gorm:"column:base_url"`
-	HealthPath     string    `gorm:"column:health_path"`
-	ManifestHash   string    `gorm:"column:manifest_hash"`
-	Status         string    `gorm:"column:status"`
-	LastSeenAt     time.Time `gorm:"column:last_seen_at"`
-	LeaseExpiresAt time.Time `gorm:"column:lease_expires_at"`
-	LastError      string    `gorm:"column:last_error"`
-	CreatedAt      time.Time `gorm:"column:created_at"`
-	UpdatedAt      time.Time `gorm:"column:updated_at"`
+	ID                  int64      `gorm:"column:id;primaryKey;autoIncrement"`
+	PluginKey           string     `gorm:"column:plugin_key"`
+	InstanceID          string     `gorm:"column:instance_id"`
+	Version             string     `gorm:"column:version"`
+	BaseURL             string     `gorm:"column:base_url"`
+	HealthPath          string     `gorm:"column:health_path"`
+	ManifestHash        string     `gorm:"column:manifest_hash"`
+	Status              string     `gorm:"column:status"`
+	HealthStatus        string     `gorm:"column:health_status"`
+	LastSeenAt          time.Time  `gorm:"column:last_seen_at"`
+	LeaseExpiresAt      time.Time  `gorm:"column:lease_expires_at"`
+	LastCheckedAt       *time.Time `gorm:"column:last_checked_at"`
+	ConsecutiveFailures int        `gorm:"column:consecutive_failures"`
+	LastError           string     `gorm:"column:last_error"`
+	LastErrorAt         *time.Time `gorm:"column:last_error_at"`
+	CreatedAt           time.Time  `gorm:"column:created_at"`
+	UpdatedAt           time.Time  `gorm:"column:updated_at"`
 }
 
 func (PluginInstanceModel) TableName() string {
@@ -70,12 +74,63 @@ func (PluginRouteModel) TableName() string {
 	return "plugin_routes"
 }
 
+type PluginAuditEventModel struct {
+	ID           int64     `gorm:"column:id;primaryKey;autoIncrement"`
+	PluginKey    string    `gorm:"column:plugin_key"`
+	InstanceID   string    `gorm:"column:instance_id"`
+	Action       string    `gorm:"column:action"`
+	Message      string    `gorm:"column:message"`
+	MetadataJSON string    `gorm:"column:metadata_json"`
+	CreatedAt    time.Time `gorm:"column:created_at"`
+}
+
+func (PluginAuditEventModel) TableName() string {
+	return "plugin_audit_events"
+}
+
 type PluginRegistryRepository struct {
 	db *gorm.DB
 }
 
 func NewPluginRegistryRepository(db *gorm.DB) *PluginRegistryRepository {
 	return &PluginRegistryRepository{db: db}
+}
+
+func (r *PluginRegistryRepository) RecordPluginAudit(ctx context.Context, event domainplugin.AuditEvent) error {
+	if r == nil || r.db == nil {
+		return fmt.Errorf("plugin audit repository is not ready")
+	}
+	model := pluginAuditEventToModel(&event)
+	if err := r.db.WithContext(ctx).Create(model).Error; err != nil {
+		return fmt.Errorf("record plugin audit event: %w", err)
+	}
+	return nil
+}
+
+func (r *PluginRegistryRepository) ListPluginAuditEvents(ctx context.Context, pluginKey string, limit int) ([]*domainplugin.AuditEvent, error) {
+	if r == nil || r.db == nil {
+		return nil, fmt.Errorf("plugin audit repository is not ready")
+	}
+	if limit <= 0 {
+		limit = 100
+	}
+	var models []PluginAuditEventModel
+	if err := r.db.WithContext(ctx).
+		Where("plugin_key = ?", pluginKey).
+		Order("created_at DESC, id DESC").
+		Limit(limit).
+		Find(&models).Error; err != nil {
+		return nil, fmt.Errorf("list plugin audit events: %w", err)
+	}
+	events := make([]*domainplugin.AuditEvent, 0, len(models))
+	for i := range models {
+		event, err := pluginAuditEventFromModel(&models[i])
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, event)
+	}
+	return events, nil
 }
 
 func (r *PluginRegistryRepository) UpsertRegistration(ctx context.Context, registration domainplugin.Registration) error {
@@ -186,6 +241,47 @@ func (r *PluginRegistryRepository) DisableInstance(ctx context.Context, pluginKe
 	return nil
 }
 
+func (r *PluginRegistryRepository) SetServiceStatus(ctx context.Context, pluginKey string, status domainplugin.ServiceStatus, now time.Time) error {
+	if r == nil || r.db == nil {
+		return fmt.Errorf("plugin registry repository is not ready")
+	}
+	updates := map[string]interface{}{
+		"status":     string(status),
+		"updated_at": now,
+	}
+	if status == domainplugin.ServiceStatusDisabled {
+		updates["disabled_at"] = now
+	} else {
+		updates["disabled_at"] = nil
+	}
+	result := r.db.WithContext(ctx).Model(&PluginServiceModel{}).
+		Where("plugin_key = ?", pluginKey).
+		Updates(updates)
+	if result.Error != nil {
+		return fmt.Errorf("set plugin service status: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return derrors.ErrNotFound
+	}
+	return nil
+}
+
+func (r *PluginRegistryRepository) SetInstanceStatus(ctx context.Context, pluginKey string, instanceID string, status domainplugin.InstanceStatus, now time.Time) error {
+	if r == nil || r.db == nil {
+		return fmt.Errorf("plugin registry repository is not ready")
+	}
+	result := r.db.WithContext(ctx).Model(&PluginInstanceModel{}).
+		Where("plugin_key = ? AND instance_id = ?", pluginKey, instanceID).
+		Updates(map[string]interface{}{"status": string(status), "updated_at": now})
+	if result.Error != nil {
+		return fmt.Errorf("set plugin instance status: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return derrors.ErrNotFound
+	}
+	return nil
+}
+
 func (r *PluginRegistryRepository) ListPluginServices(ctx context.Context) ([]*domainplugin.Service, error) {
 	if r == nil || r.db == nil {
 		return nil, fmt.Errorf("plugin registry repository is not ready")
@@ -203,6 +299,35 @@ func (r *PluginRegistryRepository) ListPluginServices(ctx context.Context) ([]*d
 		items = append(items, service)
 	}
 	return items, nil
+}
+
+func (r *PluginRegistryRepository) ListPluginInstances(ctx context.Context, pluginKey string) ([]*domainplugin.Instance, error) {
+	if r == nil || r.db == nil {
+		return nil, fmt.Errorf("plugin registry repository is not ready")
+	}
+	return r.findInstances(ctx, pluginKey, "")
+}
+
+func (r *PluginRegistryRepository) ListHealthCheckTargets(ctx context.Context, now time.Time) ([]*domainplugin.Instance, error) {
+	if r == nil || r.db == nil {
+		return nil, fmt.Errorf("plugin registry repository is not ready")
+	}
+	_ = now
+	var models []PluginInstanceModel
+	if err := r.db.WithContext(ctx).
+		Table("plugin_instances AS i").
+		Select("i.*").
+		Joins("JOIN plugin_services AS s ON s.plugin_key = i.plugin_key AND s.current_manifest_hash = i.manifest_hash").
+		Where("s.status = ? AND i.status = ?", string(domainplugin.ServiceStatusActive), string(domainplugin.InstanceStatusActive)).
+		Order("i.plugin_key ASC, i.instance_id ASC").
+		Scan(&models).Error; err != nil {
+		return nil, fmt.Errorf("list plugin health check targets: %w", err)
+	}
+	instances := make([]*domainplugin.Instance, 0, len(models))
+	for i := range models {
+		instances = append(instances, pluginInstanceFromModel(&models[i]))
+	}
+	return instances, nil
 }
 
 func (r *PluginRegistryRepository) GetPluginService(ctx context.Context, pluginKey string) (*domainplugin.Service, []*domainplugin.Instance, []*domainplugin.Route, error) {
@@ -224,6 +349,38 @@ func (r *PluginRegistryRepository) GetPluginService(ctx context.Context, pluginK
 	return service, instances, routes, nil
 }
 
+func (r *PluginRegistryRepository) UpdateInstanceHealth(ctx context.Context, pluginKey string, instanceID string, healthStatus domainplugin.HealthStatus, consecutiveFailures int, lastError string, checkedAt time.Time) (*domainplugin.Instance, error) {
+	if r == nil || r.db == nil {
+		return nil, fmt.Errorf("plugin registry repository is not ready")
+	}
+	updates := map[string]interface{}{
+		"health_status":        string(healthStatus.Normalize()),
+		"last_checked_at":      checkedAt,
+		"consecutive_failures": consecutiveFailures,
+		"last_error":           truncateString(lastError, 512),
+		"updated_at":           checkedAt,
+	}
+	if lastError == "" {
+		updates["last_error_at"] = nil
+	} else {
+		updates["last_error_at"] = checkedAt
+	}
+	result := r.db.WithContext(ctx).Model(&PluginInstanceModel{}).
+		Where("plugin_key = ? AND instance_id = ?", pluginKey, instanceID).
+		Updates(updates)
+	if result.Error != nil {
+		return nil, fmt.Errorf("update plugin instance health: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return nil, derrors.ErrNotFound
+	}
+	var model PluginInstanceModel
+	if err := r.db.WithContext(ctx).Where("plugin_key = ? AND instance_id = ?", pluginKey, instanceID).First(&model).Error; err != nil {
+		return nil, fmt.Errorf("reload plugin instance health: %w", err)
+	}
+	return pluginInstanceFromModel(&model), nil
+}
+
 func (r *PluginRegistryRepository) FindRoutable(ctx context.Context, pluginKey string, now time.Time) (*domainplugin.Service, []*domainplugin.Instance, []*domainplugin.Route, error) {
 	if r == nil || r.db == nil {
 		return nil, nil, nil, fmt.Errorf("plugin registry repository is not ready")
@@ -237,7 +394,13 @@ func (r *PluginRegistryRepository) FindRoutable(ctx context.Context, pluginKey s
 	}
 	var instanceModels []PluginInstanceModel
 	if err := r.db.WithContext(ctx).
-		Where("plugin_key = ? AND manifest_hash = ? AND status = ? AND lease_expires_at >= ?", pluginKey, service.CurrentManifestHash, string(domainplugin.InstanceStatusActive), now).
+		Where("plugin_key = ? AND manifest_hash = ? AND status = ? AND health_status IN ? AND lease_expires_at >= ?",
+			pluginKey,
+			service.CurrentManifestHash,
+			string(domainplugin.InstanceStatusActive),
+			[]string{string(domainplugin.HealthStatusUnknown), string(domainplugin.HealthStatusHealthy)},
+			now,
+		).
 		Order("instance_id ASC").
 		Find(&instanceModels).Error; err != nil {
 		return nil, nil, nil, fmt.Errorf("find routable plugin instances: %w", err)
@@ -335,37 +498,45 @@ func pluginServiceFromModel(model *PluginServiceModel) (*domainplugin.Service, e
 
 func pluginInstanceToModel(instance *domainplugin.Instance) *PluginInstanceModel {
 	return &PluginInstanceModel{
-		ID:             instance.ID,
-		PluginKey:      instance.PluginKey,
-		InstanceID:     instance.InstanceID,
-		Version:        instance.Version,
-		BaseURL:        instance.BaseURL,
-		HealthPath:     instance.HealthPath,
-		ManifestHash:   instance.ManifestHash,
-		Status:         string(instance.Status),
-		LastSeenAt:     instance.LastSeenAt,
-		LeaseExpiresAt: instance.LeaseExpiresAt,
-		LastError:      instance.LastError,
-		CreatedAt:      instance.CreatedAt,
-		UpdatedAt:      instance.UpdatedAt,
+		ID:                  instance.ID,
+		PluginKey:           instance.PluginKey,
+		InstanceID:          instance.InstanceID,
+		Version:             instance.Version,
+		BaseURL:             instance.BaseURL,
+		HealthPath:          instance.HealthPath,
+		ManifestHash:        instance.ManifestHash,
+		Status:              string(instance.Status),
+		HealthStatus:        string(instance.HealthStatus.Normalize()),
+		LastSeenAt:          instance.LastSeenAt,
+		LeaseExpiresAt:      instance.LeaseExpiresAt,
+		LastCheckedAt:       instance.LastCheckedAt,
+		ConsecutiveFailures: instance.ConsecutiveFailures,
+		LastError:           instance.LastError,
+		LastErrorAt:         instance.LastErrorAt,
+		CreatedAt:           instance.CreatedAt,
+		UpdatedAt:           instance.UpdatedAt,
 	}
 }
 
 func pluginInstanceFromModel(model *PluginInstanceModel) *domainplugin.Instance {
 	return &domainplugin.Instance{
-		ID:             model.ID,
-		PluginKey:      model.PluginKey,
-		InstanceID:     model.InstanceID,
-		Version:        model.Version,
-		BaseURL:        model.BaseURL,
-		HealthPath:     model.HealthPath,
-		ManifestHash:   model.ManifestHash,
-		Status:         domainplugin.InstanceStatus(model.Status),
-		LastSeenAt:     model.LastSeenAt,
-		LeaseExpiresAt: model.LeaseExpiresAt,
-		LastError:      model.LastError,
-		CreatedAt:      model.CreatedAt,
-		UpdatedAt:      model.UpdatedAt,
+		ID:                  model.ID,
+		PluginKey:           model.PluginKey,
+		InstanceID:          model.InstanceID,
+		Version:             model.Version,
+		BaseURL:             model.BaseURL,
+		HealthPath:          model.HealthPath,
+		ManifestHash:        model.ManifestHash,
+		Status:              domainplugin.InstanceStatus(model.Status),
+		HealthStatus:        domainplugin.HealthStatus(model.HealthStatus).Normalize(),
+		LastSeenAt:          model.LastSeenAt,
+		LeaseExpiresAt:      model.LeaseExpiresAt,
+		LastCheckedAt:       model.LastCheckedAt,
+		ConsecutiveFailures: model.ConsecutiveFailures,
+		LastError:           model.LastError,
+		LastErrorAt:         model.LastErrorAt,
+		CreatedAt:           model.CreatedAt,
+		UpdatedAt:           model.UpdatedAt,
 	}
 }
 
@@ -411,6 +582,34 @@ func pluginRouteFromModel(model *PluginRouteModel) (*domainplugin.Route, error) 
 	}, nil
 }
 
+func pluginAuditEventToModel(event *domainplugin.AuditEvent) *PluginAuditEventModel {
+	return &PluginAuditEventModel{
+		ID:           event.ID,
+		PluginKey:    event.PluginKey,
+		InstanceID:   event.InstanceID,
+		Action:       string(event.Action),
+		Message:      truncateString(event.Message, 255),
+		MetadataJSON: marshalStringMap(event.Metadata),
+		CreatedAt:    event.CreatedAt,
+	}
+}
+
+func pluginAuditEventFromModel(model *PluginAuditEventModel) (*domainplugin.AuditEvent, error) {
+	metadata, err := unmarshalStringMap(model.MetadataJSON)
+	if err != nil {
+		return nil, fmt.Errorf("decode plugin audit event metadata: %w", err)
+	}
+	return &domainplugin.AuditEvent{
+		ID:         model.ID,
+		PluginKey:  model.PluginKey,
+		InstanceID: model.InstanceID,
+		Action:     domainplugin.AuditAction(model.Action),
+		Message:    model.Message,
+		Metadata:   metadata,
+		CreatedAt:  model.CreatedAt,
+	}, nil
+}
+
 func marshalStringMap(value map[string]string) string {
 	if len(value) == 0 {
 		return "{}"
@@ -434,4 +633,11 @@ func unmarshalStringMap(raw string) (map[string]string, error) {
 		value = map[string]string{}
 	}
 	return value, nil
+}
+
+func truncateString(value string, limit int) string {
+	if limit <= 0 || len(value) <= limit {
+		return value
+	}
+	return value[:limit]
 }

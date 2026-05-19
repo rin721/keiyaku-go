@@ -106,6 +106,12 @@ type PluginsConfig struct {
 	PublicPrefix         string        `mapstructure:"public_prefix"`
 	HeartbeatTTL         time.Duration `mapstructure:"heartbeat_ttl"`
 	RequestTimeout       time.Duration `mapstructure:"request_timeout"`
+	HealthCheckInterval  time.Duration `mapstructure:"health_check_interval"`
+	HealthCheckTimeout   time.Duration `mapstructure:"health_check_timeout"`
+	UnhealthyThreshold   int           `mapstructure:"unhealthy_threshold"`
+	RouteCacheTTL        time.Duration `mapstructure:"route_cache_ttl"`
+	AuditRetentionDays   int           `mapstructure:"audit_retention_days"`
+	MaxAuditQueryLimit   int           `mapstructure:"max_audit_query_limit"`
 	AllowedHosts         []string      `mapstructure:"allowed_hosts"`
 	AllowedCIDRs         []string      `mapstructure:"allowed_cidrs"`
 	AllowLoopback        bool          `mapstructure:"allow_loopback"`
@@ -247,6 +253,24 @@ func (c PluginsConfig) Validate(env string) error {
 	if c.RequestTimeout <= 0 {
 		return fmt.Errorf("plugins.request_timeout must be positive")
 	}
+	if c.HealthCheckInterval < 0 {
+		return fmt.Errorf("plugins.health_check_interval must not be negative")
+	}
+	if c.HealthCheckTimeout <= 0 {
+		return fmt.Errorf("plugins.health_check_timeout must be positive")
+	}
+	if c.UnhealthyThreshold <= 0 {
+		return fmt.Errorf("plugins.unhealthy_threshold must be positive")
+	}
+	if c.RouteCacheTTL < 0 {
+		return fmt.Errorf("plugins.route_cache_ttl must not be negative")
+	}
+	if c.AuditRetentionDays <= 0 {
+		return fmt.Errorf("plugins.audit_retention_days must be positive")
+	}
+	if c.MaxAuditQueryLimit <= 0 {
+		return fmt.Errorf("plugins.max_audit_query_limit must be positive")
+	}
 	if env != "" && env != "local" && env != "test" {
 		if len(c.RegistrationTokens) == 0 {
 			return fmt.Errorf("plugins.registration_tokens is required outside local/test")
@@ -298,6 +322,12 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("plugins.public_prefix", "/api/v1/extensions")
 	v.SetDefault("plugins.heartbeat_ttl", "30s")
 	v.SetDefault("plugins.request_timeout", "5s")
+	v.SetDefault("plugins.health_check_interval", "15s")
+	v.SetDefault("plugins.health_check_timeout", "2s")
+	v.SetDefault("plugins.unhealthy_threshold", 3)
+	v.SetDefault("plugins.route_cache_ttl", "5s")
+	v.SetDefault("plugins.audit_retention_days", 30)
+	v.SetDefault("plugins.max_audit_query_limit", 200)
 	v.SetDefault("plugins.allowed_hosts", []string{})
 	v.SetDefault("plugins.allowed_cidrs", []string{})
 	v.SetDefault("plugins.allow_loopback", false)

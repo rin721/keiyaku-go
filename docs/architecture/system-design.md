@@ -7,12 +7,12 @@ scope: repo
 authority_level: binding
 owners: [tech-lead]
 status: active
-effective_date: 2026-05-15
-version: 1.0
-related_rules: [GOV-P0-001, GOV-P0-002, GOV-P1-001, GOV-P1-002, GOV-P1-003, GOV-P1-006]
+effective_date: 2026-05-19
+version: 1.1
+related_rules: [GOV-P0-001, GOV-P0-002, GOV-P1-001, GOV-P1-002, GOV-P1-003, GOV-P1-004, GOV-P1-006]
 source_of_truth: [docs/adr/20260515-adopt-gin-gorm-clean-architecture.md, docs/adr/20260519-adopt-remote-service-plugin-system.md]
 derived_from: [docs/governance/rules.md, docs/conventions/layering.md, docs/conventions/dependency-injection.md]
-read_when: [boundary_sensitive, governance_change]
+read_when: [boundary_sensitive, async_sensitive, governance_change]
 update_when: [default_behavior_changed, convention_changed, adr_accepted]
 conflict_policy: binding_must_yield_to_ssot
 rollback_target: [docs/adr/20260515-adopt-gin-gorm-clean-architecture.md]
@@ -47,8 +47,8 @@ HTTP 响应结构、HTTP 状态映射和 Gin context key 属于 `internal/api/ht
 3. Handler 绑定并校验 DTO，把 DTO 显式转换为 Application Command 或 Query。
 4. Application 编排业务用例、事务边界、Repository Port、Cache Port、Token Port 与 IDGenerator Port。
 5. Domain 执行业务不变量校验，不依赖任何外部框架。
-6. Infrastructure 通过 GORM/Redis/Casbin/JWT/Snowflake 完成具体适配。
-7. Handler 把应用结果映射为统一 `{code,msg,data}` JSON。
+6. Infrastructure 通过 GORM、Redis、Casbin、JWT、Snowflake 或 HTTP client 完成具体适配。
+7. Handler 把应用结果映射为统一 `{code,msg,data}` JSON；插件网关上游业务响应除外。
 
 ## 启动链路
 
@@ -59,12 +59,14 @@ flowchart TD
   Logger --> Store["Open MySQL + Redis"]
   Store --> Security["Build JWT + Casbin + Snowflake"]
   Security --> App["Construct Repositories + Usecases + Handlers"]
+  App --> Background["Start Plugin Health Checker"]
   App --> Router["Register Gin Routes"]
   Router --> Server["Start HTTP Server"]
   Server --> Shutdown["SIGINT/SIGTERM Graceful Shutdown"]
+  Shutdown --> StopBackground["Stop Background Tasks"]
 ```
 
-`cmd/api/main.go` 只负责进程生命周期。依赖装配集中在 `internal/bootstrap`，并通过显式构造函数自下而上创建。Bootstrap 负责把 Viper 配置拆成各外圈 adapter 需要的局部配置，例如传给 HTTP Router 的 `router.Options`，Router 不直接依赖 `internal/infrastructure/config.Config`。
+`cmd/api/main.go` 只负责进程生命周期。依赖装配集中在 `internal/bootstrap`，并通过显式构造函数自下而上创建。Bootstrap 负责把 Viper 配置拆成各外圈 adapter 需要的局部配置，例如传给 HTTP Router 的 `router.Options`；Router 不直接依赖 `internal/infrastructure/config.Config`。
 
 ## 远端插件链路
 
@@ -72,21 +74,27 @@ flowchart TD
 flowchart LR
   Plugin["Remote Plugin Service"] --> Register["POST /api/v1/plugins/registrations"]
   Plugin --> Heartbeat["Heartbeat Lease"]
-  Register --> Registry["Application Plugin Registry"]
+  Register --> Registry["Application Plugin Service"]
   Heartbeat --> Registry
-  Registry --> MySQL["plugin_services / plugin_instances / plugin_routes"]
+  Registry --> MySQL["plugin_services / plugin_instances / plugin_routes / plugin_audit_events"]
+  Registry --> Cache["In-process Route Cache"]
+  Health["Plugin Health Checker"] --> Probe["HTTPHealthProbe"]
+  Probe --> Plugin
+  Health --> Registry
   Client["Client"] --> Gateway["/api/v1/extensions/{plugin_key}/*path"]
   Gateway --> Resolver["Route Resolver"]
+  Resolver --> Cache
   Resolver --> MySQL
   Gateway --> Plugin
 ```
 
 插件系统遵循 [ADR 20260519：采用远端服务插件系统](../adr/20260519-adopt-remote-service-plugin-system.md)：
 
-- 插件服务独立部署，主服务只保存插件 manifest、实例租约和路由表。
-- `internal/application/plugin` 负责注册、心跳、注销、路由解析和状态转换。
+- 插件服务独立部署，主服务只保存插件 manifest、实例租约、健康状态、路由表和审计摘要。
+- `internal/application/plugin` 负责注册、心跳、注销、管理操作、健康状态转换、路由缓存、路由解析和安全校验。
 - `internal/api/http/handler.PluginHandler` 负责 HTTP 注册入口、管理查询和网关转发。
-- `internal/infrastructure/persistence/mysql` 只实现注册表持久化，不向 Handler 泄露 GORM Model。
+- `internal/infrastructure/persistence/mysql` 只实现注册表与审计表持久化，不向 Handler 泄露 GORM Model。
+- `internal/infrastructure/plugin.HTTPHealthProbe` 实现应用层健康探测 Port。
 - `pkg/plugin` 是插件服务侧 SDK，可被独立插件服务依赖，不得 import `internal`。
 - 网关默认只透传 TraceID、插件 key 和脱敏用户上下文；插件业务响应原样返回，主服务只包装自身网关错误。
 

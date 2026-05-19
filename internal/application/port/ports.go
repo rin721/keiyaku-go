@@ -69,7 +69,26 @@ type PluginRegistryRepository interface {
 	UpsertRegistration(ctx context.Context, registration domainplugin.Registration) error
 	TouchInstance(ctx context.Context, pluginKey string, instanceID string, leaseExpiresAt time.Time, now time.Time) (*domainplugin.Instance, error)
 	DisableInstance(ctx context.Context, pluginKey string, instanceID string, now time.Time) error
+	SetServiceStatus(ctx context.Context, pluginKey string, status domainplugin.ServiceStatus, now time.Time) error
+	SetInstanceStatus(ctx context.Context, pluginKey string, instanceID string, status domainplugin.InstanceStatus, now time.Time) error
 	ListPluginServices(ctx context.Context) ([]*domainplugin.Service, error)
+	ListPluginInstances(ctx context.Context, pluginKey string) ([]*domainplugin.Instance, error)
+	ListHealthCheckTargets(ctx context.Context, now time.Time) ([]*domainplugin.Instance, error)
 	GetPluginService(ctx context.Context, pluginKey string) (*domainplugin.Service, []*domainplugin.Instance, []*domainplugin.Route, error)
 	FindRoutable(ctx context.Context, pluginKey string, now time.Time) (*domainplugin.Service, []*domainplugin.Instance, []*domainplugin.Route, error)
+	UpdateInstanceHealth(ctx context.Context, pluginKey string, instanceID string, healthStatus domainplugin.HealthStatus, consecutiveFailures int, lastError string, checkedAt time.Time) (*domainplugin.Instance, error)
+}
+
+type PluginAuditRepository interface {
+	RecordPluginAudit(ctx context.Context, event domainplugin.AuditEvent) error
+	ListPluginAuditEvents(ctx context.Context, pluginKey string, limit int) ([]*domainplugin.AuditEvent, error)
+}
+
+type PluginHealthProbe interface {
+	Probe(ctx context.Context, instance domainplugin.Instance) error
+}
+
+type PluginMetrics interface {
+	RecordPluginGateway(ctx context.Context, metric domainplugin.GatewayMetric)
+	RecordPluginHealth(ctx context.Context, metric domainplugin.HealthMetric)
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/rin721/keiyaku-go/internal/application/port"
 	domainplugin "github.com/rin721/keiyaku-go/internal/domain/plugin"
 	"github.com/rin721/keiyaku-go/internal/observability/trace"
+	"go.uber.org/zap"
 )
 
 type PluginHandler struct {
@@ -28,10 +29,36 @@ type PluginHandler struct {
 	tokens     port.TokenIssuer
 	authorizer port.Authorizer
 	client     *http.Client
+	logger     *zap.Logger
 }
 
-func NewPluginHandler(service *appplugin.Service, tokens port.TokenIssuer, authorizer port.Authorizer) *PluginHandler {
-	return &PluginHandler{service: service, tokens: tokens, authorizer: authorizer, client: &http.Client{}}
+type PluginHandlerOption func(*PluginHandler)
+
+func WithPluginLogger(logger *zap.Logger) PluginHandlerOption {
+	return func(handler *PluginHandler) {
+		handler.logger = logger
+	}
+}
+
+func WithPluginHTTPClient(client *http.Client) PluginHandlerOption {
+	return func(handler *PluginHandler) {
+		if client != nil {
+			handler.client = client
+		}
+	}
+}
+
+func NewPluginHandler(service *appplugin.Service, tokens port.TokenIssuer, authorizer port.Authorizer, options ...PluginHandlerOption) *PluginHandler {
+	handler := &PluginHandler{service: service, tokens: tokens, authorizer: authorizer, client: &http.Client{}, logger: zap.NewNop()}
+	for _, option := range options {
+		if option != nil {
+			option(handler)
+		}
+	}
+	if handler.logger == nil {
+		handler.logger = zap.NewNop()
+	}
+	return handler
 }
 
 // Register handles remote plugin registration.
@@ -175,35 +202,202 @@ func (h *PluginHandler) Get(c *gin.Context) {
 	response.OK(c, result)
 }
 
+// ListInstances returns plugin instance states.
+// @Summary List plugin instances
+// @Description List runtime instances for a registered remote plugin service.
+// @Tags Plugin
+// @Produce json
+// @Security bearerAuth
+// @Param plugin_key path string true "Plugin key"
+// @Success 200 {object} []dto.PluginInstanceResponse "OK"
+// @Failure 401 {object} response.Body "Unauthorized"
+// @Failure 403 {object} response.Body "Forbidden"
+// @Failure 404 {object} response.Body "Plugin not found"
+// @Failure 500 {object} response.Body "Internal server error"
+// @Router /plugins/{plugin_key}/instances [get]
+func (h *PluginHandler) ListInstances(c *gin.Context) {
+	if h == nil || h.service == nil {
+		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessagePluginHandlerNotReady))
+		return
+	}
+	instances, err := h.service.ListInstances(c.Request.Context(), c.Param("plugin_key"))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	items := make([]dto.PluginInstanceResponse, 0, len(instances))
+	for _, instance := range instances {
+		items = append(items, dto.NewPluginInstanceResponse(instance))
+	}
+	response.OK(c, items)
+}
+
+// Disable disables a plugin service.
+// @Summary Disable plugin
+// @Description Disable a registered remote plugin service so gateway routing stops selecting it.
+// @Tags Plugin
+// @Produce json
+// @Security bearerAuth
+// @Param plugin_key path string true "Plugin key"
+// @Success 200 {object} response.Body "OK"
+// @Failure 401 {object} response.Body "Unauthorized"
+// @Failure 403 {object} response.Body "Forbidden"
+// @Failure 404 {object} response.Body "Plugin not found"
+// @Failure 500 {object} response.Body "Internal server error"
+// @Router /plugins/{plugin_key}/disable [post]
+func (h *PluginHandler) Disable(c *gin.Context) {
+	if h == nil || h.service == nil {
+		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessagePluginHandlerNotReady))
+		return
+	}
+	if err := h.service.DisableService(c.Request.Context(), c.Param("plugin_key")); err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.NoContent(c)
+}
+
+// Enable enables a plugin service.
+// @Summary Enable plugin
+// @Description Enable a registered remote plugin service after an administrative disable.
+// @Tags Plugin
+// @Produce json
+// @Security bearerAuth
+// @Param plugin_key path string true "Plugin key"
+// @Success 200 {object} response.Body "OK"
+// @Failure 401 {object} response.Body "Unauthorized"
+// @Failure 403 {object} response.Body "Forbidden"
+// @Failure 404 {object} response.Body "Plugin not found"
+// @Failure 500 {object} response.Body "Internal server error"
+// @Router /plugins/{plugin_key}/enable [post]
+func (h *PluginHandler) Enable(c *gin.Context) {
+	if h == nil || h.service == nil {
+		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessagePluginHandlerNotReady))
+		return
+	}
+	if err := h.service.EnableService(c.Request.Context(), c.Param("plugin_key")); err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.NoContent(c)
+}
+
+// DisableInstance disables one plugin instance.
+// @Summary Disable plugin instance
+// @Description Disable one registered plugin instance.
+// @Tags Plugin
+// @Produce json
+// @Security bearerAuth
+// @Param plugin_key path string true "Plugin key"
+// @Param instance_id path string true "Instance ID"
+// @Success 200 {object} response.Body "OK"
+// @Failure 401 {object} response.Body "Unauthorized"
+// @Failure 403 {object} response.Body "Forbidden"
+// @Failure 404 {object} response.Body "Plugin instance not found"
+// @Failure 500 {object} response.Body "Internal server error"
+// @Router /plugins/{plugin_key}/instances/{instance_id}/disable [post]
+func (h *PluginHandler) DisableInstance(c *gin.Context) {
+	if h == nil || h.service == nil {
+		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessagePluginHandlerNotReady))
+		return
+	}
+	if err := h.service.DisableInstance(c.Request.Context(), c.Param("plugin_key"), c.Param("instance_id")); err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.NoContent(c)
+}
+
+// ListAuditEvents returns plugin audit events.
+// @Summary List plugin audit events
+// @Description List recent audit events for a registered remote plugin service.
+// @Tags Plugin
+// @Produce json
+// @Security bearerAuth
+// @Param plugin_key path string true "Plugin key"
+// @Param limit query int false "Maximum number of events"
+// @Success 200 {object} []dto.PluginAuditEventResponse "OK"
+// @Failure 400 {object} response.Body "Invalid request"
+// @Failure 401 {object} response.Body "Unauthorized"
+// @Failure 403 {object} response.Body "Forbidden"
+// @Failure 404 {object} response.Body "Plugin not found"
+// @Failure 500 {object} response.Body "Internal server error"
+// @Router /plugins/{plugin_key}/audit-events [get]
+func (h *PluginHandler) ListAuditEvents(c *gin.Context) {
+	if h == nil || h.service == nil {
+		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessagePluginHandlerNotReady))
+		return
+	}
+	limit, err := parseOptionalPositiveInt(c.Query("limit"))
+	if err != nil {
+		response.Error(c, apperror.Wrap(apperror.CodeInvalidArgument, apperror.MessageInvalidArgument, err))
+		return
+	}
+	events, err := h.service.ListAuditEvents(c.Request.Context(), c.Param("plugin_key"), limit)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	items := make([]dto.PluginAuditEventResponse, 0, len(events))
+	for _, event := range events {
+		items = append(items, dto.NewPluginAuditEventResponse(event))
+	}
+	response.OK(c, items)
+}
+
 func (h *PluginHandler) Gateway(c *gin.Context) {
 	if h == nil || h.service == nil {
 		response.Error(c, apperror.New(apperror.CodeInternal, apperror.MessagePluginHandlerNotReady))
 		return
 	}
+	start := time.Now()
+	pluginKey := c.Param("plugin_key")
+	traceID := trace.IDFromContext(c.Request.Context())
+	if traceID == "" {
+		traceID = trace.NewID()
+	}
+	var metric domainplugin.GatewayMetric
+	metric.PluginKey = pluginKey
+	metric.TraceID = traceID
+	defer func() {
+		metric.Duration = time.Since(start)
+		if metric.UpstreamStatus == 0 {
+			metric.UpstreamStatus = c.Writer.Status()
+		}
+		h.logGateway(metric)
+		h.service.RecordGatewayRequest(c.Request.Context(), metric)
+		h.service.RecordGatewayFailure(c.Request.Context(), metric)
+	}()
 	proxyPath := c.Param("proxy_path")
 	if proxyPath == "" {
 		proxyPath = "/"
 	}
 	resolved, err := h.service.ResolveRoute(c.Request.Context(), appplugin.ResolveRouteQuery{
-		PluginKey: c.Param("plugin_key"),
+		PluginKey: pluginKey,
 		Method:    c.Request.Method,
 		Path:      proxyPath,
 	})
 	if err != nil {
+		metric.GatewayError = gatewayErrorName(err)
 		response.Error(c, err)
 		return
 	}
+	metric.InstanceID = resolved.Instance.InstanceID
+	metric.RoutePath = resolved.Route.Path
 	claims, ok, err := h.authorizeGateway(c, resolved.Route)
 	if err != nil {
+		metric.GatewayError = "auth"
 		response.Error(c, err)
 		return
 	}
 	upstreamURL, err := domainplugin.BuildUpstreamURL(resolved.Instance.BaseURL, resolved.Route.UpstreamPath, resolved.Suffix, c.Request.URL.RawQuery)
 	if err != nil {
+		metric.GatewayError = "upstream_request"
 		response.Error(c, apperror.Wrap(apperror.CodeBadGateway, apperror.MessagePluginUpstreamFailed, err))
 		return
 	}
-	h.forward(c, upstreamURL, resolved, claims, ok)
+	metric.GatewayError = h.forward(c, upstreamURL, resolved, claims, ok, traceID)
+	metric.UpstreamStatus = c.Writer.Status()
 }
 
 func (h *PluginHandler) authorizeGateway(c *gin.Context, route domainplugin.Route) (port.TokenClaims, bool, error) {
@@ -259,7 +453,7 @@ func (h *PluginHandler) parseClaims(c *gin.Context) (port.TokenClaims, error) {
 	return claims, nil
 }
 
-func (h *PluginHandler) forward(c *gin.Context, upstreamURL string, resolved *domainplugin.ResolvedRoute, claims port.TokenClaims, hasClaims bool) {
+func (h *PluginHandler) forward(c *gin.Context, upstreamURL string, resolved *domainplugin.ResolvedRoute, claims port.TokenClaims, hasClaims bool, traceID string) string {
 	timeout := resolved.Route.Timeout
 	if timeout <= 0 {
 		timeout = 5 * time.Second
@@ -269,10 +463,9 @@ func (h *PluginHandler) forward(c *gin.Context, upstreamURL string, resolved *do
 	req, err := http.NewRequestWithContext(ctx, c.Request.Method, upstreamURL, c.Request.Body)
 	if err != nil {
 		response.Error(c, apperror.Wrap(apperror.CodeBadGateway, apperror.MessagePluginUpstreamFailed, err))
-		return
+		return "upstream_request"
 	}
 	copyPluginHeaders(req.Header, c.Request.Header, resolved.Route.ForwardAuthHeader)
-	traceID := trace.IDFromContext(c.Request.Context())
 	if traceID == "" {
 		traceID = trace.NewID()
 	}
@@ -297,15 +490,16 @@ func (h *PluginHandler) forward(c *gin.Context, upstreamURL string, resolved *do
 	if err != nil {
 		if isTimeout(err) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			response.Error(c, apperror.Wrap(apperror.CodeGatewayTimeout, apperror.MessagePluginUpstreamTimeout, err))
-			return
+			return "upstream_timeout"
 		}
 		response.Error(c, apperror.Wrap(apperror.CodeBadGateway, apperror.MessagePluginUpstreamFailed, err))
-		return
+		return "upstream_connect"
 	}
 	defer resp.Body.Close()
 	copyResponseHeaders(c.Writer.Header(), resp.Header)
 	c.Status(resp.StatusCode)
 	_, _ = io.Copy(c.Writer, resp.Body)
+	return ""
 }
 
 func bearerToken(c *gin.Context) string {
@@ -315,6 +509,49 @@ func bearerToken(c *gin.Context) string {
 		return ""
 	}
 	return strings.TrimSpace(strings.TrimPrefix(header, prefix))
+}
+
+func parseOptionalPositiveInt(raw string) (int, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0, nil
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, err
+	}
+	if value <= 0 {
+		return 0, strconv.ErrSyntax
+	}
+	return value, nil
+}
+
+func gatewayErrorName(err error) string {
+	appErr := apperror.From(err)
+	switch appErr.Code {
+	case apperror.CodeNotFound:
+		return "route_not_found"
+	case apperror.CodeServiceUnavailable:
+		return "plugin_unavailable"
+	default:
+		return "resolve"
+	}
+}
+
+func (h *PluginHandler) logGateway(metric domainplugin.GatewayMetric) {
+	logger := h.logger
+	if logger == nil {
+		logger = zap.NewNop()
+	}
+	logger.Info("plugin gateway request",
+		zap.String("plugin_key", metric.PluginKey),
+		zap.String("instance_id", metric.InstanceID),
+		zap.String("route_path", metric.RoutePath),
+		zap.Int("upstream_status", metric.UpstreamStatus),
+		zap.Int64("duration_ms", metric.Duration.Milliseconds()),
+		zap.String("gateway_error", metric.GatewayError),
+		zap.String("trace_id", metric.TraceID),
+	)
 }
 
 func copyPluginHeaders(dst http.Header, src http.Header, forwardAuth bool) {

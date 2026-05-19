@@ -27,6 +27,14 @@ const (
 	InstanceStatusIncompatible InstanceStatus = "incompatible"
 )
 
+type HealthStatus string
+
+const (
+	HealthStatusUnknown   HealthStatus = "unknown"
+	HealthStatusHealthy   HealthStatus = "healthy"
+	HealthStatusUnhealthy HealthStatus = "unhealthy"
+)
+
 type Method string
 
 const (
@@ -55,6 +63,19 @@ const (
 	AuthPolicyPublic        AuthPolicy = "public"
 )
 
+type AuditAction string
+
+const (
+	AuditActionRegister     AuditAction = "register"
+	AuditActionHeartbeat    AuditAction = "heartbeat"
+	AuditActionUnregister   AuditAction = "unregister"
+	AuditActionHealthChange AuditAction = "health_change"
+	AuditActionAdminDisable AuditAction = "admin_disable"
+	AuditActionAdminEnable  AuditAction = "admin_enable"
+	AuditActionRouteReplace AuditAction = "route_replace"
+	AuditActionGatewayFail  AuditAction = "gateway_failure"
+)
+
 type Service struct {
 	ID                  int64
 	PluginKey           string
@@ -69,19 +90,23 @@ type Service struct {
 }
 
 type Instance struct {
-	ID             int64
-	PluginKey      string
-	InstanceID     string
-	Version        string
-	BaseURL        string
-	HealthPath     string
-	ManifestHash   string
-	Status         InstanceStatus
-	LastSeenAt     time.Time
-	LeaseExpiresAt time.Time
-	LastError      string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID                  int64
+	PluginKey           string
+	InstanceID          string
+	Version             string
+	BaseURL             string
+	HealthPath          string
+	ManifestHash        string
+	Status              InstanceStatus
+	HealthStatus        HealthStatus
+	LastSeenAt          time.Time
+	LeaseExpiresAt      time.Time
+	LastCheckedAt       *time.Time
+	ConsecutiveFailures int
+	LastError           string
+	LastErrorAt         *time.Time
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
 type Route struct {
@@ -114,10 +139,57 @@ type ResolvedRoute struct {
 	Suffix   string
 }
 
+type AuditEvent struct {
+	ID         int64
+	PluginKey  string
+	InstanceID string
+	Action     AuditAction
+	Message    string
+	Metadata   map[string]string
+	CreatedAt  time.Time
+}
+
+type GatewayMetric struct {
+	PluginKey      string
+	InstanceID     string
+	RoutePath      string
+	UpstreamStatus int
+	Duration       time.Duration
+	GatewayError   string
+	TraceID        string
+}
+
+type HealthMetric struct {
+	PluginKey           string
+	InstanceID          string
+	PreviousStatus      HealthStatus
+	CurrentStatus       HealthStatus
+	ConsecutiveFailures int
+}
+
 func (i Instance) Routable(now time.Time, manifestHash string) bool {
 	return i.Status == InstanceStatusActive &&
 		i.ManifestHash == manifestHash &&
-		!i.LeaseExpiresAt.Before(now)
+		!i.LeaseExpiresAt.Before(now) &&
+		i.HealthStatus.Routable()
+}
+
+func (s HealthStatus) Routable() bool {
+	switch s.Normalize() {
+	case HealthStatusUnknown, HealthStatusHealthy:
+		return true
+	default:
+		return false
+	}
+}
+
+func (s HealthStatus) Normalize() HealthStatus {
+	switch s {
+	case HealthStatusHealthy, HealthStatusUnhealthy:
+		return s
+	default:
+		return HealthStatusUnknown
+	}
 }
 
 func (r Route) Matches(method string, path string) (string, bool) {

@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -21,6 +22,8 @@ import (
 )
 
 const defaultRequestTimeout = 5 * time.Second
+const defaultUnhealthyThreshold = 3
+const defaultMaxAuditQueryLimit = 200
 
 var safeIDPattern = regexp.MustCompile(`^[a-z][a-z0-9-]{2,63}$`)
 
@@ -31,6 +34,12 @@ type Config struct {
 	PublicPrefix         string
 	HeartbeatTTL         time.Duration
 	RequestTimeout       time.Duration
+	HealthCheckInterval  time.Duration
+	HealthCheckTimeout   time.Duration
+	UnhealthyThreshold   int
+	RouteCacheTTL        time.Duration
+	AuditRetentionDays   int
+	MaxAuditQueryLimit   int
 	AllowedHosts         []string
 	AllowedCIDRs         []string
 	AllowLoopback        bool
@@ -39,15 +48,39 @@ type Config struct {
 }
 
 type Service struct {
-	repo     port.PluginRegistryRepository
-	config   Config
-	now      func() time.Time
-	mu       sync.Mutex
-	counters map[string]int
-	cidrs    []*net.IPNet
+	repo      port.PluginRegistryRepository
+	auditRepo port.PluginAuditRepository
+	metrics   port.PluginMetrics
+	config    Config
+	now       func() time.Time
+	mu        sync.Mutex
+	counters  map[string]int
+	cidrs     []*net.IPNet
+	cache     map[string]routeCacheEntry
 }
 
-func NewService(repo port.PluginRegistryRepository, config Config) (*Service, error) {
+type Option func(*Service)
+
+func WithAuditRepository(repo port.PluginAuditRepository) Option {
+	return func(service *Service) {
+		service.auditRepo = repo
+	}
+}
+
+func WithMetrics(metrics port.PluginMetrics) Option {
+	return func(service *Service) {
+		service.metrics = metrics
+	}
+}
+
+type routeCacheEntry struct {
+	service   *domainplugin.Service
+	instances []*domainplugin.Instance
+	routes    []*domainplugin.Route
+	expiresAt time.Time
+}
+
+func NewService(repo port.PluginRegistryRepository, config Config, options ...Option) (*Service, error) {
 	if config.PublicPrefix == "" {
 		config.PublicPrefix = "/api/v1/extensions"
 	}
@@ -65,13 +98,20 @@ func NewService(repo port.PluginRegistryRepository, config Config) (*Service, er
 		}
 		cidrs = append(cidrs, cidr)
 	}
-	return &Service{
+	service := &Service{
 		repo:     repo,
 		config:   config,
 		now:      func() time.Time { return time.Now().UTC() },
 		counters: map[string]int{},
 		cidrs:    cidrs,
-	}, nil
+		cache:    map[string]routeCacheEntry{},
+	}
+	for _, option := range options {
+		if option != nil {
+			option(service)
+		}
+	}
+	return service, nil
 }
 
 type RegisterCommand struct {
@@ -173,6 +213,7 @@ func (s *Service) Register(ctx context.Context, cmd RegisterCommand) (*RegisterR
 			HealthPath:     manifest.HealthPath,
 			ManifestHash:   hash,
 			Status:         domainplugin.InstanceStatusActive,
+			HealthStatus:   domainplugin.HealthStatusUnknown,
 			LastSeenAt:     now,
 			LeaseExpiresAt: leaseUntil,
 			CreatedAt:      now,
@@ -205,6 +246,26 @@ func (s *Service) Register(ctx context.Context, cmd RegisterCommand) (*RegisterR
 	if err := s.repo.UpsertRegistration(ctx, registration); err != nil {
 		return nil, apperror.Wrap(apperror.CodeDependency, apperror.MessageDependency, err)
 	}
+	s.invalidateRouteCache(manifest.PluginKey)
+	s.recordAudit(ctx, domainplugin.AuditEvent{
+		PluginKey:  manifest.PluginKey,
+		InstanceID: manifest.InstanceID,
+		Action:     domainplugin.AuditActionRegister,
+		Message:    "plugin instance registered",
+		Metadata: map[string]string{
+			"manifest_hash": hash,
+			"version":       manifest.Version,
+		},
+	})
+	s.recordAudit(ctx, domainplugin.AuditEvent{
+		PluginKey: manifest.PluginKey,
+		Action:    domainplugin.AuditActionRouteReplace,
+		Message:   "plugin routes replaced",
+		Metadata: map[string]string{
+			"manifest_hash": hash,
+			"route_count":   strconv.Itoa(len(registration.Routes)),
+		},
+	})
 	return &RegisterResult{PluginKey: manifest.PluginKey, InstanceID: manifest.InstanceID, ManifestHash: hash, LeaseUntil: leaseUntil}, nil
 }
 
@@ -227,6 +288,16 @@ func (s *Service) Heartbeat(ctx context.Context, token string, pluginKey string,
 	if err != nil {
 		return nil, mapPluginRepoError(err)
 	}
+	s.invalidateRouteCache(pluginKey)
+	s.recordAudit(ctx, domainplugin.AuditEvent{
+		PluginKey:  pluginKey,
+		InstanceID: instance.InstanceID,
+		Action:     domainplugin.AuditActionHeartbeat,
+		Message:    "plugin instance heartbeat accepted",
+		Metadata: map[string]string{
+			"lease_until": leaseUntil.Format(time.RFC3339Nano),
+		},
+	})
 	return &HeartbeatResult{PluginKey: pluginKey, InstanceID: instance.InstanceID, LeaseUntil: leaseUntil}, nil
 }
 
@@ -243,6 +314,13 @@ func (s *Service) Unregister(ctx context.Context, token string, pluginKey string
 	if err := s.repo.DisableInstance(ctx, pluginKey, instanceID, s.now()); err != nil {
 		return mapPluginRepoError(err)
 	}
+	s.invalidateRouteCache(pluginKey)
+	s.recordAudit(ctx, domainplugin.AuditEvent{
+		PluginKey:  pluginKey,
+		InstanceID: instanceID,
+		Action:     domainplugin.AuditActionUnregister,
+		Message:    "plugin instance unregistered",
+	})
 	return nil
 }
 
@@ -264,6 +342,99 @@ func (s *Service) Get(ctx context.Context, pluginKey string) (*PluginDetail, err
 	return &PluginDetail{Service: service, Instances: instances, Routes: routes}, nil
 }
 
+func (s *Service) ListInstances(ctx context.Context, pluginKey string) ([]*domainplugin.Instance, error) {
+	if s == nil || s.repo == nil {
+		return nil, apperror.New(apperror.CodeInternal, apperror.MessagePluginServiceNotReady)
+	}
+	if !safeIDPattern.MatchString(pluginKey) {
+		return nil, apperror.New(apperror.CodeInvalidArgument, apperror.MessageInvalidPluginManifest)
+	}
+	_, instances, _, err := s.repo.GetPluginService(ctx, pluginKey)
+	if err != nil {
+		return nil, mapPluginRepoError(err)
+	}
+	return instances, nil
+}
+
+func (s *Service) DisableService(ctx context.Context, pluginKey string) error {
+	if s == nil || s.repo == nil {
+		return apperror.New(apperror.CodeInternal, apperror.MessagePluginServiceNotReady)
+	}
+	if !safeIDPattern.MatchString(pluginKey) {
+		return apperror.New(apperror.CodeInvalidArgument, apperror.MessageInvalidPluginManifest)
+	}
+	now := s.now()
+	if err := s.repo.SetServiceStatus(ctx, pluginKey, domainplugin.ServiceStatusDisabled, now); err != nil {
+		return mapPluginRepoError(err)
+	}
+	s.invalidateRouteCache(pluginKey)
+	s.recordAudit(ctx, domainplugin.AuditEvent{
+		PluginKey: pluginKey,
+		Action:    domainplugin.AuditActionAdminDisable,
+		Message:   "plugin service disabled",
+	})
+	return nil
+}
+
+func (s *Service) EnableService(ctx context.Context, pluginKey string) error {
+	if s == nil || s.repo == nil {
+		return apperror.New(apperror.CodeInternal, apperror.MessagePluginServiceNotReady)
+	}
+	if !safeIDPattern.MatchString(pluginKey) {
+		return apperror.New(apperror.CodeInvalidArgument, apperror.MessageInvalidPluginManifest)
+	}
+	now := s.now()
+	if err := s.repo.SetServiceStatus(ctx, pluginKey, domainplugin.ServiceStatusActive, now); err != nil {
+		return mapPluginRepoError(err)
+	}
+	s.invalidateRouteCache(pluginKey)
+	s.recordAudit(ctx, domainplugin.AuditEvent{
+		PluginKey: pluginKey,
+		Action:    domainplugin.AuditActionAdminEnable,
+		Message:   "plugin service enabled",
+	})
+	return nil
+}
+
+func (s *Service) DisableInstance(ctx context.Context, pluginKey string, instanceID string) error {
+	if s == nil || s.repo == nil {
+		return apperror.New(apperror.CodeInternal, apperror.MessagePluginServiceNotReady)
+	}
+	if !safeIDPattern.MatchString(pluginKey) || !safeIDPattern.MatchString(instanceID) {
+		return apperror.New(apperror.CodeInvalidArgument, apperror.MessageInvalidPluginManifest)
+	}
+	now := s.now()
+	if err := s.repo.SetInstanceStatus(ctx, pluginKey, instanceID, domainplugin.InstanceStatusDisabled, now); err != nil {
+		return mapPluginRepoError(err)
+	}
+	s.invalidateRouteCache(pluginKey)
+	s.recordAudit(ctx, domainplugin.AuditEvent{
+		PluginKey:  pluginKey,
+		InstanceID: instanceID,
+		Action:     domainplugin.AuditActionAdminDisable,
+		Message:    "plugin instance disabled",
+	})
+	return nil
+}
+
+func (s *Service) ListAuditEvents(ctx context.Context, pluginKey string, limit int) ([]*domainplugin.AuditEvent, error) {
+	if s == nil || s.repo == nil || s.auditRepo == nil {
+		return nil, apperror.New(apperror.CodeInternal, apperror.MessagePluginServiceNotReady)
+	}
+	if !safeIDPattern.MatchString(pluginKey) {
+		return nil, apperror.New(apperror.CodeInvalidArgument, apperror.MessageInvalidPluginManifest)
+	}
+	if _, _, _, err := s.repo.GetPluginService(ctx, pluginKey); err != nil {
+		return nil, mapPluginRepoError(err)
+	}
+	limit = s.normalizeAuditLimit(limit)
+	events, err := s.auditRepo.ListPluginAuditEvents(ctx, pluginKey, limit)
+	if err != nil {
+		return nil, mapPluginRepoError(err)
+	}
+	return events, nil
+}
+
 func (s *Service) ResolveRoute(ctx context.Context, query ResolveRouteQuery) (*domainplugin.ResolvedRoute, error) {
 	if s == nil || s.repo == nil {
 		return nil, apperror.New(apperror.CodeInternal, apperror.MessagePluginServiceNotReady)
@@ -271,13 +442,15 @@ func (s *Service) ResolveRoute(ctx context.Context, query ResolveRouteQuery) (*d
 	if err := s.ensureEnabled(); err != nil {
 		return nil, err
 	}
-	service, instances, routes, err := s.repo.FindRoutable(ctx, query.PluginKey, s.now())
+	now := s.now()
+	service, instances, routes, err := s.findRoutable(ctx, query.PluginKey, now)
 	if err != nil {
 		return nil, mapPluginRepoError(err)
 	}
 	if service == nil || service.Status != domainplugin.ServiceStatusActive {
 		return nil, apperror.New(apperror.CodeServiceUnavailable, apperror.MessagePluginUnavailable)
 	}
+	instances = filterRoutableInstances(instances, now, service.CurrentManifestHash)
 	if len(instances) == 0 {
 		return nil, apperror.New(apperror.CodeServiceUnavailable, apperror.MessagePluginUnavailable)
 	}
@@ -300,11 +473,206 @@ func (s *Service) AllowPublicRoutes() bool {
 	return s != nil && s.config.AllowPublicRoutes
 }
 
+func (s *Service) HealthCheckInterval() time.Duration {
+	if s == nil {
+		return 0
+	}
+	return s.config.HealthCheckInterval
+}
+
+func (s *Service) HealthCheckTimeout() time.Duration {
+	if s == nil {
+		return 0
+	}
+	return s.config.HealthCheckTimeout
+}
+
+func (s *Service) CheckHealth(ctx context.Context, probe port.PluginHealthProbe) error {
+	if s == nil || s.repo == nil {
+		return apperror.New(apperror.CodeInternal, apperror.MessagePluginServiceNotReady)
+	}
+	if probe == nil || !s.config.Enabled || s.config.HealthCheckInterval <= 0 {
+		return nil
+	}
+	targets, err := s.repo.ListHealthCheckTargets(ctx, s.now())
+	if err != nil {
+		return mapPluginRepoError(err)
+	}
+	for _, target := range targets {
+		if target == nil {
+			continue
+		}
+		s.checkInstanceHealth(ctx, probe, *target)
+	}
+	return nil
+}
+
+func (s *Service) RecordGatewayRequest(ctx context.Context, metric domainplugin.GatewayMetric) {
+	if s == nil || s.metrics == nil {
+		return
+	}
+	s.metrics.RecordPluginGateway(ctx, metric)
+}
+
+func (s *Service) RecordGatewayFailure(ctx context.Context, metric domainplugin.GatewayMetric) {
+	if s == nil {
+		return
+	}
+	switch metric.GatewayError {
+	case "upstream_connect", "upstream_request", "upstream_timeout", "plugin_unavailable":
+	default:
+		return
+	}
+	metadata := map[string]string{
+		"gateway_error": metric.GatewayError,
+		"trace_id":      metric.TraceID,
+	}
+	if metric.RoutePath != "" {
+		metadata["route_path"] = metric.RoutePath
+	}
+	if metric.UpstreamStatus > 0 {
+		metadata["upstream_status"] = strconv.Itoa(metric.UpstreamStatus)
+	}
+	s.recordAudit(ctx, domainplugin.AuditEvent{
+		PluginKey:  metric.PluginKey,
+		InstanceID: metric.InstanceID,
+		Action:     domainplugin.AuditActionGatewayFail,
+		Message:    "plugin gateway failure",
+		Metadata:   metadata,
+	})
+}
+
 func (s *Service) ensureEnabled() error {
 	if !s.config.Enabled {
 		return apperror.New(apperror.CodeServiceUnavailable, apperror.MessagePluginRegistrationDisabled)
 	}
 	return nil
+}
+
+func (s *Service) checkInstanceHealth(ctx context.Context, probe port.PluginHealthProbe, instance domainplugin.Instance) {
+	previous := instance.HealthStatus.Normalize()
+	err := probe.Probe(ctx, instance)
+	now := s.now()
+	nextStatus := previous
+	failures := instance.ConsecutiveFailures
+	lastError := ""
+	if err != nil {
+		failures++
+		lastError = err.Error()
+		if failures >= s.unhealthyThreshold() {
+			nextStatus = domainplugin.HealthStatusUnhealthy
+		}
+	} else {
+		failures = 0
+		nextStatus = domainplugin.HealthStatusHealthy
+	}
+	updated, updateErr := s.repo.UpdateInstanceHealth(ctx, instance.PluginKey, instance.InstanceID, nextStatus, failures, lastError, now)
+	if updateErr != nil || updated == nil {
+		return
+	}
+	current := updated.HealthStatus.Normalize()
+	if previous == current {
+		return
+	}
+	s.invalidateRouteCache(instance.PluginKey)
+	s.recordAudit(ctx, domainplugin.AuditEvent{
+		PluginKey:  instance.PluginKey,
+		InstanceID: instance.InstanceID,
+		Action:     domainplugin.AuditActionHealthChange,
+		Message:    "plugin instance health changed",
+		Metadata: map[string]string{
+			"from":                 string(previous),
+			"to":                   string(current),
+			"consecutive_failures": strconv.Itoa(updated.ConsecutiveFailures),
+		},
+	})
+	if s.metrics != nil {
+		s.metrics.RecordPluginHealth(ctx, domainplugin.HealthMetric{
+			PluginKey:           instance.PluginKey,
+			InstanceID:          instance.InstanceID,
+			PreviousStatus:      previous,
+			CurrentStatus:       current,
+			ConsecutiveFailures: updated.ConsecutiveFailures,
+		})
+	}
+}
+
+func (s *Service) unhealthyThreshold() int {
+	if s == nil || s.config.UnhealthyThreshold <= 0 {
+		return defaultUnhealthyThreshold
+	}
+	return s.config.UnhealthyThreshold
+}
+
+func (s *Service) normalizeAuditLimit(limit int) int {
+	maxLimit := defaultMaxAuditQueryLimit
+	if s != nil && s.config.MaxAuditQueryLimit > 0 {
+		maxLimit = s.config.MaxAuditQueryLimit
+	}
+	if limit <= 0 || limit > maxLimit {
+		return maxLimit
+	}
+	return limit
+}
+
+func (s *Service) findRoutable(ctx context.Context, pluginKey string, now time.Time) (*domainplugin.Service, []*domainplugin.Instance, []*domainplugin.Route, error) {
+	if s.config.RouteCacheTTL > 0 {
+		if service, instances, routes, ok := s.routeCacheGet(pluginKey, now); ok {
+			return service, instances, routes, nil
+		}
+	}
+	service, instances, routes, err := s.repo.FindRoutable(ctx, pluginKey, now)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if s.config.RouteCacheTTL > 0 {
+		s.routeCacheSet(pluginKey, service, instances, routes, now.Add(s.config.RouteCacheTTL))
+	}
+	return cloneService(service), cloneInstances(instances), cloneRoutes(routes), nil
+}
+
+func (s *Service) routeCacheGet(pluginKey string, now time.Time) (*domainplugin.Service, []*domainplugin.Instance, []*domainplugin.Route, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	entry, ok := s.cache[pluginKey]
+	if !ok || !now.Before(entry.expiresAt) {
+		if ok {
+			delete(s.cache, pluginKey)
+		}
+		return nil, nil, nil, false
+	}
+	return cloneService(entry.service), cloneInstances(entry.instances), cloneRoutes(entry.routes), true
+}
+
+func (s *Service) routeCacheSet(pluginKey string, service *domainplugin.Service, instances []*domainplugin.Instance, routes []*domainplugin.Route, expiresAt time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.cache[pluginKey] = routeCacheEntry{
+		service:   cloneService(service),
+		instances: cloneInstances(instances),
+		routes:    cloneRoutes(routes),
+		expiresAt: expiresAt,
+	}
+}
+
+func (s *Service) invalidateRouteCache(pluginKey string) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.cache, pluginKey)
+}
+
+func (s *Service) recordAudit(ctx context.Context, event domainplugin.AuditEvent) {
+	if s == nil || s.auditRepo == nil || event.PluginKey == "" {
+		return
+	}
+	if event.CreatedAt.IsZero() {
+		event.CreatedAt = s.now()
+	}
+	event.Metadata = safeAuditMetadata(event.Metadata)
+	_ = s.auditRepo.RecordPluginAudit(ctx, event)
 }
 
 func (s *Service) validToken(token string) bool {
@@ -402,6 +770,83 @@ func (s *Service) pickInstance(pluginKey string, instances []*domainplugin.Insta
 	index := s.counters[pluginKey] % len(instances)
 	s.counters[pluginKey]++
 	return instances[index]
+}
+
+func filterRoutableInstances(instances []*domainplugin.Instance, now time.Time, manifestHash string) []*domainplugin.Instance {
+	filtered := make([]*domainplugin.Instance, 0, len(instances))
+	for _, instance := range instances {
+		if instance == nil {
+			continue
+		}
+		if instance.Routable(now, manifestHash) {
+			filtered = append(filtered, instance)
+		}
+	}
+	return filtered
+}
+
+func cloneService(service *domainplugin.Service) *domainplugin.Service {
+	if service == nil {
+		return nil
+	}
+	clone := *service
+	clone.Metadata = cloneStringMap(service.Metadata)
+	return &clone
+}
+
+func cloneInstances(instances []*domainplugin.Instance) []*domainplugin.Instance {
+	clones := make([]*domainplugin.Instance, 0, len(instances))
+	for _, instance := range instances {
+		if instance == nil {
+			continue
+		}
+		clone := *instance
+		clones = append(clones, &clone)
+	}
+	return clones
+}
+
+func cloneRoutes(routes []*domainplugin.Route) []*domainplugin.Route {
+	clones := make([]*domainplugin.Route, 0, len(routes))
+	for _, route := range routes {
+		if route == nil {
+			continue
+		}
+		clone := *route
+		clone.Metadata = cloneStringMap(route.Metadata)
+		clones = append(clones, &clone)
+	}
+	return clones
+}
+
+func cloneStringMap(value map[string]string) map[string]string {
+	if len(value) == 0 {
+		return map[string]string{}
+	}
+	clone := make(map[string]string, len(value))
+	for key, item := range value {
+		clone[key] = item
+	}
+	return clone
+}
+
+func safeAuditMetadata(value map[string]string) map[string]string {
+	if len(value) == 0 {
+		return map[string]string{}
+	}
+	safe := make(map[string]string, len(value))
+	for key, item := range value {
+		lower := strings.ToLower(key)
+		if strings.Contains(lower, "token") ||
+			strings.Contains(lower, "authorization") ||
+			strings.Contains(lower, "cookie") ||
+			strings.Contains(lower, "secret") ||
+			strings.Contains(lower, "password") {
+			continue
+		}
+		safe[key] = item
+	}
+	return safe
 }
 
 func commandToManifest(cmd RegisterCommand) (pkgplugin.Manifest, error) {

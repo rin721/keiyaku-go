@@ -13,6 +13,7 @@ import (
 	apparticle "github.com/rin721/keiyaku-go/internal/application/article"
 	"github.com/rin721/keiyaku-go/internal/application/auth"
 	appplugin "github.com/rin721/keiyaku-go/internal/application/plugin"
+	"github.com/rin721/keiyaku-go/internal/application/port"
 	appuser "github.com/rin721/keiyaku-go/internal/application/user"
 	authcasbin "github.com/rin721/keiyaku-go/internal/infrastructure/auth/casbin"
 	authjwt "github.com/rin721/keiyaku-go/internal/infrastructure/auth/jwt"
@@ -22,6 +23,8 @@ import (
 	idsnowflake "github.com/rin721/keiyaku-go/internal/infrastructure/id/snowflake"
 	zaplogger "github.com/rin721/keiyaku-go/internal/infrastructure/logger/zap"
 	"github.com/rin721/keiyaku-go/internal/infrastructure/persistence/mysql"
+	infraplugin "github.com/rin721/keiyaku-go/internal/infrastructure/plugin"
+	"github.com/rin721/keiyaku-go/internal/observability/metrics"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -33,7 +36,8 @@ type App struct {
 	DB     *gorm.DB
 	Redis  *redis.Client
 
-	syncLogger func() error
+	pluginHealthCancel context.CancelFunc
+	syncLogger         func() error
 }
 
 func New(ctx context.Context, configPath string) (*App, error) {
@@ -92,18 +96,26 @@ func New(ctx context.Context, configPath string) (*App, error) {
 		PublicPrefix:         cfg.Plugins.PublicPrefix,
 		HeartbeatTTL:         cfg.Plugins.HeartbeatTTL,
 		RequestTimeout:       cfg.Plugins.RequestTimeout,
+		HealthCheckInterval:  cfg.Plugins.HealthCheckInterval,
+		HealthCheckTimeout:   cfg.Plugins.HealthCheckTimeout,
+		UnhealthyThreshold:   cfg.Plugins.UnhealthyThreshold,
+		RouteCacheTTL:        cfg.Plugins.RouteCacheTTL,
+		AuditRetentionDays:   cfg.Plugins.AuditRetentionDays,
+		MaxAuditQueryLimit:   cfg.Plugins.MaxAuditQueryLimit,
 		AllowedHosts:         cfg.Plugins.AllowedHosts,
 		AllowedCIDRs:         cfg.Plugins.AllowedCIDRs,
 		AllowLoopback:        cfg.Plugins.AllowLoopback,
 		AllowPublicRoutes:    cfg.Plugins.AllowPublicRoutes,
 		GatewaySigningSecret: cfg.Plugins.GatewaySigningSecret,
-	})
+	}, appplugin.WithAuditRepository(pluginRepo), appplugin.WithMetrics(metrics.NoopPluginMetrics{}))
 	if err != nil {
 		_ = redisClient.Close()
 		_ = mysql.Close(db)
 		_ = syncLogger()
 		return nil, err
 	}
+	pluginProbe := infraplugin.NewHTTPHealthProbe(cfg.Plugins.HealthCheckTimeout)
+	pluginHealthCancel := runPluginHealthChecks(ctx, logger, pluginService, pluginProbe, cfg.Plugins.HealthCheckInterval)
 
 	router := httprouter.New(httprouter.Deps{
 		Options: httprouter.Options{
@@ -123,7 +135,7 @@ func New(ctx context.Context, configPath string) (*App, error) {
 		AuthHandler:    handler.NewAuthHandler(authService),
 		UserHandler:    handler.NewUserHandler(userService),
 		ArticleHandler: handler.NewArticleHandler(articleService),
-		PluginHandler:  handler.NewPluginHandler(pluginService, tokenService, authorizer),
+		PluginHandler:  handler.NewPluginHandler(pluginService, tokenService, authorizer, handler.WithPluginLogger(logger)),
 	})
 	server := &http.Server{
 		Addr:         cfg.Server.Addr,
@@ -132,12 +144,13 @@ func New(ctx context.Context, configPath string) (*App, error) {
 		WriteTimeout: cfg.Server.WriteTimeout,
 	}
 	return &App{
-		Config:     cfg,
-		Logger:     logger,
-		Server:     server,
-		DB:         db,
-		Redis:      redisClient,
-		syncLogger: syncLogger,
+		Config:             cfg,
+		Logger:             logger,
+		Server:             server,
+		DB:                 db,
+		Redis:              redisClient,
+		pluginHealthCancel: pluginHealthCancel,
+		syncLogger:         syncLogger,
 	}, nil
 }
 
@@ -150,6 +163,9 @@ func (a *App) Shutdown(ctx context.Context) error {
 		if err := a.Server.Shutdown(ctx); err != nil {
 			shutdownErr = fmt.Errorf("shutdown http server: %w", err)
 		}
+	}
+	if a.pluginHealthCancel != nil {
+		a.pluginHealthCancel()
 	}
 	if a.Redis != nil {
 		if err := a.Redis.Close(); err != nil && shutdownErr == nil {
@@ -172,4 +188,29 @@ func (a *App) ShutdownTimeout() time.Duration {
 		return 10 * time.Second
 	}
 	return a.Config.Server.ShutdownTimeout
+}
+
+func runPluginHealthChecks(ctx context.Context, logger *zap.Logger, service *appplugin.Service, probe port.PluginHealthProbe, interval time.Duration) context.CancelFunc {
+	if service == nil || probe == nil || interval <= 0 {
+		return nil
+	}
+	if logger == nil {
+		logger = zap.NewNop()
+	}
+	healthCtx, cancel := context.WithCancel(ctx)
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-healthCtx.Done():
+				return
+			case <-ticker.C:
+				if err := service.CheckHealth(healthCtx, probe); err != nil {
+					logger.Warn("plugin health check failed", zap.Error(err))
+				}
+			}
+		}
+	}()
+	return cancel
 }

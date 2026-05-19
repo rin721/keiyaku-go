@@ -96,6 +96,11 @@ func New(deps Deps) *gin.Engine {
 		if deps.PluginHandler != nil {
 			protected.GET("/plugins", deps.PluginHandler.List)
 			protected.GET("/plugins/:plugin_key", deps.PluginHandler.Get)
+			protected.GET("/plugins/:plugin_key/instances", deps.PluginHandler.ListInstances)
+			protected.POST("/plugins/:plugin_key/disable", deps.PluginHandler.Disable)
+			protected.POST("/plugins/:plugin_key/enable", deps.PluginHandler.Enable)
+			protected.POST("/plugins/:plugin_key/instances/:instance_id/disable", deps.PluginHandler.DisableInstance)
+			protected.GET("/plugins/:plugin_key/audit-events", deps.PluginHandler.ListAuditEvents)
 		}
 	}
 

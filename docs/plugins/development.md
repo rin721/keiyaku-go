@@ -8,7 +8,7 @@ authority_level: binding
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-19
-version: 1.0
+version: 1.1
 related_rules: [GOV-P0-001, GOV-P0-002, GOV-P0-004, GOV-P1-001, GOV-P1-002, GOV-P1-006]
 source_of_truth: [docs/adr/20260519-adopt-remote-service-plugin-system.md, docs/architecture/plugin-system.md]
 derived_from: [pkg/plugin/README.md, docs/api/http-api.md]
@@ -28,6 +28,7 @@ verification_target: [scripts/check-layering.ps1, scripts/check-governance-map.p
 主服务必须完成：
 
 - 执行 `migrations/000002_plugin_registry.up.sql`。
+- 执行 `migrations/000003_plugin_production_hardening.up.sql`。
 - 配置 `plugins.registration_tokens`。
 - 配置 `plugins.allowed_plugin_keys`。
 - 配置 `plugins.allowed_hosts` 或 `plugins.allowed_cidrs`。
@@ -45,6 +46,10 @@ plugins:
   allowed_cidrs:
     - "127.0.0.1/32"
   allow_loopback: true
+  health_check_interval: 15s
+  health_check_timeout: 2s
+  unhealthy_threshold: 3
+  route_cache_ttl: 5s
   allow_public_routes: false
 ```
 
@@ -92,17 +97,33 @@ go run ./cmd/pluginctl init `
 }
 ```
 
-字段说明：
-
 | 字段 | 要求 |
 | --- | --- |
-| `schema_version` | 首版固定为 `v1` |
+| `schema_version` | 当前固定为 `v1` |
 | `plugin_key` | 小写字母开头，只允许小写字母、数字、短横线 |
 | `instance_id` | 同一插件下唯一，建议包含部署实例标识 |
-| `protocol` | 首版固定为 `http` |
+| `protocol` | 当前固定为 `http` |
 | `base_url` | 插件服务可被主服务访问的根地址 |
 | `health_path` | 插件健康检查路径 |
 | `routes` | 至少声明一个路由 |
+
+## 健康检查约定
+
+插件服务必须实现 `health_path`，主服务会按配置周期请求：
+
+```text
+GET {base_url}{health_path}
+```
+
+建议实现规则：
+
+- 健康时返回 `200`，不健康时返回 `500` 或 `503`。
+- 健康检查响应体应短小，不包含敏感数据。
+- 健康检查应覆盖插件自身依赖，例如数据库、缓存或下游服务。
+- 如果插件短暂启动中，可返回非 `2xx/3xx`，主服务会在连续失败达到阈值后才标记 `unhealthy`。
+- 插件恢复健康后，主服务下一次探测成功会将实例恢复为 `healthy`。
+
+`unknown` 健康状态默认可路由，所以新注册实例不会因为尚未探测而立即被摘除。
 
 ## 路由声明
 
@@ -207,6 +228,7 @@ go run ./cmd/pluginctl unregister --plugin-key demo-plugin --instance-id demo-pl
 
 - 必须提供 `health_path`。
 - 必须按 manifest 声明实现每个 upstream route。
+- 必须持续发送心跳；心跳停止后租约过期，实例会被摘除。
 - 必须把业务响应作为普通 HTTP 响应返回，不需要包装成主服务 `{code,msg,data}`。
 - 不要依赖主服务 `internal` 包。
 - 不要在日志里打印 token、Authorization、Cookie、完整请求体或用户敏感信息。
@@ -230,6 +252,33 @@ go run ./cmd/pluginctl unregister --plugin-key demo-plugin --instance-id demo-pl
 
 默认不会传递 `Authorization` 和 `Cookie`。
 
+## 管理查询
+
+管理员可查询插件状态：
+
+```powershell
+Invoke-RestMethod `
+  -Headers @{ Authorization = "Bearer <admin-access-token>" } `
+  http://127.0.0.1:8080/api/v1/plugins/demo-plugin/instances
+```
+
+查询审计事件：
+
+```powershell
+Invoke-RestMethod `
+  -Headers @{ Authorization = "Bearer <admin-access-token>" } `
+  "http://127.0.0.1:8080/api/v1/plugins/demo-plugin/audit-events?limit=50"
+```
+
+手动禁用插件服务：
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer <admin-access-token>" } `
+  http://127.0.0.1:8080/api/v1/plugins/demo-plugin/disable
+```
+
 ## 本地调试流程
 
 1. 修改主服务配置，允许本地插件 key、token 和 loopback。
@@ -238,6 +287,7 @@ go run ./cmd/pluginctl unregister --plugin-key demo-plugin --instance-id demo-pl
 4. 在另一个终端启动插件服务。
 5. 插件启动时自动注册，或使用 `pluginctl register` 手动注册。
 6. 访问 `/api/v1/extensions/{plugin_key}/...` 验证转发。
+7. 查询 `/api/v1/plugins/{plugin_key}/instances` 验证租约与健康状态。
 
 示例：
 
@@ -252,12 +302,14 @@ Invoke-RestMethod `
 - [ ] `plugin_key` 已加入主服务白名单。
 - [ ] 插件 base URL 已加入 `allowed_hosts` 或 `allowed_cidrs`。
 - [ ] 生产 token 不写入代码和仓库文档。
-- [ ] 插件服务有健康检查。
+- [ ] 插件服务有健康检查，且能真实反映关键依赖状态。
 - [ ] 插件服务能持续心跳。
+- [ ] 插件服务下线前会调用注销接口。
 - [ ] route 的 `auth_policy` 与业务风险匹配。
 - [ ] 不需要透传原始 Authorization 时保持 `forward_auth_header=false`。
 - [ ] 插件日志不打印敏感 header、token、请求体或完整用户对象。
-- [ ] 插件服务能处理主服务超时和重试缺失的情况。
+- [ ] 插件服务能处理主服务超时和连接中断。
+- [ ] 生产环境已有插件健康状态、网关错误和审计事件的观测入口。
 
 ## 常见问题
 
@@ -275,7 +327,7 @@ Invoke-RestMethod `
 
 ### 网关返回 503
 
-插件实例不存在、已禁用、租约过期或 manifest hash 不匹配。确认插件仍在发送心跳。
+插件实例不存在、已禁用、租约过期、manifest hash 不匹配或健康状态为 `unhealthy`。确认插件仍在发送心跳，并检查健康检查是否通过。
 
 ### 插件收不到用户 token
 

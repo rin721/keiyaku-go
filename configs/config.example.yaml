@@ -59,6 +59,12 @@ plugins:
   public_prefix: "/api/v1/extensions"
   heartbeat_ttl: 30s
   request_timeout: 5s
+  health_check_interval: 15s
+  health_check_timeout: 2s
+  unhealthy_threshold: 3
+  route_cache_ttl: 5s
+  audit_retention_days: 30
+  max_audit_query_limit: 200
   allowed_hosts: []
   allowed_cidrs: []
   allow_loopback: false

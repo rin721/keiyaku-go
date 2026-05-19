@@ -651,6 +651,400 @@ paths:
                     format: int32
                   msg:
                     type: string
+  /plugins/{plugin_key}/audit-events:
+    get:
+      tags:
+        - "Plugin"
+      summary: "List plugin audit events"
+      description: "List recent audit events for a registered remote plugin service."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "plugin_key"
+          in: path
+          required: true
+          description: "Plugin key"
+          schema:
+            type: string
+        - name: "limit"
+          in: query
+          required: false
+          description: "Maximum number of events"
+          schema:
+            type: integer
+            format: int32
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/PluginAuditEventResponse"
+        "400":
+          description: "Invalid request"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "401":
+          description: "Unauthorized"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "403":
+          description: "Forbidden"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "404":
+          description: "Plugin not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+  /plugins/{plugin_key}/disable:
+    post:
+      tags:
+        - "Plugin"
+      summary: "Disable plugin"
+      description: "Disable a registered remote plugin service so gateway routing stops selecting it."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "plugin_key"
+          in: path
+          required: true
+          description: "Plugin key"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+                  data:
+                    type: object
+        "401":
+          description: "Unauthorized"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "403":
+          description: "Forbidden"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "404":
+          description: "Plugin not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+  /plugins/{plugin_key}/enable:
+    post:
+      tags:
+        - "Plugin"
+      summary: "Enable plugin"
+      description: "Enable a registered remote plugin service after an administrative disable."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "plugin_key"
+          in: path
+          required: true
+          description: "Plugin key"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+                  data:
+                    type: object
+        "401":
+          description: "Unauthorized"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "403":
+          description: "Forbidden"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "404":
+          description: "Plugin not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+  /plugins/{plugin_key}/instances:
+    get:
+      tags:
+        - "Plugin"
+      summary: "List plugin instances"
+      description: "List runtime instances for a registered remote plugin service."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "plugin_key"
+          in: path
+          required: true
+          description: "Plugin key"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/PluginInstanceResponse"
+        "401":
+          description: "Unauthorized"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "403":
+          description: "Forbidden"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "404":
+          description: "Plugin not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
   /plugins/{plugin_key}/instances/{instance_id}:
     delete:
       tags:
@@ -690,6 +1084,105 @@ paths:
                     type: object
         "401":
           description: "Invalid plugin registration token"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "404":
+          description: "Plugin instance not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+  /plugins/{plugin_key}/instances/{instance_id}/disable:
+    post:
+      tags:
+        - "Plugin"
+      summary: "Disable plugin instance"
+      description: "Disable one registered plugin instance."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "plugin_key"
+          in: path
+          required: true
+          description: "Plugin key"
+          schema:
+            type: string
+        - name: "instance_id"
+          in: path
+          required: true
+          description: "Instance ID"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+                  data:
+                    type: object
+        "401":
+          description: "Unauthorized"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - msg
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  msg:
+                    type: string
+        "403":
+          description: "Forbidden"
           content:
             application/json:
               schema:
@@ -1004,6 +1497,25 @@ components:
           type: string
         username:
           type: string
+    PluginAuditEventResponse:
+      type: object
+      properties:
+        action:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        id:
+          type: integer
+          format: int64
+        instance_id:
+          type: string
+        message:
+          type: string
+        metadata:
+          type: object
+        plugin_key:
+          type: string
     PluginDetailResponse:
       type: object
       properties:
@@ -1032,15 +1544,28 @@ components:
       properties:
         base_url:
           type: string
+        consecutive_failures:
+          type: integer
+          format: int32
         created_at:
           type: string
           format: date-time
         health_path:
           type: string
+        health_status:
+          type: string
         instance_id:
           type: string
+        last_checked_at:
+          type: string
+          format: date-time
+          nullable: true
         last_error:
           type: string
+        last_error_at:
+          type: string
+          format: date-time
+          nullable: true
         last_seen_at:
           type: string
           format: date-time
