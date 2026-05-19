@@ -113,7 +113,7 @@ func (c *Client) doJSON(ctx context.Context, method string, path string, body in
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		content, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return httpError(method, fmt.Sprintf("unexpected status %d: %s", resp.StatusCode, strings.TrimSpace(string(content))), ErrUnexpectedReply)
+		return httpStatusError(method, resp.StatusCode, fmt.Sprintf("unexpected status %d: %s", resp.StatusCode, strings.TrimSpace(string(content))), ErrUnexpectedReply)
 	}
 	if out == nil {
 		return nil

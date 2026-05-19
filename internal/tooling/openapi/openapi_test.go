@@ -62,6 +62,29 @@ func Second() {}
 	}
 }
 
+func TestParseHandlersSupportsArraySuccessResponses(t *testing.T) {
+	dir := t.TempDir()
+	writeTestFile(t, filepath.Join(dir, "handler.go"), `package handler
+
+// @Summary List
+// @Success 200 {array} dto.UserResponse "OK"
+// @Router /demo [get]
+func List() {}
+`)
+
+	operations, err := ParseHandlers(dir, emptyRegistryWithStruct("UserResponse"))
+	if err != nil {
+		t.Fatalf("ParseHandlers() error = %v", err)
+	}
+	if len(operations) != 1 || len(operations[0].Responses) != 1 {
+		t.Fatalf("operations = %#v", operations)
+	}
+	schema := operations[0].Responses[0].Schema
+	if schema == nil || schema.Type != "array" || schema.Items == nil || schema.Items.Ref != "#/components/schemas/UserResponse" {
+		t.Fatalf("response schema = %#v, want UserResponse array", schema)
+	}
+}
+
 func TestLoadSchemasInfersJSONBindingAndTimeFields(t *testing.T) {
 	dir := t.TempDir()
 	writeTestFile(t, filepath.Join(dir, "dto.go"), "package dto\n\n"+
@@ -163,6 +186,12 @@ func emptyRegistry() *SchemaRegistry {
 		structs: map[string]*ast.StructType{},
 		schemas: map[string]*Schema{},
 	}
+}
+
+func emptyRegistryWithStruct(name string) *SchemaRegistry {
+	registry := emptyRegistry()
+	registry.structs[name] = &ast.StructType{}
+	return registry
 }
 
 func findProperty(schema *Schema, name string) *Schema {

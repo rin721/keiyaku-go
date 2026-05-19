@@ -87,7 +87,8 @@ func New(ctx context.Context, configPath string) (*App, error) {
 		_ = syncLogger()
 		return nil, err
 	}
-	pluginProbe := infraplugin.NewHTTPHealthProbe(cfg.Plugins.HealthCheckTimeout)
+	pluginHTTPClient := infraplugin.NewOutboundHTTPClient(cfg.Plugins.RequestTimeout, pluginService.ValidateOutboundURL, pluginService.ValidateResolvedOutboundIP)
+	pluginProbe := infraplugin.NewHTTPHealthProbeWithClient(cfg.Plugins.HealthCheckTimeout, pluginHTTPClient)
 	pluginHealthCancel := runPluginHealthChecks(ctx, logger, pluginService, pluginProbe, cfg.Plugins.HealthCheckInterval)
 	pluginMaintenanceCancel := runPluginMaintenance(ctx, logger, pluginService, cfg.Plugins.MaintenanceInterval)
 
@@ -108,7 +109,7 @@ func New(ctx context.Context, configPath string) (*App, error) {
 		Tokens:        identityClient,
 		Authorizer:    identityClient,
 		Readiness:     readinessCheck(db, redisClient, identityClient),
-		PluginHandler: handler.NewPluginHandler(pluginService, identityClient, identityClient, handler.WithPluginLogger(logger), handler.WithPluginHTTPClient(&http.Client{Timeout: cfg.Plugins.RequestTimeout})),
+		PluginHandler: handler.NewPluginHandler(pluginService, identityClient, identityClient, handler.WithPluginLogger(logger), handler.WithPluginHTTPClient(pluginHTTPClient)),
 	})
 	server := &http.Server{
 		Addr:         cfg.Server.Addr,
@@ -162,11 +163,15 @@ func appPluginTrust(input map[string]config.TrustedPluginConfig) map[string]appp
 	output := make(map[string]appplugin.TrustedPluginConfig, len(input))
 	for pluginKey, trust := range input {
 		output[pluginKey] = appplugin.TrustedPluginConfig{
-			RegistrationSecret: trust.RegistrationSecret,
-			GatewaySecret:      trust.GatewaySecret,
-			AllowedHosts:       append([]string(nil), trust.AllowedHosts...),
-			AllowedCIDRs:       append([]string(nil), trust.AllowedCIDRs...),
-			AllowLoopback:      trust.AllowLoopback,
+			RegistrationSecret:     trust.RegistrationSecret,
+			GatewaySecret:          trust.GatewaySecret,
+			AllowedHosts:           append([]string(nil), trust.AllowedHosts...),
+			AllowedCIDRs:           append([]string(nil), trust.AllowedCIDRs...),
+			AllowedGatewayPrefixes: append([]string(nil), trust.AllowedGatewayPrefixes...),
+			AllowedAuthPolicies:    append([]string(nil), trust.AllowedAuthPolicies...),
+			AllowedMethods:         append([]string(nil), trust.AllowedMethods...),
+			AllowLoopback:          trust.AllowLoopback,
+			AllowInsecureHTTP:      trust.AllowInsecureHTTP,
 		}
 	}
 	return output

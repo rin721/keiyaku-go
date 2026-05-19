@@ -192,6 +192,9 @@ func parseResponse(name string, value string, registry *SchemaRegistry) (Respons
 	response := Response{Code: code, Description: description}
 	if strings.HasPrefix(code, "2") {
 		response.Schema = registry.SchemaForAnnotationType(fields[2])
+		if strings.EqualFold(strings.Trim(fields[1], "{}"), "array") {
+			response.Schema = &Schema{Type: "array", Items: response.Schema}
+		}
 	}
 	return response, nil
 }

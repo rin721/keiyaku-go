@@ -94,4 +94,18 @@ plugins:
       allowed_hosts: []
       allowed_cidrs:
         - "127.0.0.1/32"
+      allowed_gateway_prefixes:
+        - "/api/v1/extensions/blog"
+      allowed_auth_policies:
+        - "inherit"
+        - "authenticated"
+        - "rbac"
+        - "admin"
+      allowed_methods:
+        - "GET"
+        - "POST"
+        - "PUT"
+        - "PATCH"
+        - "DELETE"
       allow_loopback: true
+      allow_insecure_http: true

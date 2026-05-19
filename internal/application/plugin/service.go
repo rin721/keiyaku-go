@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
@@ -50,11 +49,15 @@ type Config struct {
 }
 
 type TrustedPluginConfig struct {
-	RegistrationSecret string
-	GatewaySecret      string
-	AllowedHosts       []string
-	AllowedCIDRs       []string
-	AllowLoopback      bool
+	RegistrationSecret     string
+	GatewaySecret          string
+	AllowedHosts           []string
+	AllowedCIDRs           []string
+	AllowedGatewayPrefixes []string
+	AllowedAuthPolicies    []string
+	AllowedMethods         []string
+	AllowLoopback          bool
+	AllowInsecureHTTP      bool
 }
 
 type Service struct {
@@ -91,11 +94,15 @@ type routeCacheEntry struct {
 }
 
 type trustedPlugin struct {
-	registrationSecret string
-	gatewaySecret      string
-	allowedHosts       []string
-	allowedCIDRs       []*net.IPNet
-	allowLoopback      bool
+	registrationSecret     string
+	gatewaySecret          string
+	allowedHosts           []string
+	allowedCIDRs           []*net.IPNet
+	allowedGatewayPrefixes []string
+	allowedAuthPolicies    map[domainplugin.AuthPolicy]struct{}
+	allowedMethods         map[domainplugin.Method]struct{}
+	allowLoopback          bool
+	allowInsecureHTTP      bool
 }
 
 func NewService(repo port.PluginRegistryRepository, config Config, options ...Option) (*Service, error) {
@@ -138,12 +145,20 @@ func NewService(repo port.PluginRegistryRepository, config Config, options ...Op
 			}
 			cidrs = append(cidrs, cidr)
 		}
+		allowedGatewayPrefixes, err := normalizeAllowedGatewayPrefixes(pluginKey, config.PublicPrefix, rawTrust.AllowedGatewayPrefixes)
+		if err != nil {
+			return nil, fmt.Errorf("parse plugins.trusted_plugins.%s.allowed_gateway_prefixes: %w", pluginKey, err)
+		}
 		trusted[pluginKey] = trustedPlugin{
-			registrationSecret: rawTrust.RegistrationSecret,
-			gatewaySecret:      rawTrust.GatewaySecret,
-			allowedHosts:       rawTrust.AllowedHosts,
-			allowedCIDRs:       cidrs,
-			allowLoopback:      rawTrust.AllowLoopback,
+			registrationSecret:     rawTrust.RegistrationSecret,
+			gatewaySecret:          rawTrust.GatewaySecret,
+			allowedHosts:           rawTrust.AllowedHosts,
+			allowedCIDRs:           cidrs,
+			allowedGatewayPrefixes: allowedGatewayPrefixes,
+			allowedAuthPolicies:    normalizeAllowedAuthPolicies(rawTrust.AllowedAuthPolicies),
+			allowedMethods:         normalizeAllowedMethods(rawTrust.AllowedMethods),
+			allowLoopback:          rawTrust.AllowLoopback,
+			allowInsecureHTTP:      rawTrust.AllowInsecureHTTP,
 		}
 	}
 	service := &Service{
@@ -192,6 +207,7 @@ type SignatureCommand struct {
 	PluginKey string
 	Method    string
 	Path      string
+	RawQuery  string
 	Timestamp string
 	Nonce     string
 	Signature string
@@ -264,7 +280,7 @@ func (s *Service) Register(ctx context.Context, cmd RegisterCommand) (*RegisterR
 	if err := s.validateManifestGatewayPaths(manifest); err != nil {
 		return nil, apperror.Wrap(apperror.CodeInvalidArgument, apperror.MessageInvalidPluginManifest, err)
 	}
-	if err := s.validateBaseURL(manifest.PluginKey, manifest.BaseURL); err != nil {
+	if err := s.validatePluginURL(manifest.PluginKey, manifest.BaseURL, false); err != nil {
 		return nil, apperror.Wrap(apperror.CodeInvalidArgument, apperror.MessageInvalidPluginManifest, err)
 	}
 	hash, err := pkgplugin.ManifestHash(manifest)
@@ -279,6 +295,7 @@ func (s *Service) Register(ctx context.Context, cmd RegisterCommand) (*RegisterR
 			Name:                manifest.Name,
 			Protocol:            domainplugin.Protocol(manifest.Protocol),
 			CurrentManifestHash: hash,
+			OpenAPIURL:          manifest.OpenAPIURL,
 			Status:              domainplugin.ServiceStatusActive,
 			Metadata:            manifest.Metadata,
 			CreatedAt:           now,
@@ -684,59 +701,6 @@ func (s *Service) MaintenanceInterval() time.Duration {
 	return s.config.MaintenanceInterval
 }
 
-func (s *Service) CheckHealth(ctx context.Context, probe port.PluginHealthProbe) error {
-	if s == nil || s.repo == nil {
-		return apperror.New(apperror.CodeInternal, apperror.MessagePluginServiceNotReady)
-	}
-	if probe == nil || !s.config.Enabled || s.config.HealthCheckInterval <= 0 {
-		return nil
-	}
-	targets, err := s.repo.ListHealthCheckTargets(ctx, s.now())
-	if err != nil {
-		return mapPluginRepoError(err)
-	}
-	for _, target := range targets {
-		if target == nil {
-			continue
-		}
-		s.checkInstanceHealth(ctx, probe, *target)
-	}
-	return nil
-}
-
-func (s *Service) Maintain(ctx context.Context) (*MaintenanceResult, error) {
-	if s == nil || s.repo == nil {
-		return nil, apperror.New(apperror.CodeInternal, apperror.MessagePluginServiceNotReady)
-	}
-	if !s.config.Enabled {
-		return &MaintenanceResult{}, nil
-	}
-	now := s.now()
-	result := &MaintenanceResult{}
-	prunedNonces, err := s.repo.PruneSignatureNonces(ctx, now)
-	if err != nil {
-		return nil, mapPluginRepoError(err)
-	}
-	result.PrunedSignatureNonces = prunedNonces
-	if s.config.AuditRetentionDays > 0 {
-		prunedAudits, err := s.repo.PrunePluginAuditEvents(ctx, now.AddDate(0, 0, -s.config.AuditRetentionDays))
-		if err != nil {
-			return nil, mapPluginRepoError(err)
-		}
-		result.PrunedAuditEvents = prunedAudits
-	}
-	staleBefore := now.Add(-s.config.HeartbeatTTL)
-	disabled, err := s.repo.DisableStalePluginInstances(ctx, staleBefore, now)
-	if err != nil {
-		return nil, mapPluginRepoError(err)
-	}
-	result.DisabledStaleInstances = disabled
-	if disabled > 0 {
-		s.invalidateRouteCache("")
-	}
-	return result, nil
-}
-
 func (s *Service) RecordGatewayRequest(ctx context.Context, metric domainplugin.GatewayMetric) {
 	if s == nil || s.metrics == nil {
 		return
@@ -780,105 +744,6 @@ func (s *Service) ensureEnabled() error {
 		return apperror.New(apperror.CodeServiceUnavailable, apperror.MessagePluginRegistrationDisabled)
 	}
 	return nil
-}
-
-func (s *Service) validateControlSignature(ctx context.Context, pluginKey string, signature SignatureCommand) error {
-	if !safeIDPattern.MatchString(pluginKey) || signature.PluginKey != pluginKey {
-		return apperror.New(apperror.CodeUnauthorized, apperror.MessageInvalidPluginSignature)
-	}
-	trust, ok := s.trusted[pluginKey]
-	if !ok || strings.TrimSpace(trust.registrationSecret) == "" {
-		return apperror.New(apperror.CodeForbidden, apperror.MessagePluginKeyNotTrusted)
-	}
-	parts := pkgplugin.SignatureParts{
-		PluginKey: signature.PluginKey,
-		Timestamp: signature.Timestamp,
-		Nonce:     signature.Nonce,
-		Signature: signature.Signature,
-	}
-	if err := pkgplugin.Verify(signature.Method, signature.Path, signature.Body, parts, trust.registrationSecret, s.now(), s.config.SignatureSkew); err != nil {
-		return apperror.Wrap(apperror.CodeUnauthorized, apperror.MessageInvalidPluginSignature, err)
-	}
-	timestamp, err := pkgplugin.ParseSignatureTimestamp(signature.Timestamp)
-	if err != nil {
-		return apperror.Wrap(apperror.CodeUnauthorized, apperror.MessageInvalidPluginSignature, err)
-	}
-	expiresAt := timestamp.Add(s.config.SignatureSkew)
-	if expiresAt.Before(s.now()) {
-		expiresAt = s.now().Add(time.Minute)
-	}
-	if err := s.repo.UseSignatureNonce(ctx, pluginKey, signature.Nonce, expiresAt, s.now()); err != nil {
-		if errors.Is(err, derrors.ErrConflict) {
-			return apperror.Wrap(apperror.CodeUnauthorized, apperror.MessagePluginNonceReused, err)
-		}
-		return apperror.Wrap(apperror.CodeDependency, apperror.MessageDependency, err)
-	}
-	return nil
-}
-
-func (s *Service) validateManifestGatewayPaths(manifest pkgplugin.Manifest) error {
-	for _, route := range manifest.Routes {
-		route = pkgplugin.NormalizeRoute(route)
-		if err := pkgplugin.ValidateGatewayPath(route.GatewayPath, s.config.PublicPrefix); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *Service) checkInstanceHealth(ctx context.Context, probe port.PluginHealthProbe, instance domainplugin.Instance) {
-	previous := instance.HealthStatus.Normalize()
-	err := probe.Probe(ctx, instance)
-	now := s.now()
-	nextStatus := previous
-	failures := instance.ConsecutiveFailures
-	lastError := ""
-	if err != nil {
-		failures++
-		lastError = err.Error()
-		if failures >= s.unhealthyThreshold() {
-			nextStatus = domainplugin.HealthStatusUnhealthy
-		}
-	} else {
-		failures = 0
-		nextStatus = domainplugin.HealthStatusHealthy
-	}
-	updated, updateErr := s.repo.UpdateInstanceHealth(ctx, instance.PluginKey, instance.InstanceID, nextStatus, failures, lastError, now)
-	if updateErr != nil || updated == nil {
-		return
-	}
-	current := updated.HealthStatus.Normalize()
-	if previous == current {
-		return
-	}
-	s.invalidateRouteCache(instance.PluginKey)
-	s.recordAudit(ctx, domainplugin.AuditEvent{
-		PluginKey:  instance.PluginKey,
-		InstanceID: instance.InstanceID,
-		Action:     domainplugin.AuditActionHealthChange,
-		Message:    "plugin instance health changed",
-		Metadata: map[string]string{
-			"from":                 string(previous),
-			"to":                   string(current),
-			"consecutive_failures": strconv.Itoa(updated.ConsecutiveFailures),
-		},
-	})
-	if s.metrics != nil {
-		s.metrics.RecordPluginHealth(ctx, domainplugin.HealthMetric{
-			PluginKey:           instance.PluginKey,
-			InstanceID:          instance.InstanceID,
-			PreviousStatus:      previous,
-			CurrentStatus:       current,
-			ConsecutiveFailures: updated.ConsecutiveFailures,
-		})
-	}
-}
-
-func (s *Service) unhealthyThreshold() int {
-	if s == nil || s.config.UnhealthyThreshold <= 0 {
-		return defaultUnhealthyThreshold
-	}
-	return s.config.UnhealthyThreshold
 }
 
 func (s *Service) normalizeAuditLimit(limit int) int {
@@ -947,63 +812,6 @@ func (s *Service) recordAudit(ctx context.Context, event domainplugin.AuditEvent
 	}
 	event.Metadata = safeAuditMetadata(event.Metadata)
 	_ = s.auditRepo.RecordPluginAudit(ctx, event)
-}
-
-func (s *Service) validateBaseURL(pluginKey string, raw string) error {
-	trust, ok := s.trusted[pluginKey]
-	if !ok {
-		return fmt.Errorf("plugin key %q is not trusted", pluginKey)
-	}
-	parsed, err := url.Parse(raw)
-	if err != nil {
-		return err
-	}
-	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return fmt.Errorf("unsupported scheme %q", parsed.Scheme)
-	}
-	if parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
-		return fmt.Errorf("base_url must not include userinfo, query, or fragment")
-	}
-	host := parsed.Hostname()
-	if host == "" {
-		return fmt.Errorf("base_url host is required")
-	}
-	if hostAllowed(trust.allowedHosts, host) {
-		return nil
-	}
-	ip := net.ParseIP(host)
-	if ip == nil {
-		return fmt.Errorf("host %q is not in trusted plugin allowed_hosts", host)
-	}
-	if ip.IsLoopback() && !trust.allowLoopback {
-		return fmt.Errorf("loopback plugin base_url is not allowed")
-	}
-	if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
-		return fmt.Errorf("link-local plugin base_url is not allowed")
-	}
-	for _, cidr := range trust.allowedCIDRs {
-		if cidr.Contains(ip) {
-			return nil
-		}
-	}
-	return fmt.Errorf("ip %q is not in trusted plugin allowed_cidrs", host)
-}
-
-func hostAllowed(allowedHosts []string, host string) bool {
-	host = strings.ToLower(strings.TrimSuffix(host, "."))
-	for _, allowed := range allowedHosts {
-		allowed = strings.ToLower(strings.TrimSpace(strings.TrimSuffix(allowed, ".")))
-		if allowed == "" {
-			continue
-		}
-		if host == allowed {
-			return true
-		}
-		if strings.HasPrefix(allowed, "*.") && strings.HasSuffix(host, strings.TrimPrefix(allowed, "*")) {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *Service) pickInstance(pluginKey string, instances []*domainplugin.Instance) *domainplugin.Instance {
@@ -1183,60 +991,18 @@ func commandToManifest(cmd RegisterCommand) (pkgplugin.Manifest, error) {
 	return pkgplugin.NormalizeManifest(manifest), nil
 }
 
-func bestRoute(method string, path string, routes []*domainplugin.Route) (*domainplugin.Route, string, bool) {
-	type candidate struct {
-		route       *domainplugin.Route
-		suffix      string
-		methodScore int
-		matchScore  int
-		pathLen     int
-	}
-	var candidates []candidate
-	for _, route := range routes {
-		if route == nil {
-			continue
-		}
-		suffix, ok := route.Matches(method, path)
-		if !ok {
-			continue
-		}
-		methodScore := 0
-		if route.Method != domainplugin.MethodAny {
-			methodScore = 1
-		}
-		matchScore := 0
-		if route.MatchType == domainplugin.MatchTypeExact {
-			matchScore = 1
-		}
-		candidates = append(candidates, candidate{
-			route:       route,
-			suffix:      suffix,
-			methodScore: methodScore,
-			matchScore:  matchScore,
-			pathLen:     len(route.GatewayPath),
-		})
-	}
-	if len(candidates) == 0 {
-		return nil, "", false
-	}
-	sort.SliceStable(candidates, func(i, j int) bool {
-		if candidates[i].methodScore != candidates[j].methodScore {
-			return candidates[i].methodScore > candidates[j].methodScore
-		}
-		if candidates[i].matchScore != candidates[j].matchScore {
-			return candidates[i].matchScore > candidates[j].matchScore
-		}
-		return candidates[i].pathLen > candidates[j].pathLen
-	})
-	return candidates[0].route, candidates[0].suffix, true
-}
-
 func mapPluginRepoError(err error) error {
 	if err == nil {
 		return nil
 	}
 	if errors.Is(err, derrors.ErrNotFound) {
 		return apperror.Wrap(apperror.CodeNotFound, apperror.MessageNotFound, err)
+	}
+	if errors.Is(err, derrors.ErrConflict) {
+		return apperror.Wrap(apperror.CodeConflict, apperror.MessageConflict, err)
+	}
+	if errors.Is(err, derrors.ErrForbidden) {
+		return apperror.Wrap(apperror.CodeForbidden, apperror.MessagePermissionDenied, err)
 	}
 	return apperror.Wrap(apperror.CodeDependency, apperror.MessageDependency, err)
 }

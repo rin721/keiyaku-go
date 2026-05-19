@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	derrors "github.com/rin721/keiyaku-go/internal/domain/errors"
@@ -18,6 +19,7 @@ type PluginServiceModel struct {
 	Name                string     `gorm:"column:name"`
 	Protocol            string     `gorm:"column:protocol"`
 	CurrentManifestHash string     `gorm:"column:current_manifest_hash"`
+	OpenAPIURL          string     `gorm:"column:openapi_url"`
 	Status              string     `gorm:"column:status"`
 	MetadataJSON        string     `gorm:"column:metadata_json"`
 	CreatedAt           time.Time  `gorm:"column:created_at"`
@@ -73,6 +75,20 @@ type PluginRouteModel struct {
 
 func (PluginRouteModel) TableName() string {
 	return "plugin_routes"
+}
+
+type PluginRouteClaimModel struct {
+	ID          int64     `gorm:"column:id;primaryKey;autoIncrement"`
+	PluginKey   string    `gorm:"column:plugin_key"`
+	RouteID     string    `gorm:"column:route_id"`
+	Method      string    `gorm:"column:method"`
+	MatchType   string    `gorm:"column:match_type"`
+	GatewayPath string    `gorm:"column:gateway_path"`
+	CreatedAt   time.Time `gorm:"column:created_at"`
+}
+
+func (PluginRouteClaimModel) TableName() string {
+	return "plugin_route_claims"
 }
 
 type PluginSignatureNonceModel struct {
@@ -161,6 +177,7 @@ func (r *PluginRegistryRepository) UpsertRegistration(ctx context.Context, regis
 			existing.Name = registration.Service.Name
 			existing.Protocol = string(registration.Service.Protocol)
 			existing.CurrentManifestHash = registration.Service.CurrentManifestHash
+			existing.OpenAPIURL = registration.Service.OpenAPIURL
 			existing.Status = string(domainplugin.ServiceStatusActive)
 			existing.MetadataJSON = marshalStringMap(registration.Service.Metadata)
 			existing.UpdatedAt = now
@@ -203,10 +220,25 @@ func (r *PluginRegistryRepository) UpsertRegistration(ctx context.Context, regis
 		if err := tx.Where("plugin_key = ?", registration.Service.PluginKey).Delete(&PluginRouteModel{}).Error; err != nil {
 			return fmt.Errorf("delete plugin routes: %w", err)
 		}
+		if err := tx.Where("plugin_key = ?", registration.Service.PluginKey).Delete(&PluginRouteClaimModel{}).Error; err != nil {
+			return fmt.Errorf("delete plugin route claims: %w", err)
+		}
+		var claims []PluginRouteClaimModel
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("plugin_key <> ?", registration.Service.PluginKey).Find(&claims).Error; err != nil {
+			return fmt.Errorf("lock plugin route claims: %w", err)
+		}
 		for i := range registration.Routes {
+			for _, claim := range claims {
+				if routesOverlap(registration.Routes[i], routeFromClaim(claim)) {
+					return derrors.ErrConflict
+				}
+			}
 			model := pluginRouteToModel(&registration.Routes[i])
 			if err := tx.Create(model).Error; err != nil {
 				return fmt.Errorf("create plugin route: %w", err)
+			}
+			if err := tx.Create(pluginRouteClaimToModel(&registration.Routes[i])).Error; err != nil {
+				return fmt.Errorf("create plugin route claim: %w", err)
 			}
 		}
 		return nil
@@ -219,28 +251,24 @@ func (r *PluginRegistryRepository) FindRouteConflict(ctx context.Context, plugin
 	}
 	for i := range routes {
 		route := routes[i]
-		var model PluginRouteModel
-		err := r.db.WithContext(ctx).
-			Table("plugin_routes AS r").
-			Select("r.*").
-			Joins("JOIN plugin_services AS s ON s.plugin_key = r.plugin_key AND s.current_manifest_hash = r.manifest_hash").
-			Where("s.status = ? AND r.enabled = ? AND r.plugin_key <> ? AND r.method = ? AND r.match_type = ? AND r.gateway_path = ?",
-				string(domainplugin.ServiceStatusActive), true, pluginKey, string(route.Method), string(route.MatchType), route.GatewayPath).
-			Order("r.plugin_key ASC, r.route_id ASC").
-			First(&model).Error
-		switch {
-		case err == nil:
-			return &domainplugin.RouteConflict{
-				PluginKey:   model.PluginKey,
-				RouteID:     model.RouteID,
-				Method:      domainplugin.Method(model.Method),
-				MatchType:   domainplugin.MatchType(model.MatchType),
-				GatewayPath: model.GatewayPath,
-			}, nil
-		case IsNotFound(err):
-			continue
-		default:
+		var claims []PluginRouteClaimModel
+		if err := r.db.WithContext(ctx).
+			Where("plugin_key <> ?", pluginKey).
+			Order("plugin_key ASC, route_id ASC").
+			Find(&claims).Error; err != nil {
 			return nil, fmt.Errorf("find plugin route conflict: %w", err)
+		}
+		for _, claim := range claims {
+			existing := routeFromClaim(claim)
+			if routesOverlap(route, existing) {
+				return &domainplugin.RouteConflict{
+					PluginKey:   claim.PluginKey,
+					RouteID:     claim.RouteID,
+					Method:      domainplugin.Method(claim.Method),
+					MatchType:   domainplugin.MatchType(claim.MatchType),
+					GatewayPath: claim.GatewayPath,
+				}, nil
+			}
 		}
 	}
 	return nil, nil
@@ -259,7 +287,10 @@ func (r *PluginRegistryRepository) TouchInstance(ctx context.Context, pluginKey 
 		return nil, fmt.Errorf("load plugin instance: %w", err)
 	}
 	if model.Status == string(domainplugin.InstanceStatusDisabled) {
-		return nil, derrors.ErrNotFound
+		return nil, derrors.ErrForbidden
+	}
+	if model.Status == string(domainplugin.InstanceStatusIncompatible) {
+		return nil, derrors.ErrConflict
 	}
 	model.Status = string(domainplugin.InstanceStatusActive)
 	model.LastSeenAt = now
@@ -588,6 +619,7 @@ func pluginServiceToModel(service *domainplugin.Service) *PluginServiceModel {
 		Name:                service.Name,
 		Protocol:            string(service.Protocol),
 		CurrentManifestHash: service.CurrentManifestHash,
+		OpenAPIURL:          service.OpenAPIURL,
 		Status:              string(service.Status),
 		MetadataJSON:        marshalStringMap(service.Metadata),
 		CreatedAt:           service.CreatedAt,
@@ -607,6 +639,7 @@ func pluginServiceFromModel(model *PluginServiceModel) (*domainplugin.Service, e
 		Name:                model.Name,
 		Protocol:            domainplugin.Protocol(model.Protocol),
 		CurrentManifestHash: model.CurrentManifestHash,
+		OpenAPIURL:          model.OpenAPIURL,
 		Status:              domainplugin.ServiceStatus(model.Status),
 		Metadata:            metadata,
 		CreatedAt:           model.CreatedAt,
@@ -703,6 +736,28 @@ func pluginRouteFromModel(model *PluginRouteModel) (*domainplugin.Route, error) 
 	}, nil
 }
 
+func pluginRouteClaimToModel(route *domainplugin.Route) *PluginRouteClaimModel {
+	return &PluginRouteClaimModel{
+		PluginKey:   route.PluginKey,
+		RouteID:     route.RouteID,
+		Method:      string(route.Method),
+		MatchType:   string(route.MatchType),
+		GatewayPath: route.GatewayPath,
+		CreatedAt:   route.CreatedAt,
+	}
+}
+
+func routeFromClaim(claim PluginRouteClaimModel) domainplugin.Route {
+	return domainplugin.Route{
+		PluginKey:   claim.PluginKey,
+		RouteID:     claim.RouteID,
+		Method:      domainplugin.Method(claim.Method),
+		MatchType:   domainplugin.MatchType(claim.MatchType),
+		GatewayPath: claim.GatewayPath,
+		Enabled:     true,
+	}
+}
+
 func pluginAuditEventToModel(event *domainplugin.AuditEvent) *PluginAuditEventModel {
 	return &PluginAuditEventModel{
 		ID:           event.ID,
@@ -769,4 +824,36 @@ func parsePluginRouteTimeout(raw string) time.Duration {
 		return 5 * time.Second
 	}
 	return timeout
+}
+
+func routesOverlap(left domainplugin.Route, right domainplugin.Route) bool {
+	if !methodsOverlap(left.Method, right.Method) {
+		return false
+	}
+	switch {
+	case left.MatchType == domainplugin.MatchTypeExact && right.MatchType == domainplugin.MatchTypeExact:
+		return left.GatewayPath == right.GatewayPath
+	case left.MatchType == domainplugin.MatchTypePrefix && right.MatchType == domainplugin.MatchTypePrefix:
+		return routeSegmentPrefix(left.GatewayPath, right.GatewayPath) || routeSegmentPrefix(right.GatewayPath, left.GatewayPath)
+	case left.MatchType == domainplugin.MatchTypeExact && right.MatchType == domainplugin.MatchTypePrefix:
+		return routeSegmentPrefix(left.GatewayPath, right.GatewayPath)
+	case left.MatchType == domainplugin.MatchTypePrefix && right.MatchType == domainplugin.MatchTypeExact:
+		return routeSegmentPrefix(right.GatewayPath, left.GatewayPath)
+	default:
+		return false
+	}
+}
+
+func methodsOverlap(left domainplugin.Method, right domainplugin.Method) bool {
+	return left == right || left == domainplugin.MethodAny || right == domainplugin.MethodAny
+}
+
+func routeSegmentPrefix(path string, prefix string) bool {
+	if prefix == "/" {
+		return strings.HasPrefix(path, "/")
+	}
+	if path == prefix {
+		return true
+	}
+	return strings.HasPrefix(path, strings.TrimRight(prefix, "/")+"/")
 }

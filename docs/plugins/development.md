@@ -8,20 +8,20 @@ authority_level: binding
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-19
-version: 2.0
+version: 3.0
 related_rules: [GOV-P0-001, GOV-P0-002, GOV-P0-004, GOV-P1-001, GOV-P1-002, GOV-P1-006]
-source_of_truth: [docs/adr/20260519-adopt-plugin-v2-breaking-contract.md, docs/architecture/plugin-system.md]
-derived_from: [pkg/plugin/README.md, docs/api/http-api.md, docs/adr/20260519-adopt-plugin-v2-breaking-contract.md]
+source_of_truth: [docs/adr/20260519-adopt-plugin-v3-contract.md, docs/architecture/plugin-system.md]
+derived_from: [pkg/plugin/README.md, docs/api/http-api.md, docs/adr/20260519-adopt-plugin-v3-contract.md]
 read_when: [boundary_sensitive, security_sensitive, pkg_change]
 update_when: [default_behavior_changed, convention_changed, adr_accepted, security_policy_changed]
 conflict_policy: binding_must_yield_to_plugin_architecture
-rollback_target: [docs/architecture/plugin-system.md, docs/adr/20260519-adopt-plugin-v2-breaking-contract.md]
+rollback_target: [docs/architecture/plugin-system.md, docs/adr/20260519-adopt-plugin-v3-contract.md]
 verification_target: [scripts/check-layering.ps1, scripts/check-governance-map.ps1, scripts/check-governance-sync.ps1]
 ---
 
 # 插件开发文档
 
-Keiyaku-Go 插件系统 v2 只支持远端 HTTP 插件。插件是独立部署的服务，通过 per-plugin HMAC 注册，并显式声明完整 `gateway_path`。
+Keiyaku-Go 插件系统 v3 只支持远端 HTTP 插件。插件是独立部署的服务，通过 per-plugin HMAC 注册，显式声明完整 `gateway_path`，并受 `trusted_plugins.<plugin_key>` 的路径、方法、鉴权和出站网络策略约束。v2 manifest、旧签名 canonical 和旧注册表数据不再兼容。
 
 ## 主服务配置
 
@@ -39,16 +39,25 @@ plugins:
       allowed_hosts: []
       allowed_cidrs:
         - "127.0.0.1/32"
+      allowed_gateway_prefixes:
+        - "/api/v1/extensions/demo-plugin"
+      allowed_auth_policies:
+        - "authenticated"
+        - "rbac"
+      allowed_methods:
+        - "GET"
+        - "POST"
       allow_loopback: true
+      allow_insecure_http: true
 ```
 
 生产环境每个 secret 至少 32 字节。`gateway_path` 必须位于 `public_prefix` 下，不能覆盖主服务内置路径。
 
-## Manifest v2
+## Manifest v3
 
 ```json
 {
-  "schema_version": "v2",
+  "schema_version": "v3",
   "plugin_key": "demo-plugin",
   "name": "DemoPlugin",
   "version": "0.1.0",
@@ -71,7 +80,7 @@ plugins:
 }
 ```
 
-Route 必填字段：`route_id`、`method`、`match_type`、`gateway_path`、`upstream_path`、`auth_policy`、`timeout`。v1 字段 `path` 和 `timeout_ms` 已删除，v1 manifest 会被拒绝。
+Route 必填字段：`route_id`、`method`、`match_type`、`gateway_path`、`upstream_path`、`auth_policy`、`timeout`。v3 会拒绝 v1/v2 manifest；跨插件 exact/prefix/ANY 重叠路由会在注册事务内通过 `plugin_route_claims` 拒绝。
 
 ## HMAC 签名
 
@@ -85,12 +94,12 @@ Route 必填字段：`route_id`、`method`、`match_type`、`gateway_path`、`up
 canonical string 为：
 
 ```text
-METHOD + "\n" + PATH + "\n" + TIMESTAMP + "\n" + NONCE + "\n" + SHA256(body)
+METHOD + "\n" + PATH + "\n" + RAW_QUERY + "\n" + TIMESTAMP + "\n" + NONCE + "\n" + SHA256(body)
 ```
 
-主服务使用 `plugin_signature_nonces` 阻止控制面签名重放。网关转发到插件时使用 gateway secret 生成同类签名，插件服务应使用 `pkg/plugin.Verify` 校验。
+`RAW_QUERY` 是不包含 `?` 的原始查询串。主服务使用 `plugin_signature_nonces` 阻止控制面签名重放。网关转发到插件时使用 gateway secret 生成同类签名，插件服务应使用 `pkg/plugin.Verify` 校验。
 
-推荐插件服务使用 `pkg/plugin.VerifySignedRequest` 读取并校验网关请求；它会在校验后恢复 `req.Body`，便于业务 Handler 继续读取。对外业务接口应设置请求体上限，和主服务的 `plugins.max_gateway_body_bytes` 保持一致或更小。
+推荐插件服务使用 `pkg/plugin.VerifySignedRequest` 读取并校验网关请求；它会在校验后恢复 `req.Body`，便于业务 Handler 继续读取。v3 插件应设置 `ExpectedPluginKey`，并传入 nonce store，例如本地进程内 `pkg/plugin.NewMemoryNonceStore()` 或可共享的持久化实现。对外业务接口应设置请求体上限，和主服务的 `plugins.max_gateway_body_bytes` 保持一致或更小。
 
 ## CLI
 
@@ -104,7 +113,7 @@ go run ./cmd/pluginctl init `
   --name DemoPlugin
 ```
 
-生成的样板服务启动时必须配置 `KEIYAKU_PLUGIN_REGISTRATION_SECRET` 与 `KEIYAKU_PLUGIN_GATEWAY_SECRET`；业务路由会校验 gateway HMAC。
+生成的样板服务启动时必须配置 `KEIYAKU_PLUGIN_REGISTRATION_SECRET` 与 `KEIYAKU_PLUGIN_GATEWAY_SECRET`；业务路由会校验 gateway HMAC，并使用 `LifecycleRunner` 自动注册、心跳、失败退避、必要时重注册和退出注销。
 
 注册：
 
@@ -122,7 +131,7 @@ go run ./cmd/pluginctl unregister --plugin-key demo-plugin --instance-id demo-pl
 
 ## Blog 插件
 
-内置 Blog 插件使用 v2 manifest，完整路径为：
+内置 Blog 插件使用 v3 manifest，完整路径为：
 
 ```text
 POST /api/v1/extensions/blog/articles

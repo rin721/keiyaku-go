@@ -31,7 +31,9 @@ paths:
                   msg:
                     type: string
                   data:
-                    $ref: "#/components/schemas/PluginServiceResponse"
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PluginServiceResponse"
         "401":
           description: "Unauthorized"
           content:
@@ -300,7 +302,9 @@ paths:
                   msg:
                     type: string
                   data:
-                    $ref: "#/components/schemas/PluginAuditEventResponse"
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PluginAuditEventResponse"
         "400":
           description: "Invalid request"
           content:
@@ -714,7 +718,9 @@ paths:
                   msg:
                     type: string
                   data:
-                    $ref: "#/components/schemas/PluginInstanceResponse"
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PluginInstanceResponse"
         "401":
           description: "Unauthorized"
           content:
@@ -1397,6 +1403,8 @@ components:
         metadata:
           type: object
         name:
+          type: string
+        openapi_url:
           type: string
         plugin_key:
           type: string

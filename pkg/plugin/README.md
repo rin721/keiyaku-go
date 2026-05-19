@@ -1,15 +1,15 @@
 # pkg/plugin
 
-`pkg/plugin` provides the v2 remote HTTP plugin contract, HMAC helpers, registry client, and heartbeat runner. It does not import any `internal` package.
+`pkg/plugin` provides the v3 remote HTTP plugin contract, HMAC helpers, registry client, and lifecycle runner. It does not import any `internal` package.
 
 ## What It Does
 
-- Defines manifest v2 and route declarations.
+- Defines manifest v3 and route declarations.
 - Validates manifests and computes stable hashes.
 - Signs and verifies control-plane and gateway HMAC requests.
 - Reads bounded request bodies and verifies signed HTTP requests while restoring `req.Body`.
 - Registers, heartbeats, and unregisters plugin instances.
-- Provides a heartbeat runner for long-running plugin processes.
+- Provides a lifecycle runner for register, heartbeat, re-register, backoff, and shutdown unregister.
 
 ## Minimal Example
 
@@ -44,6 +44,19 @@ client := plugin.NewClient(
 result, err := client.Register(context.Background(), manifest)
 ```
 
+Long-running plugins should normally use the lifecycle runner instead of hand-rolled register and heartbeat loops:
+
+```go
+runner := plugin.LifecycleRunner{
+	Client:            client,
+	Manifest:          manifest,
+	HeartbeatInterval: 10 * time.Second,
+	RegisterTimeout:   5 * time.Second,
+	UnregisterTimeout: 5 * time.Second,
+}
+_ = runner.Run(ctx)
+```
+
 ## Gateway Signature Verification
 
 ```go
@@ -51,6 +64,7 @@ parts := plugin.SignatureFromHeader(req.Header)
 err := plugin.Verify(
 	req.Method,
 	req.URL.EscapedPath(),
+	req.URL.RawQuery,
 	body,
 	parts,
 	os.Getenv("KEIYAKU_PLUGIN_GATEWAY_SECRET"),
@@ -62,25 +76,16 @@ err := plugin.Verify(
 For HTTP handlers, prefer the bounded helper:
 
 ```go
-body, parts, err := plugin.VerifySignedRequest(
-	req,
-	os.Getenv("KEIYAKU_PLUGIN_GATEWAY_SECRET"),
-	10<<20,
-	time.Now().UTC(),
-	plugin.DefaultSignatureSkew,
-)
+body, parts, err := plugin.VerifySignedRequest(req, plugin.VerifyRequestOptions{
+	Secret:            os.Getenv("KEIYAKU_PLUGIN_GATEWAY_SECRET"),
+	MaxBodyBytes:      10 << 20,
+	Now:               time.Now().UTC(),
+	Skew:              plugin.DefaultSignatureSkew,
+	ExpectedPluginKey: "demo-plugin",
+	NonceStore:        plugin.NewMemoryNonceStore(),
+})
 ```
 
-## Heartbeat
+## Heartbeat Compatibility
 
-```go
-runner := plugin.HeartbeatRunner{
-	Client:     client,
-	PluginKey:  manifest.PluginKey,
-	InstanceID: manifest.InstanceID,
-	Interval:   10 * time.Second,
-}
-_ = runner.Run(ctx)
-```
-
-The host treats expired leases as unavailable for routing, so plugin services should keep heartbeating while they are able to serve traffic.
+`HeartbeatRunner` remains available as a lower-level primitive. v3 scaffolds and first-party examples use `LifecycleRunner` so 404 and manifest mismatch responses can trigger automatic re-registration.

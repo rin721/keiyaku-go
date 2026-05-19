@@ -39,8 +39,8 @@ HTTP DTO、响应结果和 HTTP 状态映射只存在于 Gin 适配层附近。G
 
 1. 插件服务独立部署，启动后向主服务 `POST /api/v1/plugins/registrations` 注册 manifest。
 2. 主服务把插件服务、实例、路由和审计事件持久化到 MySQL，并通过心跳租约与健康检查判断实例是否可路由。
-3. 用户访问插件 manifest v2 声明的完整 `gateway_path` 时，主服务按注册路由解析上游实例并转发 HTTP 请求。
-4. 网关默认透传 TraceID 和脱敏用户上下文，不默认透传原始 `Authorization`，并会重建 `X-Keiyaku-*` 与 `X-Forwarded-*` 可信头。
+3. 用户访问插件 manifest v3 声明的完整 `gateway_path` 时，主服务按注册路由解析上游实例并转发 HTTP 请求。
+4. 网关默认透传 TraceID 和脱敏用户上下文，不默认透传原始 `Authorization`、`Cookie` 或 `Set-Cookie`，并会重建 `X-Keiyaku-*` 与 `X-Forwarded-*` 可信头。
 5. 实例健康状态为 `unhealthy`、租约过期或被禁用时不会被网关选中。
 
 更多细节见：[系统结构设计](docs/architecture/system-design.md)、[远端插件系统设计](docs/architecture/plugin-system.md) 和 [插件开发文档](docs/plugins/development.md)。
@@ -167,6 +167,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-governance.ps1
 - [数据库结构](docs/architecture/database-schema.md)
 - [Gin 与 GORM 架构决策](docs/adr/20260515-adopt-gin-gorm-clean-architecture.md)
 - [远端插件系统 ADR](docs/adr/20260519-adopt-remote-service-plugin-system.md)
+- [插件系统 v3 契约 ADR](docs/adr/20260519-adopt-plugin-v3-contract.md)
 - [Blog 插件与 IAM 拆分 ADR](docs/adr/20260519-split-blog-plugin-and-iam-service.md)
 - [治理入口](docs/governance/README.md)
 - [AI 执行协议](docs/governance/ai-execution.md)
@@ -178,4 +179,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-governance.ps1
 - Gin 中间件链：TraceID、Recovery、访问日志、CORS、限流、熔断、IAM token 校验、IAM 授权
 - MySQL 初始迁移：users、roles、permissions、articles、categories、tags、comments、casbin_rule
 - OpenAPI 契约生成与 Swagger API 文档自动注入：`/docs` 与 `/docs/openapi.yaml`
-- 远端插件注册、心跳、健康检查、审计事件、管理查询与 HTTP 网关转发：`/api/v1/plugins` 与 manifest v2 `gateway_path`
+- 远端插件注册、心跳、健康检查、审计事件、管理查询与 HTTP 网关转发：`/api/v1/plugins` 与 manifest v3 `gateway_path`

@@ -30,8 +30,17 @@ type SignatureParts struct {
 	Signature string
 }
 
-type NonceChecker interface {
+type NonceStore interface {
 	UseNonce(pluginKey string, nonce string, expiresAt time.Time, now time.Time) error
+}
+
+type VerifyRequestOptions struct {
+	Secret            string
+	MaxBodyBytes      int64
+	Now               time.Time
+	Skew              time.Duration
+	ExpectedPluginKey string
+	NonceStore        NonceStore
 }
 
 func SignRequest(req *http.Request, pluginKey string, secret string, body []byte, now time.Time, nonce string) error {
@@ -55,7 +64,7 @@ func SignRequest(req *http.Request, pluginKey string, secret string, body []byte
 		nonce = generated
 	}
 	timestamp := now.UTC().Format(time.RFC3339Nano)
-	signature := Sign(req.Method, req.URL.EscapedPath(), timestamp, nonce, BodySHA256(body), secret)
+	signature := Sign(req.Method, req.URL.EscapedPath(), req.URL.RawQuery, timestamp, nonce, BodySHA256(body), secret)
 	req.Header.Set(HeaderPluginKey, pluginKey)
 	req.Header.Set(HeaderTimestamp, timestamp)
 	req.Header.Set(HeaderNonce, nonce)
@@ -63,18 +72,42 @@ func SignRequest(req *http.Request, pluginKey string, secret string, body []byte
 	return nil
 }
 
-func VerifySignedRequest(req *http.Request, secret string, maxBodyBytes int64, now time.Time, skew time.Duration) ([]byte, SignatureParts, error) {
+func VerifySignedRequest(req *http.Request, options VerifyRequestOptions) ([]byte, SignatureParts, error) {
 	if req == nil {
 		return nil, SignatureParts{}, runtimeError("verify signed request", "request is nil", nil)
 	}
-	body, err := ReadLimitedBody(req.Body, maxBodyBytes)
+	body, err := ReadLimitedBody(req.Body, options.MaxBodyBytes)
 	if err != nil {
 		return nil, SignatureParts{}, err
 	}
 	req.Body = io.NopCloser(bytes.NewReader(body))
 	parts := SignatureFromHeader(req.Header)
-	if err := Verify(req.Method, req.URL.EscapedPath(), body, parts, secret, now, skew); err != nil {
+	if options.ExpectedPluginKey != "" && parts.PluginKey != options.ExpectedPluginKey {
+		return nil, parts, signatureError("plugin key does not match expected plugin")
+	}
+	now := options.Now
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	skew := options.Skew
+	if skew <= 0 {
+		skew = DefaultSignatureSkew
+	}
+	if err := Verify(req.Method, req.URL.EscapedPath(), req.URL.RawQuery, body, parts, options.Secret, now, skew); err != nil {
 		return nil, parts, err
+	}
+	if options.NonceStore != nil {
+		timestamp, err := ParseSignatureTimestamp(parts.Timestamp)
+		if err != nil {
+			return nil, parts, err
+		}
+		expiresAt := timestamp.Add(skew)
+		if expiresAt.Before(now) {
+			expiresAt = now.Add(time.Minute)
+		}
+		if err := options.NonceStore.UseNonce(parts.PluginKey, parts.Nonce, expiresAt, now); err != nil {
+			return nil, parts, runtimeError("verify signed request", "record nonce", err)
+		}
 	}
 	return body, parts, nil
 }
@@ -109,7 +142,7 @@ func SignatureFromHeader(header http.Header) SignatureParts {
 	}
 }
 
-func Verify(method string, path string, body []byte, parts SignatureParts, secret string, now time.Time, skew time.Duration) error {
+func Verify(method string, path string, rawQuery string, body []byte, parts SignatureParts, secret string, now time.Time, skew time.Duration) error {
 	if !ValidPluginKey(parts.PluginKey) {
 		return signatureError("plugin key is invalid")
 	}
@@ -132,21 +165,21 @@ func Verify(method string, path string, body []byte, parts SignatureParts, secre
 	if timestamp.Before(now.Add(-skew)) || timestamp.After(now.Add(skew)) {
 		return signatureError("timestamp is outside allowed skew")
 	}
-	expected := Sign(method, path, parts.Timestamp, parts.Nonce, BodySHA256(body), secret)
+	expected := Sign(method, path, rawQuery, parts.Timestamp, parts.Nonce, BodySHA256(body), secret)
 	if subtle.ConstantTimeCompare([]byte(expected), []byte(parts.Signature)) != 1 {
 		return signatureError("signature mismatch")
 	}
 	return nil
 }
 
-func Sign(method string, path string, timestamp string, nonce string, bodyHash string, secret string) string {
+func Sign(method string, path string, rawQuery string, timestamp string, nonce string, bodyHash string, secret string) string {
 	mac := hmac.New(sha256.New, []byte(secret))
-	_, _ = io.WriteString(mac, CanonicalString(method, path, timestamp, nonce, bodyHash))
+	_, _ = io.WriteString(mac, CanonicalString(method, path, rawQuery, timestamp, nonce, bodyHash))
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
-func CanonicalString(method string, path string, timestamp string, nonce string, bodyHash string) string {
-	return strings.ToUpper(method) + "\n" + path + "\n" + timestamp + "\n" + nonce + "\n" + bodyHash
+func CanonicalString(method string, path string, rawQuery string, timestamp string, nonce string, bodyHash string) string {
+	return strings.ToUpper(method) + "\n" + path + "\n" + rawQuery + "\n" + timestamp + "\n" + nonce + "\n" + bodyHash
 }
 
 func BodySHA256(body []byte) string {

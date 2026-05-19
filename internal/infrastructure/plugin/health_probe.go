@@ -16,11 +16,18 @@ type HTTPHealthProbe struct {
 }
 
 func NewHTTPHealthProbe(timeout time.Duration) *HTTPHealthProbe {
+	return NewHTTPHealthProbeWithClient(timeout, nil)
+}
+
+func NewHTTPHealthProbeWithClient(timeout time.Duration, client *http.Client) *HTTPHealthProbe {
 	if timeout <= 0 {
 		timeout = 2 * time.Second
 	}
+	if client == nil {
+		client = &http.Client{}
+	}
 	return &HTTPHealthProbe{
-		client:  &http.Client{},
+		client:  client,
 		timeout: timeout,
 	}
 }
@@ -50,6 +57,7 @@ func (p *HTTPHealthProbe) Probe(ctx context.Context, instance domainplugin.Insta
 	if traceID := trace.IDFromContext(ctx); traceID != "" {
 		req.Header.Set(trace.HeaderName, traceID)
 	}
+	req.Header.Set("X-Keiyaku-Plugin-Key", instance.PluginKey)
 	client := p.client
 	if client == nil {
 		client = http.DefaultClient

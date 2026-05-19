@@ -156,7 +156,7 @@ func (h *PluginHandler) Unregister(c *gin.Context) {
 // @Tags Plugin
 // @Produce json
 // @Security bearerAuth
-// @Success 200 {object} []dto.PluginServiceResponse "OK"
+// @Success 200 {array} dto.PluginServiceResponse "OK"
 // @Failure 401 {object} response.Body "Unauthorized"
 // @Failure 403 {object} response.Body "Forbidden"
 // @Failure 500 {object} response.Body "Internal server error"
@@ -218,7 +218,7 @@ func (h *PluginHandler) Get(c *gin.Context) {
 // @Produce json
 // @Security bearerAuth
 // @Param plugin_key path string true "Plugin key"
-// @Success 200 {object} []dto.PluginInstanceResponse "OK"
+// @Success 200 {array} dto.PluginInstanceResponse "OK"
 // @Failure 401 {object} response.Body "Unauthorized"
 // @Failure 403 {object} response.Body "Forbidden"
 // @Failure 404 {object} response.Body "Plugin not found"
@@ -383,7 +383,7 @@ func (h *PluginHandler) Diagnostics(c *gin.Context) {
 // @Security bearerAuth
 // @Param plugin_key path string true "Plugin key"
 // @Param limit query int false "Maximum number of events"
-// @Success 200 {object} []dto.PluginAuditEventResponse "OK"
+// @Success 200 {array} dto.PluginAuditEventResponse "OK"
 // @Failure 400 {object} response.Body "Invalid request"
 // @Failure 401 {object} response.Body "Unauthorized"
 // @Failure 403 {object} response.Body "Forbidden"
@@ -427,6 +427,7 @@ func (h *PluginHandler) signature(c *gin.Context, body []byte) appplugin.Signatu
 		PluginKey: parts.PluginKey,
 		Method:    c.Request.Method,
 		Path:      c.Request.URL.EscapedPath(),
+		RawQuery:  c.Request.URL.RawQuery,
 		Timestamp: parts.Timestamp,
 		Nonce:     parts.Nonce,
 		Signature: parts.Signature,
@@ -478,6 +479,11 @@ func (h *PluginHandler) Gateway(c *gin.Context) {
 	if err != nil {
 		metric.GatewayError = "upstream_request"
 		response.Error(c, apperror.Wrap(apperror.CodeBadGateway, apperror.MessagePluginUpstreamFailed, err))
+		return
+	}
+	if err := h.service.ValidateOutboundURL(resolved.Service.PluginKey, upstreamURL); err != nil {
+		metric.GatewayError = "upstream_request"
+		response.Error(c, err)
 		return
 	}
 	metric.GatewayError = h.forward(c, upstreamURL, resolved, claims, ok, traceID)
@@ -664,7 +670,7 @@ func copyPluginHeaders(dst http.Header, src http.Header, forwardAuth bool) {
 
 func copyResponseHeaders(dst http.Header, src http.Header) {
 	for key, values := range src {
-		if hopByHopHeader(key) {
+		if hopByHopHeader(key) || !allowedPluginResponseHeader(key) {
 			continue
 		}
 		for _, value := range values {
@@ -682,10 +688,20 @@ func skipRequestHeader(key string, forwardAuth bool) bool {
 		return true
 	}
 	switch lower {
-	case "host", "cookie":
+	case "host", "cookie", "forwarded", "x-real-ip":
 		return true
 	case "authorization":
 		return !forwardAuth
+	default:
+		return !allowedPluginRequestHeader(lower)
+	}
+}
+
+func allowedPluginRequestHeader(lower string) bool {
+	switch lower {
+	case "accept", "accept-language", "content-type", "user-agent",
+		"idempotency-key", "if-match", "if-none-match", "if-modified-since", "if-unmodified-since":
+		return true
 	default:
 		return false
 	}
@@ -694,6 +710,15 @@ func skipRequestHeader(key string, forwardAuth bool) bool {
 func hopByHopHeader(key string) bool {
 	switch strings.ToLower(key) {
 	case "connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade":
+		return true
+	default:
+		return false
+	}
+}
+
+func allowedPluginResponseHeader(key string) bool {
+	switch strings.ToLower(key) {
+	case "content-type", "content-language", "cache-control", "etag", "last-modified", "location":
 		return true
 	default:
 		return false

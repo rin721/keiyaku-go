@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestValidateManifestAcceptsV2HTTPManifest(t *testing.T) {
+func TestValidateManifestAcceptsV3HTTPManifest(t *testing.T) {
 	manifest := Manifest{
 		SchemaVersion: DefaultSchemaVersion,
 		PluginKey:     "demo-plugin",
@@ -32,9 +32,9 @@ func TestValidateManifestAcceptsV2HTTPManifest(t *testing.T) {
 	}
 }
 
-func TestValidateManifestRejectsV1Manifest(t *testing.T) {
+func TestValidateManifestRejectsV2Manifest(t *testing.T) {
 	manifest := Manifest{
-		SchemaVersion: "v1",
+		SchemaVersion: "v2",
 		PluginKey:     "demo-plugin",
 		Name:          "Demo",
 		Version:       "0.1.0",

@@ -10,8 +10,8 @@ status: active
 effective_date: 2026-05-19
 version: 2.0
 related_rules: [GOV-P0-001, GOV-P0-002, GOV-P1-001, GOV-P1-002, GOV-P1-003, GOV-P1-004, GOV-P1-006]
-source_of_truth: [docs/adr/20260515-adopt-gin-gorm-clean-architecture.md, docs/adr/20260519-adopt-remote-service-plugin-system.md, docs/adr/20260519-adopt-plugin-v2-breaking-contract.md, docs/adr/20260519-split-blog-plugin-and-iam-service.md]
-derived_from: [docs/governance/rules.md, docs/conventions/layering.md, docs/conventions/dependency-injection.md, docs/adr/20260519-adopt-plugin-v2-breaking-contract.md, docs/adr/20260519-split-blog-plugin-and-iam-service.md]
+source_of_truth: [docs/adr/20260515-adopt-gin-gorm-clean-architecture.md, docs/adr/20260519-adopt-remote-service-plugin-system.md, docs/adr/20260519-adopt-plugin-v3-contract.md, docs/adr/20260519-split-blog-plugin-and-iam-service.md]
+derived_from: [docs/governance/rules.md, docs/conventions/layering.md, docs/conventions/dependency-injection.md, docs/adr/20260519-adopt-plugin-v3-contract.md, docs/adr/20260519-split-blog-plugin-and-iam-service.md]
 read_when: [boundary_sensitive, async_sensitive, governance_change]
 update_when: [default_behavior_changed, convention_changed, adr_accepted]
 conflict_policy: binding_must_yield_to_ssot

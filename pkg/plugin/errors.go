@@ -18,13 +18,15 @@ var (
 	ErrInvalidSignature = errors.New("invalid plugin signature")
 	ErrUnexpectedReply  = errors.New("unexpected plugin registry response")
 	ErrBodyTooLarge     = errors.New("plugin request body exceeds limit")
+	ErrNonceReused      = errors.New("plugin signature nonce reused")
 )
 
 type Error struct {
-	Kind ErrorKind
-	Op   string
-	Msg  string
-	Err  error
+	Kind       ErrorKind
+	Op         string
+	Msg        string
+	StatusCode int
+	Err        error
 }
 
 func (e *Error) Error() string {
@@ -50,4 +52,20 @@ func validationError(msg string, err error) error {
 
 func httpError(op string, msg string, err error) error {
 	return &Error{Kind: ErrorKindHTTP, Op: op, Msg: msg, Err: err}
+}
+
+func httpStatusError(op string, statusCode int, msg string, err error) error {
+	return &Error{Kind: ErrorKindHTTP, Op: op, Msg: msg, StatusCode: statusCode, Err: err}
+}
+
+func HTTPStatus(err error) int {
+	var pluginErr *Error
+	if errors.As(err, &pluginErr) {
+		return pluginErr.StatusCode
+	}
+	return 0
+}
+
+func IsHTTPStatus(err error, statusCode int) bool {
+	return HTTPStatus(err) == statusCode
 }

@@ -262,7 +262,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	pluginsdk "github.com/rin721/keiyaku-go/pkg/plugin"
@@ -283,27 +285,27 @@ func main() {
 
 	manifest := manifest(baseURL)
 	client := pluginsdk.NewClient(host, manifest.PluginKey, registrationSecret)
-	ctx := context.Background()
-	if _, err := client.Register(ctx, manifest); err != nil {
-		log.Printf("register plugin: %%v", err)
-	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 	go func() {
-		runner := pluginsdk.HeartbeatRunner{
+		runner := pluginsdk.LifecycleRunner{
 			Client: client,
-			PluginKey: manifest.PluginKey,
-			InstanceID: manifest.InstanceID,
-			Interval: 10 * time.Second,
-			OnError: func(err error) { log.Printf("plugin heartbeat: %%v", err) },
+			Manifest: manifest,
+			HeartbeatInterval: 10 * time.Second,
+			RegisterTimeout: 5 * time.Second,
+			UnregisterTimeout: 5 * time.Second,
+			OnError: func(err error) { log.Printf("plugin lifecycle: %%v", err) },
 		}
 		_ = runner.Run(ctx)
 	}()
 
+	nonceStore := pluginsdk.NewMemoryNonceStore()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 	mux.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
-		if !verifyGateway(w, r, gatewaySecret) {
+		if !verifyGateway(w, r, gatewaySecret, nonceStore) {
 			return
 		}
 		_ = json.NewEncoder(w).Encode(map[string]string{
@@ -312,12 +314,28 @@ func main() {
 			"message": "hello from %s",
 		})
 	})
+	server := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = server.Shutdown(shutdownCtx)
+	}()
 	log.Printf("plugin listening on %%s", addr)
-	log.Fatal(http.ListenAndServe(addr, mux))
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatal(err)
+	}
 }
 
-func verifyGateway(w http.ResponseWriter, r *http.Request, secret string) bool {
-	if _, _, err := pluginsdk.VerifySignedRequest(r, secret, 10<<20, time.Now().UTC(), pluginsdk.DefaultSignatureSkew); err != nil {
+func verifyGateway(w http.ResponseWriter, r *http.Request, secret string, nonceStore pluginsdk.NonceStore) bool {
+	if _, _, err := pluginsdk.VerifySignedRequest(r, pluginsdk.VerifyRequestOptions{
+		Secret:            secret,
+		MaxBodyBytes:      10 << 20,
+		Now:               time.Now().UTC(),
+		Skew:              pluginsdk.DefaultSignatureSkew,
+		ExpectedPluginKey: "%s",
+		NonceStore:        nonceStore,
+	}); err != nil {
 		status := http.StatusUnauthorized
 		msg := "invalid gateway signature"
 		if errors.Is(err, pluginsdk.ErrBodyTooLarge) {
@@ -361,12 +379,12 @@ func env(key string, fallback string) string {
 	}
 	return fallback
 }
-`, name, key, name, key, key)
+`, name, key, key, name, key, key)
 }
 
 func scaffoldManifest(key string, name string) string {
 	return fmt.Sprintf(`{
-  "schema_version": "v2",
+  "schema_version": "v3",
   "plugin_key": "%s",
   "name": "%s",
   "version": "0.1.0",

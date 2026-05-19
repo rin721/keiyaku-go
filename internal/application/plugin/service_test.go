@@ -3,6 +3,8 @@ package plugin
 import (
 	"context"
 	"errors"
+	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,8 +25,10 @@ func TestRegisterRejectsDisallowedPluginKey(t *testing.T) {
 func TestRegisterStoresManifestRoutes(t *testing.T) {
 	repo := newMemoryRepo()
 	service := newTestServiceWithRepo(t, repo)
+	cmd := validRegisterCommand("demo-plugin")
+	cmd.OpenAPIURL = "https://plugins.internal/openapi.json"
 
-	result, err := service.Register(context.Background(), validRegisterCommand("demo-plugin"))
+	result, err := service.Register(context.Background(), cmd)
 	if err != nil {
 		t.Fatalf("Register() error = %v", err)
 	}
@@ -33,6 +37,9 @@ func TestRegisterStoresManifestRoutes(t *testing.T) {
 	}
 	if len(repo.routes["demo-plugin"]) != 2 {
 		t.Fatalf("stored routes = %d, want 2", len(repo.routes["demo-plugin"]))
+	}
+	if got := repo.services["demo-plugin"].OpenAPIURL; got != "https://plugins.internal/openapi.json" {
+		t.Fatalf("openapi_url = %q, want manifest value", got)
 	}
 }
 
@@ -44,6 +51,78 @@ func TestRegisterRejectsGatewayPathOutsidePublicPrefix(t *testing.T) {
 	_, err := service.Register(context.Background(), cmd)
 	if err == nil {
 		t.Fatal("Register() error is nil")
+	}
+}
+
+func TestRegisterRejectsGatewayPathOutsideTrustedPrefix(t *testing.T) {
+	service := newTestService(t)
+	cmd := validRegisterCommand("demo-plugin")
+	cmd.Routes[0].GatewayPath = "/api/v1/extensions/other-plugin/hello"
+
+	_, err := service.Register(context.Background(), cmd)
+	if err == nil {
+		t.Fatal("Register() error is nil")
+	}
+}
+
+func TestRegisterRejectsUntrustedAuthPolicyAndMethod(t *testing.T) {
+	repo := newMemoryRepo()
+	service, err := NewService(repo, Config{
+		Enabled: true,
+		TrustedPlugins: map[string]TrustedPluginConfig{
+			"demo-plugin": {
+				RegistrationSecret:  "01234567890123456789012345678901",
+				GatewaySecret:       "abcdefghijklmnopqrstuvwxyz123456",
+				AllowedHosts:        []string{"plugins.internal"},
+				AllowedAuthPolicies: []string{"authenticated"},
+				AllowedMethods:      []string{"GET"},
+				AllowInsecureHTTP:   true,
+			},
+		},
+		HeartbeatTTL:   time.Minute,
+		RequestTimeout: time.Second,
+	})
+	if err != nil {
+		t.Fatalf("NewService() error = %v", err)
+	}
+	cmd := validRegisterCommand("demo-plugin")
+	cmd.Routes[0].AuthPolicy = "public"
+	if _, err := service.Register(context.Background(), cmd); err == nil {
+		t.Fatal("Register() public auth_policy error is nil")
+	}
+	cmd = validRegisterCommand("demo-plugin")
+	cmd.Routes[0].Method = "POST"
+	if _, err := service.Register(context.Background(), cmd); err == nil {
+		t.Fatal("Register() POST method error is nil")
+	}
+}
+
+func TestValidateOutboundURLRejectsInsecureAndLoopbackByDefault(t *testing.T) {
+	service, err := NewService(newMemoryRepo(), Config{
+		Enabled: true,
+		TrustedPlugins: map[string]TrustedPluginConfig{
+			"demo-plugin": {
+				RegistrationSecret: "01234567890123456789012345678901",
+				GatewaySecret:      "abcdefghijklmnopqrstuvwxyz123456",
+				AllowedHosts:       []string{"plugins.internal"},
+				AllowedCIDRs:       []string{"127.0.0.1/32"},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewService() error = %v", err)
+	}
+	if err := service.ValidateOutboundURL("demo-plugin", "http://plugins.internal/hello?q=1"); err == nil {
+		t.Fatal("ValidateOutboundURL() insecure http error is nil")
+	}
+	if err := service.ValidateOutboundURL("demo-plugin", "https://127.0.0.1/hello?q=1"); err == nil {
+		t.Fatal("ValidateOutboundURL() loopback error is nil")
+	}
+	if err := service.ValidateResolvedOutboundIP("demo-plugin", net.ParseIP("10.0.0.5")); err == nil {
+		t.Fatal("ValidateResolvedOutboundIP() private IP error is nil")
+	}
+	if err := service.ValidateResolvedOutboundIP("demo-plugin", net.ParseIP("8.8.8.8")); err != nil {
+		t.Fatalf("ValidateResolvedOutboundIP() public IP error = %v", err)
 	}
 }
 
@@ -67,15 +146,15 @@ func TestResolveRoutePrefersExactMethodAndSegmentPrefix(t *testing.T) {
 		t.Fatalf("Register() error = %v", err)
 	}
 
-	resolved, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo/items/42"})
+	resolved, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo-plugin/items/42"})
 	if err != nil {
 		t.Fatalf("ResolveRoute() error = %v", err)
 	}
-	if resolved.Route.GatewayPath != "/api/v1/extensions/demo/items" || resolved.Suffix != "/42" {
+	if resolved.Route.GatewayPath != "/api/v1/extensions/demo-plugin/items" || resolved.Suffix != "/42" {
 		t.Fatalf("resolved route path=%q suffix=%q", resolved.Route.GatewayPath, resolved.Suffix)
 	}
 
-	_, err = service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo/items-extra"})
+	_, err = service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo-plugin/items-extra"})
 	if err == nil {
 		t.Fatal("ResolveRoute() for non-segment prefix error is nil")
 	}
@@ -89,7 +168,7 @@ func TestResolveRouteSkipsExpiredInstances(t *testing.T) {
 	}
 	repo.instances["demo-plugin"][0].LeaseExpiresAt = time.Now().UTC().Add(-time.Second)
 
-	_, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo/hello"})
+	_, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo-plugin/hello"})
 	if err == nil {
 		t.Fatal("ResolveRoute() error is nil")
 	}
@@ -103,7 +182,7 @@ func TestResolveRouteSkipsUnhealthyInstances(t *testing.T) {
 	}
 	repo.instances["demo-plugin"][0].HealthStatus = domainplugin.HealthStatusUnhealthy
 
-	_, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo/hello"})
+	_, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo-plugin/hello"})
 	if err == nil {
 		t.Fatal("ResolveRoute() error is nil")
 	}
@@ -157,13 +236,13 @@ func TestRouteCacheInvalidatesOnDisableService(t *testing.T) {
 	if _, err := service.Register(context.Background(), validRegisterCommand("demo-plugin")); err != nil {
 		t.Fatalf("Register() error = %v", err)
 	}
-	if _, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo/hello"}); err != nil {
+	if _, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo-plugin/hello"}); err != nil {
 		t.Fatalf("ResolveRoute() before disable error = %v", err)
 	}
 	if err := service.DisableService(context.Background(), "demo-plugin"); err != nil {
 		t.Fatalf("DisableService() error = %v", err)
 	}
-	if _, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo/hello"}); err == nil {
+	if _, err := service.ResolveRoute(context.Background(), ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo-plugin/hello"}); err == nil {
 		t.Fatal("ResolveRoute() after disable error is nil")
 	}
 }
@@ -193,11 +272,13 @@ func TestRegisterRecordsAuditEvents(t *testing.T) {
 
 func TestRegisterRejectsCrossPluginRouteConflict(t *testing.T) {
 	repo := newMemoryRepo()
+	otherTrust := testTrustedPlugins()["demo-plugin"]
+	otherTrust.AllowedGatewayPrefixes = []string{"/api/v1/extensions/demo-plugin"}
 	service, err := NewService(repo, Config{
 		Enabled: true,
 		TrustedPlugins: map[string]TrustedPluginConfig{
 			"demo-plugin":  testTrustedPlugins()["demo-plugin"],
-			"other-plugin": testTrustedPlugins()["demo-plugin"],
+			"other-plugin": otherTrust,
 		},
 		HeartbeatTTL:   time.Minute,
 		RequestTimeout: time.Second,
@@ -208,7 +289,10 @@ func TestRegisterRejectsCrossPluginRouteConflict(t *testing.T) {
 	if _, err := service.Register(context.Background(), validRegisterCommand("demo-plugin")); err != nil {
 		t.Fatalf("Register() first error = %v", err)
 	}
-	_, err = service.Register(context.Background(), validRegisterCommand("other-plugin"))
+	cmd := validRegisterCommand("other-plugin")
+	cmd.Routes[0].GatewayPath = "/api/v1/extensions/demo-plugin/hello"
+	cmd.Routes[1].GatewayPath = "/api/v1/extensions/demo-plugin/items"
+	_, err = service.Register(context.Background(), cmd)
 	if err == nil {
 		t.Fatal("Register() conflicting route error is nil")
 	}
@@ -257,7 +341,7 @@ func TestDiagnoseReturnsRoutabilityReasons(t *testing.T) {
 	}
 	repo.instances["demo-plugin"][0].HealthStatus = domainplugin.HealthStatusUnhealthy
 
-	diagnostics, err := service.Diagnose(context.Background(), "demo-plugin", ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo/hello"})
+	diagnostics, err := service.Diagnose(context.Background(), "demo-plugin", ResolveRouteQuery{Method: "GET", Path: "/api/v1/extensions/demo-plugin/hello"})
 	if err != nil {
 		t.Fatalf("Diagnose() error = %v", err)
 	}
@@ -318,7 +402,7 @@ func newTestServiceWithRepo(t *testing.T, repo *memoryRepo) *Service {
 func validRegisterCommand(pluginKey string) RegisterCommand {
 	return RegisterCommand{
 		Signature:     testSignature(pluginKey, "POST", "/api/v1/plugins/registrations", nil),
-		SchemaVersion: "v2",
+		SchemaVersion: pkgplugin.DefaultSchemaVersion,
 		PluginKey:     pluginKey,
 		Name:          "Demo",
 		Version:       "0.1.0",
@@ -327,8 +411,8 @@ func validRegisterCommand(pluginKey string) RegisterCommand {
 		BaseURL:       "http://plugins.internal:9090",
 		HealthPath:    "/healthz",
 		Routes: []RouteCommand{
-			{RouteID: "hello", Method: "GET", MatchType: "exact", GatewayPath: "/api/v1/extensions/demo/hello", UpstreamPath: "/hello", AuthPolicy: "authenticated", Timeout: "1s"},
-			{RouteID: "items", Method: "GET", MatchType: "prefix", GatewayPath: "/api/v1/extensions/demo/items", UpstreamPath: "/api/items", AuthPolicy: "authenticated", Timeout: "1s"},
+			{RouteID: "hello", Method: "GET", MatchType: "exact", GatewayPath: "/api/v1/extensions/" + pluginKey + "/hello", UpstreamPath: "/hello", AuthPolicy: "authenticated", Timeout: "1s"},
+			{RouteID: "items", Method: "GET", MatchType: "prefix", GatewayPath: "/api/v1/extensions/" + pluginKey + "/items", UpstreamPath: "/api/items", AuthPolicy: "authenticated", Timeout: "1s"},
 		},
 	}
 }
@@ -339,6 +423,7 @@ func testTrustedPlugins() map[string]TrustedPluginConfig {
 			RegistrationSecret: "01234567890123456789012345678901",
 			GatewaySecret:      "abcdefghijklmnopqrstuvwxyz123456",
 			AllowedHosts:       []string{"plugins.internal"},
+			AllowInsecureHTTP:  true,
 		},
 	}
 }
@@ -350,9 +435,10 @@ func testSignature(pluginKey string, method string, path string, body []byte) Si
 		PluginKey: pluginKey,
 		Method:    method,
 		Path:      path,
+		RawQuery:  "",
 		Timestamp: timestamp,
 		Nonce:     nonce,
-		Signature: pkgplugin.Sign(method, path, timestamp, nonce, pkgplugin.BodySHA256(body), "01234567890123456789012345678901"),
+		Signature: pkgplugin.Sign(method, path, "", timestamp, nonce, pkgplugin.BodySHA256(body), "01234567890123456789012345678901"),
 		Body:      body,
 	}
 }
@@ -400,7 +486,7 @@ func (r *memoryRepo) FindRouteConflict(ctx context.Context, pluginKey string, ro
 				if existing == nil || !existing.Enabled || existing.ManifestHash != service.CurrentManifestHash {
 					continue
 				}
-				if existing.Method == route.Method && existing.MatchType == route.MatchType && existing.GatewayPath == route.GatewayPath {
+				if testRoutesOverlap(*existing, route) {
 					return &domainplugin.RouteConflict{
 						PluginKey:   existing.PluginKey,
 						RouteID:     existing.RouteID,
@@ -413,6 +499,31 @@ func (r *memoryRepo) FindRouteConflict(ctx context.Context, pluginKey string, ro
 		}
 	}
 	return nil, nil
+}
+
+func testRoutesOverlap(left domainplugin.Route, right domainplugin.Route) bool {
+	if left.Method != right.Method && left.Method != domainplugin.MethodAny && right.Method != domainplugin.MethodAny {
+		return false
+	}
+	switch {
+	case left.MatchType == domainplugin.MatchTypeExact && right.MatchType == domainplugin.MatchTypeExact:
+		return left.GatewayPath == right.GatewayPath
+	case left.MatchType == domainplugin.MatchTypePrefix && right.MatchType == domainplugin.MatchTypePrefix:
+		return testPathPrefix(left.GatewayPath, right.GatewayPath) || testPathPrefix(right.GatewayPath, left.GatewayPath)
+	case left.MatchType == domainplugin.MatchTypeExact && right.MatchType == domainplugin.MatchTypePrefix:
+		return testPathPrefix(left.GatewayPath, right.GatewayPath)
+	case left.MatchType == domainplugin.MatchTypePrefix && right.MatchType == domainplugin.MatchTypeExact:
+		return testPathPrefix(right.GatewayPath, left.GatewayPath)
+	default:
+		return false
+	}
+}
+
+func testPathPrefix(path string, prefix string) bool {
+	if path == prefix {
+		return true
+	}
+	return strings.HasPrefix(path, strings.TrimRight(prefix, "/")+"/")
 }
 
 func (r *memoryRepo) RecordPluginAudit(ctx context.Context, event domainplugin.AuditEvent) error {

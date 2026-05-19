@@ -51,6 +51,7 @@ type PluginServiceResponse struct {
 	Name                string            `json:"name"`
 	Protocol            string            `json:"protocol"`
 	CurrentManifestHash string            `json:"current_manifest_hash"`
+	OpenAPIURL          string            `json:"openapi_url,omitempty"`
 	Status              string            `json:"status"`
 	Metadata            map[string]string `json:"metadata,omitempty"`
 	CreatedAt           time.Time         `json:"created_at"`
@@ -185,6 +186,7 @@ func NewPluginServiceResponse(service *domainplugin.Service) PluginServiceRespon
 		Name:                service.Name,
 		Protocol:            string(service.Protocol),
 		CurrentManifestHash: service.CurrentManifestHash,
+		OpenAPIURL:          service.OpenAPIURL,
 		Status:              string(service.Status),
 		Metadata:            service.Metadata,
 		CreatedAt:           service.CreatedAt,

@@ -127,11 +127,15 @@ type PluginsConfig struct {
 }
 
 type TrustedPluginConfig struct {
-	RegistrationSecret string   `mapstructure:"registration_secret"`
-	GatewaySecret      string   `mapstructure:"gateway_secret"`
-	AllowedHosts       []string `mapstructure:"allowed_hosts"`
-	AllowedCIDRs       []string `mapstructure:"allowed_cidrs"`
-	AllowLoopback      bool     `mapstructure:"allow_loopback"`
+	RegistrationSecret     string   `mapstructure:"registration_secret"`
+	GatewaySecret          string   `mapstructure:"gateway_secret"`
+	AllowedHosts           []string `mapstructure:"allowed_hosts"`
+	AllowedCIDRs           []string `mapstructure:"allowed_cidrs"`
+	AllowedGatewayPrefixes []string `mapstructure:"allowed_gateway_prefixes"`
+	AllowedAuthPolicies    []string `mapstructure:"allowed_auth_policies"`
+	AllowedMethods         []string `mapstructure:"allowed_methods"`
+	AllowLoopback          bool     `mapstructure:"allow_loopback"`
+	AllowInsecureHTTP      bool     `mapstructure:"allow_insecure_http"`
 }
 
 func Load(path string) (*Config, error) {
@@ -320,17 +324,21 @@ func (c *PluginsConfig) Validate(env string) error {
 	if c.MaxAuditQueryLimit <= 0 {
 		return fmt.Errorf("plugins.max_audit_query_limit must be positive")
 	}
-	if env != "" && env != "local" && env != "test" {
-		if len(c.TrustedPlugins) == 0 {
-			return fmt.Errorf("plugins.trusted_plugins is required outside local/test")
+	if len(c.TrustedPlugins) == 0 && env != "" && env != "local" && env != "test" {
+		return fmt.Errorf("plugins.trusted_plugins is required outside local/test")
+	}
+	for pluginKey, trust := range c.TrustedPlugins {
+		if strings.TrimSpace(trust.RegistrationSecret) == "" {
+			return fmt.Errorf("plugins.trusted_plugins.%s.registration_secret is required", pluginKey)
 		}
-		for pluginKey, trust := range c.TrustedPlugins {
-			if len(trust.RegistrationSecret) < 32 {
-				return fmt.Errorf("plugins.trusted_plugins.%s.registration_secret must be at least 32 bytes outside local/test", pluginKey)
-			}
-			if len(trust.GatewaySecret) < 32 {
-				return fmt.Errorf("plugins.trusted_plugins.%s.gateway_secret must be at least 32 bytes outside local/test", pluginKey)
-			}
+		if strings.TrimSpace(trust.GatewaySecret) == "" {
+			return fmt.Errorf("plugins.trusted_plugins.%s.gateway_secret is required", pluginKey)
+		}
+		if env != "" && env != "local" && env != "test" && len(trust.RegistrationSecret) < 32 {
+			return fmt.Errorf("plugins.trusted_plugins.%s.registration_secret must be at least 32 bytes outside local/test", pluginKey)
+		}
+		if env != "" && env != "local" && env != "test" && len(trust.GatewaySecret) < 32 {
+			return fmt.Errorf("plugins.trusted_plugins.%s.gateway_secret must be at least 32 bytes outside local/test", pluginKey)
 		}
 	}
 	return nil

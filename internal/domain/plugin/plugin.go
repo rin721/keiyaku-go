@@ -82,6 +82,7 @@ type Service struct {
 	Name                string
 	Protocol            Protocol
 	CurrentManifestHash string
+	OpenAPIURL          string
 	Status              ServiceStatus
 	Metadata            map[string]string
 	CreatedAt           time.Time

@@ -28,6 +28,15 @@ func TestPluginGatewayForwardsRequestWithoutAuthorizationByDefault(t *testing.T)
 		if got := r.Header.Get("Authorization"); got != "" {
 			t.Fatalf("Authorization forwarded = %q, want empty", got)
 		}
+		if got := r.Header.Get("Cookie"); got != "" {
+			t.Fatalf("Cookie forwarded = %q, want empty", got)
+		}
+		if got := r.Header.Get("Forwarded"); got != "" {
+			t.Fatalf("Forwarded forwarded = %q, want empty", got)
+		}
+		if got := r.Header.Get("X-Real-IP"); got != "" {
+			t.Fatalf("X-Real-IP forwarded = %q, want empty", got)
+		}
 		if got := r.Header.Get("X-Keiyaku-User-ID"); got != "42" {
 			t.Fatalf("X-Keiyaku-User-ID = %q, want 42", got)
 		}
@@ -38,6 +47,8 @@ func TestPluginGatewayForwardsRequestWithoutAuthorizationByDefault(t *testing.T)
 			t.Fatalf("X-Forwarded-Host was not rebuilt")
 		}
 		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("Set-Cookie", "sid=bad")
+		w.Header().Set("X-Real-IP", "127.0.0.1")
 		w.WriteHeader(http.StatusCreated)
 		_, _ = w.Write([]byte("plugin-ok"))
 	}))
@@ -52,6 +63,7 @@ func TestPluginGatewayForwardsRequestWithoutAuthorizationByDefault(t *testing.T)
 				GatewaySecret:      "abcdefghijklmnopqrstuvwxyz123456",
 				AllowedCIDRs:       []string{"127.0.0.1/32"},
 				AllowLoopback:      true,
+				AllowInsecureHTTP:  true,
 			},
 		},
 		HeartbeatTTL:   time.Minute,
@@ -62,7 +74,7 @@ func TestPluginGatewayForwardsRequestWithoutAuthorizationByDefault(t *testing.T)
 	}
 	if _, err := service.Register(context.Background(), appplugin.RegisterCommand{
 		Signature:     testHandlerSignature("demo-plugin", "POST", "/api/v1/plugins/registrations", nil),
-		SchemaVersion: "v2",
+		SchemaVersion: pkgplugin.DefaultSchemaVersion,
 		PluginKey:     "demo-plugin",
 		Name:          "Demo",
 		Version:       "0.1.0",
@@ -71,7 +83,7 @@ func TestPluginGatewayForwardsRequestWithoutAuthorizationByDefault(t *testing.T)
 		BaseURL:       upstream.URL,
 		HealthPath:    "/healthz",
 		Routes: []appplugin.RouteCommand{
-			{RouteID: "hello", Method: "GET", MatchType: "exact", GatewayPath: "/api/v1/extensions/demo/hello", UpstreamPath: "/hello", AuthPolicy: "authenticated", Timeout: "1s"},
+			{RouteID: "hello", Method: "GET", MatchType: "exact", GatewayPath: "/api/v1/extensions/demo-plugin/hello", UpstreamPath: "/hello", AuthPolicy: "authenticated", Timeout: "1s"},
 		},
 	}); err != nil {
 		t.Fatalf("Register() error = %v", err)
@@ -80,11 +92,14 @@ func TestPluginGatewayForwardsRequestWithoutAuthorizationByDefault(t *testing.T)
 	engine := gin.New()
 	engine.Any("/api/v1/extensions/*proxy_path", NewPluginHandler(service, fakeTokenIssuer{}, nil).Gateway)
 	recorder := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/extensions/demo/hello?q=1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/extensions/demo-plugin/hello?q=1", nil)
 	req.Header.Set("Authorization", "Bearer ok")
 	req.Header.Set("X-Keiyaku-User-ID", "999")
 	req.Header.Set("X-Keiyaku-Plugin-Key", "spoof")
 	req.Header.Set("X-Forwarded-Host", "evil.example")
+	req.Header.Set("Forwarded", "for=evil")
+	req.Header.Set("X-Real-IP", "203.0.113.1")
+	req.Header.Set("Cookie", "sid=evil")
 
 	engine.ServeHTTP(recorder, req)
 
@@ -93,6 +108,12 @@ func TestPluginGatewayForwardsRequestWithoutAuthorizationByDefault(t *testing.T)
 	}
 	if strings.TrimSpace(recorder.Body.String()) != "plugin-ok" {
 		t.Fatalf("body = %q, want plugin-ok", recorder.Body.String())
+	}
+	if got := recorder.Header().Get("Set-Cookie"); got != "" {
+		t.Fatalf("Set-Cookie response forwarded = %q, want empty", got)
+	}
+	if got := recorder.Header().Get("X-Real-IP"); got != "" {
+		t.Fatalf("X-Real-IP response forwarded = %q, want empty", got)
 	}
 }
 
@@ -110,7 +131,7 @@ func TestPluginGatewayForwardsAuthorizationWhenRouteAllows(t *testing.T) {
 		RouteID:           "hello",
 		Method:            "GET",
 		MatchType:         "exact",
-		GatewayPath:       "/api/v1/extensions/demo/hello",
+		GatewayPath:       "/api/v1/extensions/demo-plugin/hello",
 		UpstreamPath:      "/hello",
 		AuthPolicy:        "authenticated",
 		Timeout:           "1s",
@@ -119,7 +140,7 @@ func TestPluginGatewayForwardsAuthorizationWhenRouteAllows(t *testing.T) {
 	engine := gin.New()
 	engine.Any("/api/v1/extensions/*proxy_path", NewPluginHandler(service, fakeTokenIssuer{}, nil).Gateway)
 	recorder := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/extensions/demo/hello", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/extensions/demo-plugin/hello", nil)
 	req.Header.Set("Authorization", "Bearer ok")
 
 	engine.ServeHTTP(recorder, req)
@@ -142,7 +163,7 @@ func TestPluginGatewayRejectsOversizedBody(t *testing.T) {
 		RouteID:      "submit",
 		Method:       "POST",
 		MatchType:    "exact",
-		GatewayPath:  "/api/v1/extensions/demo/submit",
+		GatewayPath:  "/api/v1/extensions/demo-plugin/submit",
 		UpstreamPath: "/submit",
 		AuthPolicy:   "authenticated",
 		Timeout:      "1s",
@@ -152,7 +173,7 @@ func TestPluginGatewayRejectsOversizedBody(t *testing.T) {
 	engine := gin.New()
 	engine.Any("/api/v1/extensions/*proxy_path", NewPluginHandler(service, fakeTokenIssuer{}, nil).Gateway)
 	recorder := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/extensions/demo/submit", strings.NewReader("too-large"))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/extensions/demo-plugin/submit", strings.NewReader("too-large"))
 	req.Header.Set("Authorization", "Bearer ok")
 
 	engine.ServeHTTP(recorder, req)
@@ -172,9 +193,10 @@ func testHandlerSignature(pluginKey string, method string, path string, body []b
 		PluginKey: pluginKey,
 		Method:    method,
 		Path:      path,
+		RawQuery:  "",
 		Timestamp: timestamp,
 		Nonce:     nonce,
-		Signature: pkgplugin.Sign(method, path, timestamp, nonce, pkgplugin.BodySHA256(body), "01234567890123456789012345678901"),
+		Signature: pkgplugin.Sign(method, path, "", timestamp, nonce, pkgplugin.BodySHA256(body), "01234567890123456789012345678901"),
 		Body:      body,
 	}
 }
@@ -190,6 +212,7 @@ func newRegisteredGatewayService(t *testing.T, upstreamURL string, route appplug
 				GatewaySecret:      "abcdefghijklmnopqrstuvwxyz123456",
 				AllowedCIDRs:       []string{"127.0.0.1/32"},
 				AllowLoopback:      true,
+				AllowInsecureHTTP:  true,
 			},
 		},
 		HeartbeatTTL:   time.Minute,
@@ -204,7 +227,7 @@ func newRegisteredGatewayService(t *testing.T, upstreamURL string, route appplug
 	}
 	if _, err := service.Register(context.Background(), appplugin.RegisterCommand{
 		Signature:     testHandlerSignature("demo-plugin", "POST", "/api/v1/plugins/registrations", nil),
-		SchemaVersion: "v2",
+		SchemaVersion: pkgplugin.DefaultSchemaVersion,
 		PluginKey:     "demo-plugin",
 		Name:          "Demo",
 		Version:       "0.1.0",

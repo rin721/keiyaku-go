@@ -3,7 +3,7 @@ package plugin
 import "time"
 
 const (
-	DefaultSchemaVersion = "v2"
+	DefaultSchemaVersion = "v3"
 	DefaultProtocol      = ProtocolHTTP
 )
 

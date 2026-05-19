@@ -9,9 +9,16 @@ import (
 	pluginsdk "github.com/rin721/keiyaku-go/pkg/plugin"
 )
 
-func GatewaySignature(secret string) gin.HandlerFunc {
+func GatewaySignature(pluginKey string, secret string, nonceStore pluginsdk.NonceStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		_, _, err := pluginsdk.VerifySignedRequest(c.Request, secret, 10<<20, time.Now().UTC(), pluginsdk.DefaultSignatureSkew)
+		_, _, err := pluginsdk.VerifySignedRequest(c.Request, pluginsdk.VerifyRequestOptions{
+			Secret:            secret,
+			MaxBodyBytes:      10 << 20,
+			Now:               time.Now().UTC(),
+			Skew:              pluginsdk.DefaultSignatureSkew,
+			ExpectedPluginKey: pluginKey,
+			NonceStore:        nonceStore,
+		})
 		if err != nil {
 			status := http.StatusUnauthorized
 			msg := "invalid gateway signature"

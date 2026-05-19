@@ -16,7 +16,7 @@ func TestGatewaySignatureAllowsSignedRequestAndRestoresBody(t *testing.T) {
 	secret := "abcdefghijklmnopqrstuvwxyz123456"
 	body := []byte(`{"title":"ok"}`)
 	engine := gin.New()
-	engine.POST("/articles", GatewaySignature(secret), func(c *gin.Context) {
+	engine.POST("/articles", GatewaySignature("demo-plugin", secret, pluginsdk.NewMemoryNonceStore()), func(c *gin.Context) {
 		content, err := c.GetRawData()
 		if err != nil {
 			t.Fatalf("read body: %v", err)
@@ -43,7 +43,7 @@ func TestGatewaySignatureRejectsBodyMismatch(t *testing.T) {
 	gin.SetMode(gin.ReleaseMode)
 	secret := "abcdefghijklmnopqrstuvwxyz123456"
 	engine := gin.New()
-	engine.POST("/articles", GatewaySignature(secret), func(c *gin.Context) {
+	engine.POST("/articles", GatewaySignature("demo-plugin", secret, pluginsdk.NewMemoryNonceStore()), func(c *gin.Context) {
 		t.Fatal("handler should not be called")
 	})
 	req := httptest.NewRequest(http.MethodPost, "/articles", strings.NewReader(`{"title":"right"}`))

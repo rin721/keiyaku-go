@@ -1,5 +1,5 @@
 {
-  "schema_version": "v2",
+  "schema_version": "v3",
   "plugin_key": "blog",
   "name": "Blog",
   "version": "0.1.0",

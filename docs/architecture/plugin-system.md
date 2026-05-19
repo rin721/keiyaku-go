@@ -8,14 +8,14 @@ authority_level: binding
 owners: [tech-lead]
 status: active
 effective_date: 2026-05-19
-version: 2.0
+version: 3.0
 related_rules: [GOV-P0-001, GOV-P0-002, GOV-P0-004, GOV-P1-001, GOV-P1-002, GOV-P1-003, GOV-P1-004, GOV-P1-006]
-source_of_truth: [docs/adr/20260519-adopt-remote-service-plugin-system.md, docs/adr/20260519-adopt-plugin-v2-breaking-contract.md, docs/adr/20260519-split-blog-plugin-and-iam-service.md]
-derived_from: [docs/architecture/system-design.md, docs/api/http-api.md, docs/architecture/database-schema.md, docs/adr/20260519-adopt-plugin-v2-breaking-contract.md, docs/adr/20260519-split-blog-plugin-and-iam-service.md]
+source_of_truth: [docs/adr/20260519-adopt-remote-service-plugin-system.md, docs/adr/20260519-adopt-plugin-v3-contract.md, docs/adr/20260519-split-blog-plugin-and-iam-service.md]
+derived_from: [docs/architecture/system-design.md, docs/api/http-api.md, docs/architecture/database-schema.md, docs/adr/20260519-adopt-plugin-v3-contract.md, docs/adr/20260519-split-blog-plugin-and-iam-service.md]
 read_when: [boundary_sensitive, security_sensitive, migration_sensitive, async_sensitive]
 update_when: [default_behavior_changed, convention_changed, adr_accepted, security_policy_changed, migration_policy_changed]
 conflict_policy: binding_must_yield_to_accepted_adr
-rollback_target: [docs/adr/20260519-adopt-remote-service-plugin-system.md, docs/adr/20260519-adopt-plugin-v2-breaking-contract.md]
+rollback_target: [docs/adr/20260519-adopt-remote-service-plugin-system.md, docs/adr/20260519-adopt-plugin-v3-contract.md]
 verification_target: [scripts/check-layering.ps1, scripts/check-governance-map.ps1, scripts/check-governance-sync.ps1]
 ---
 
@@ -28,7 +28,7 @@ verification_target: [scripts/check-layering.ps1, scripts/check-governance-map.p
 - 插件作为独立服务部署在独立服务器，不加载进主服务进程。
 - 主服务统一提供注册、心跳、健康检查、审计、路由解析、鉴权上下文和 HTTP 网关。
 - 当前版本实际支持 HTTP 插件协议；代码保留 `protocol` 扩展点，非 HTTP 注册直接拒绝。
-- 当前插件契约为 v2，插件显式声明完整 `gateway_path`，不再由 `plugin_key` 派生外部路径。
+- 当前插件契约为 v3，插件显式声明完整 `gateway_path`，并受 `trusted_plugins.<plugin_key>` 的路径、方法、鉴权和出站网络策略约束。
 - 注册、心跳、注销和网关转发使用 per-plugin HMAC，不再使用全局注册 token。
 - 插件注册表持久化到 MySQL，主服务重启后仍可查询插件状态。
 - 保持 Clean Architecture 分层和手动装配，不引入运行时反射型 DI 容器。
@@ -57,9 +57,10 @@ verification_target: [scripts/check-layering.ps1, scripts/check-governance-map.p
 
 | 对象 | 表 | 职责 |
 | --- | --- | --- |
-| 插件服务 | `plugin_services` | 插件身份、名称、协议、当前 manifest hash、管理状态 |
+| 插件服务 | `plugin_services` | 插件身份、名称、协议、当前 manifest hash、管理状态、`openapi_url` |
 | 插件实例 | `plugin_instances` | 某台插件服务器的运行实例、base URL、版本、心跳租约、健康状态 |
 | 插件路由 | `plugin_routes` | 主服务扩展路径到插件 upstream 路径的映射 |
+| 路由占用 | `plugin_route_claims` | 跨插件 route ownership 锁，防止 exact/prefix/ANY 重叠 |
 | 审计事件 | `plugin_audit_events` | 注册、心跳、注销、健康变化、管理操作和网关失败摘要 |
 
 同一 `plugin_key` 当前只允许一个 active manifest hash。新 manifest 注册成功后，主服务原子替换该插件的路由，并把旧 hash 实例标记为不兼容或不可路由。
@@ -93,7 +94,7 @@ flowchart LR
 
 插件实例通过 `POST /api/v1/plugins/{plugin_key}/instances/{instance_id}/heartbeat` 刷新租约。主服务保存 `last_seen_at` 和 `lease_expires_at`，注销接口只禁用实例，不删除历史服务记录。
 
-manifest v2 的每条 route 必须声明完整网关路径：
+manifest v3 的每条 route 必须声明完整网关路径：
 
 ```text
 gateway_path: /api/v1/extensions/blog/articles
@@ -108,7 +109,7 @@ gateway_path: /api/v1/extensions/blog/articles
 
 `prefix` 必须按路径段匹配，`/foo` 不匹配 `/foobar`。`gateway_path` 必须位于规范化后的 `plugins.public_prefix` 下，且不能等于 `public_prefix` 本身。
 
-注册时会检测其他 active 插件的当前 manifest route。不同插件不得同时声明相同的 `method + match_type + gateway_path`，冲突时注册请求返回 `409`，避免网关路径所有权不确定。
+注册时会在同一事务内校验并写入 `plugin_route_claims`。不同插件不得声明相互重叠的 exact/prefix 路径；HTTP method 精确值与 `ANY` 也视为重叠，冲突时注册请求返回 `409`，避免网关路径所有权不确定。
 
 ## 可路由条件
 
@@ -204,7 +205,7 @@ p, admin, /api/v1/plugins*, (GET|POST|DELETE)
 - `X-Forwarded-Proto`
 - `X-Forwarded-Method`
 
-主服务会移除 hop-by-hop headers、`Cookie`，默认移除 `Authorization`。入站请求中的 `X-Keiyaku-*` 与 `X-Forwarded-*` 也会被丢弃，只能由网关重建，避免客户端伪造插件身份、用户上下文或转发来源。
+主服务会移除 hop-by-hop headers，并使用请求 header allowlist。`Cookie`、`Forwarded`、`X-Real-IP`、客户端传入的 `X-Keiyaku-*` 与 `X-Forwarded-*` 都会被丢弃；`Authorization` 默认移除，只有 route 显式 `forward_auth_header=true` 才透传。响应 header 也使用 allowlist，默认不回传 `Set-Cookie`。
 
 主服务使用该插件的 `gateway_secret` 追加：
 
@@ -212,9 +213,9 @@ p, admin, /api/v1/plugins*, (GET|POST|DELETE)
 - `X-Keiyaku-Nonce`
 - `X-Keiyaku-Signature`
 
-签名 canonical 为 `method + "\n" + path + "\n" + timestamp + "\n" + nonce + "\n" + sha256(body)`。插件服务必须用相同 canonical 验证请求确实来自主服务。
+签名 canonical 为 `method + "\n" + path + "\n" + raw_query + "\n" + timestamp + "\n" + nonce + "\n" + sha256(body)`。插件服务必须用相同 canonical 验证请求确实来自主服务，并使用 expected plugin key 与 nonce replay store 防重放。
 
-注册请求体由 `plugins.max_registration_body_bytes` 限制，网关业务请求体由 `plugins.max_gateway_body_bytes` 限制。route `timeout` 不得超过 `plugins.max_route_timeout`；网关 HTTP client 使用 `plugins.request_timeout` 作为连接与整体请求超时兜底。
+注册请求体由 `plugins.max_registration_body_bytes` 限制，网关业务请求体由 `plugins.max_gateway_body_bytes` 限制。route `timeout` 不得超过 `plugins.max_route_timeout`；网关 HTTP client 使用 `plugins.request_timeout` 作为连接与整体请求超时兜底，并通过出站 guard transport 在请求前和 DNS 解析后重新校验插件 URL 与解析 IP。
 
 ## 审计与观测
 
@@ -249,11 +250,11 @@ metrics 通过 `PluginMetrics` port 记录，当前默认实现为 noop，后续
 ## 安全边界
 
 - `plugins.trusted_plugins` 生产环境必填。
-- 每个插件的 `registration_secret` 与 `gateway_secret` 生产环境至少 32 字节。
-- `base_url` 只允许 `http` 或 `https`。
+- 插件启用时每个 trusted plugin 的 `registration_secret` 与 `gateway_secret` 均必填；生产环境至少 32 字节。
+- `base_url` 和网关上游 URL 只允许 `http` 或 `https`；生产默认要求 HTTPS，只有显式 `allow_insecure_http=true` 才允许 HTTP。
 - `base_url` 不允许 userinfo、query、fragment。
 - host 必须命中 `allowed_hosts` 或 `allowed_cidrs`。
-- 默认拒绝 loopback、link-local 和 metadata IP；本地开发可显式开启 `allow_loopback`。
+- 默认拒绝 loopback、link-local、metadata/private IP；本地开发可显式开启 `allow_loopback` 并用 `allowed_cidrs` 收口。
 - 日志不得输出 token、Authorization、Cookie、请求体或完整响应体。
 
 ## 配置项
@@ -281,7 +282,16 @@ plugins:
       gateway_secret: ""
       allowed_hosts: []
       allowed_cidrs: []
+      allowed_gateway_prefixes:
+        - "/api/v1/extensions/blog"
+      allowed_auth_policies:
+        - "authenticated"
+        - "rbac"
+      allowed_methods:
+        - "GET"
+        - "POST"
       allow_loopback: false
+      allow_insecure_http: false
 ```
 
 ## 错误映射
